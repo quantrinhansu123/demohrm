@@ -2442,8 +2442,7 @@ window.renderMobileWorkers = function() {
   if (filtered.length === 0) {
     container.innerHTML = `
       <div style="text-align: center; padding: 40px 14px; color: var(--text-muted);">
-        <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
-        <p style="font-size: 13px;">Không tìm thấy lao động phù hợp</p>
+        <p style="font-size: 13.5px; font-weight: 500;">Không tìm thấy người lao động phù hợp</p>
       </div>
     `;
     return;
@@ -2472,10 +2471,10 @@ window.renderMobileWorkers = function() {
           <span class="status-pill ${statusClass}" style="font-size: 10.5px;">${w.status}</span>
         </div>
         <div class="mobile-worker-meta-grid">
-          <div>🏢 Nhà máy: <strong style="color: var(--text-main);">${w.company}</strong></div>
-          <div>📞 SĐT: <strong style="color: var(--primary-blue);">${w.phone}</strong></div>
-          <div>💼 Vị trí: <span>${w.position}</span></div>
-          <div>⏱ Ngày công: <strong style="color: var(--color-success);">${w.worked_days} công</strong></div>
+          <div>Nhà máy: <strong style="color: var(--text-main);">${w.company}</strong></div>
+          <div>SĐT: <strong style="color: var(--primary-blue);">${w.phone}</strong></div>
+          <div>Vị trí: <span>${w.position}</span></div>
+          <div>Ngày công: <strong style="color: var(--color-success);">${w.worked_days} công</strong></div>
         </div>
       </div>
     `;

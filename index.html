@@ -1578,7 +1578,7 @@
          ======================================================== -->
     <div class="mobile-device-frame" id="mobileDeviceFrame">
       
-      <!-- MOBILE SCREEN 1: ĐƠN HÀNG CUNG ỨNG (ẢNH 3) -->
+      <!-- MOBILE SCREEN 1: ĐƠN HÀNG CUNG ỨNG (ẢNH 1) -->
       <div class="mobile-app-wrapper" id="mobileOrdersView">
         <header class="mobile-top-bar">
           <div class="mobile-brand-wrap">
@@ -1587,10 +1587,10 @@
             </div>
             <div class="mobile-bar-titles">
               <h2>Đơn hàng cung ứng</h2>
-              <p>Trang Way · 01/10 – 31/10/2026</p>
+              <p>Tháng 10 · 01/10 – 31/10/2026</p>
             </div>
           </div>
-          <button class="mobile-btn-circle" onclick="openModal('modalCreateOrder')">+</button>
+          <button class="mobile-btn-circle" onclick="openModal('modalCreateOrder')" title="Tạo đơn hàng mới">+</button>
         </header>
 
         <div class="mobile-metrics-strip">
@@ -1600,14 +1600,14 @@
         </div>
 
         <div class="mobile-tabs-strip">
-          <div class="mobile-tab-item active">THEO THÁNG</div>
-          <div class="mobile-tab-item">THEO QUÝ</div>
-          <div class="mobile-tab-item">THEO NHÀ MÁY</div>
+          <div class="mobile-tab-item active" onclick="setMobileOrderFilter('month', this)">THEO THÁNG</div>
+          <div class="mobile-tab-item" onclick="setMobileOrderFilter('quarter', this)">THEO QUÝ</div>
+          <div class="mobile-tab-item" onclick="setMobileOrderFilter('factory', this)">THEO NHÀ MÁY</div>
         </div>
 
         <div class="mobile-body-content">
           <!-- WESUM -->
-          <div class="mobile-order-card">
+          <div class="mobile-order-card" onclick="openMobOrderDetail('WESUM')">
             <div class="mobile-order-top">
               <div class="mobile-donut-gauge">
                 <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
@@ -1637,7 +1637,7 @@
           </div>
 
           <!-- OJTEK -->
-          <div class="mobile-order-card">
+          <div class="mobile-order-card" onclick="openMobOrderDetail('OJTEK')">
             <div class="mobile-order-top">
               <div class="mobile-donut-gauge">
                 <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
@@ -1659,11 +1659,69 @@
               <div class="mobile-mini-stat"><div class="val">2</div><div class="lbl">Vị trí</div></div>
               <div class="mobile-mini-stat"><div class="val">1</div><div class="lbl">Vendor</div></div>
             </div>
+            <div class="mobile-pos-list">
+              <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">QC ngoại quan</span><span class="ratio">10/20 · 50%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 50%"></div></div></div>
+              <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">Vận hành máy</span><span class="ratio">4/10 · 40%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 40%"></div></div></div>
+            </div>
+          </div>
+
+          <!-- SUNGJEE -->
+          <div class="mobile-order-card" onclick="openMobOrderDetail('SUNGJEE')">
+            <div class="mobile-order-top">
+              <div class="mobile-donut-gauge">
+                <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#10b981" stroke-width="4" pathLength="100" stroke-dasharray="48 52" stroke-dashoffset="0"/>
+                </svg>
+                <div class="donut-center-label"><span style="font-size: 11px; font-weight: 700;">48%</span></div>
+              </div>
+              <div class="mobile-order-info">
+                <div class="mobile-order-name">SUNGJEE – Đóng gói T10</div>
+                <div class="mobile-order-manager">Phụ trách: Đỗ Minh Thắng</div>
+                <div class="mobile-status-tag success">Đúng tiến độ</div>
+              </div>
+            </div>
+            <div class="mobile-stats-row">
+              <div class="mobile-mini-stat"><div class="val">25</div><div class="lbl">Chỉ tiêu</div></div>
+              <div class="mobile-mini-stat"><div class="val">12</div><div class="lbl">Đi làm</div></div>
+              <div class="mobile-mini-stat"><div class="val">1</div><div class="lbl">Vị trí</div></div>
+              <div class="mobile-mini-stat"><div class="val">2</div><div class="lbl">Vendor</div></div>
+            </div>
+            <div class="mobile-pos-list">
+              <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">Công nhân đóng gói</span><span class="ratio">12/25 · 48%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 48%"></div></div></div>
+            </div>
+          </div>
+
+          <!-- AMO -->
+          <div class="mobile-order-card" onclick="openMobOrderDetail('AMO')">
+            <div class="mobile-order-top">
+              <div class="mobile-donut-gauge">
+                <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#ef4444" stroke-width="4" pathLength="100" stroke-dasharray="40 60" stroke-dashoffset="0"/>
+                </svg>
+                <div class="donut-center-label"><span style="font-size: 11px; font-weight: 700;">40%</span></div>
+              </div>
+              <div class="mobile-order-info">
+                <div class="mobile-order-name">AMO – Sản xuất T10</div>
+                <div class="mobile-order-manager">Phụ trách: Vũ Văn Cường</div>
+                <div class="mobile-status-tag danger">Có rủi ro</div>
+              </div>
+            </div>
+            <div class="mobile-stats-row">
+              <div class="mobile-mini-stat"><div class="val">15</div><div class="lbl">Chỉ tiêu</div></div>
+              <div class="mobile-mini-stat"><div class="val">6</div><div class="lbl">Đi làm</div></div>
+              <div class="mobile-mini-stat"><div class="val">1</div><div class="lbl">Vị trí</div></div>
+              <div class="mobile-mini-stat"><div class="val">0</div><div class="lbl">Vendor</div></div>
+            </div>
+            <div class="mobile-pos-list">
+              <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">Công nhân sản xuất</span><span class="ratio">6/15 · 40%</span></div><div class="progress-track"><div class="progress-bar-fill red" style="width: 40%"></div></div></div>
+            </div>
           </div>
         </div>
 
         <nav class="mobile-bottom-nav">
-          <button class="mobile-nav-btn active" id="mobTabOrders">
+          <button class="mobile-nav-btn active" onclick="switchMobileNavTab('orders')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
               <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
@@ -1672,14 +1730,14 @@
             </svg>
             <span>Đơn hàng</span>
           </button>
-          <button class="mobile-nav-btn" id="mobTabTargets">
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('targets')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 3v18h18"></path>
               <path d="m19 9-5 5-4-4-3 3"></path>
             </svg>
             <span>Chỉ tiêu</span>
           </button>
-          <button class="mobile-nav-btn" onclick="alert('Xem danh sách nhân lực')">
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('workers')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
@@ -1688,7 +1746,7 @@
             </svg>
             <span>Nhân lực</span>
           </button>
-          <button class="mobile-nav-btn">
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('more')">
             <span class="mobile-nav-badge">3</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect width="7" height="9" x="3" y="3" rx="1.5"></rect>
@@ -1705,7 +1763,7 @@
       <div class="mobile-app-wrapper" id="mobileTargetsView" style="display: none;">
         <header class="mobile-top-bar">
           <div class="mobile-brand-wrap">
-            <button class="mobile-back-btn" id="mobBackToOrders">
+            <button class="mobile-back-btn" onclick="switchMobileNavTab('orders')">
               <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
             </button>
             <div class="mobile-bar-titles">
@@ -1755,10 +1813,79 @@
                 <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 60%"></div></div>
                 <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs teal" style="width: 18px; height: 18px; font-size: 8.5px;">TH</span><span>Trần Thu Hà</span></div>
               </div>
+              <div class="mobile-sub-pos">
+                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">QC ngoại quan: 12 người</span><span style="font-weight: 700;">50%</span></div>
+                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 50%"></div></div>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs blue" style="width: 18px; height: 18px; font-size: 8.5px;">DJ</span><span>DJC (Vendor)</span></div>
+              </div>
+              <div class="mobile-sub-pos">
+                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">Nhân viên kho: 8 người</span><span style="font-weight: 700;">25%</span></div>
+                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 25%"></div></div>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs teal" style="width: 18px; height: 18px; font-size: 8.5px;">TH</span><span>Trần Thu Hà</span></div>
+              </div>
             </div>
           </div>
 
-          <div class="mobile-section-heading" style="margin-top: 10px;">Chỉ tiêu cá nhân của tôi</div>
+          <div class="mobile-accordion-card" style="margin-top: 8px;">
+            <div class="mobile-acc-header" onclick="toggleMobAcc('m-ojtek')">
+              <div class="mobile-acc-left">
+                <span class="toggle-arrow" id="m-arrow-ojtek">▶</span>
+                <div><div class="mobile-acc-title">OJTEK > QC & vận hành T10</div><div class="mobile-acc-sub">14/30 người · Vũ Văn Cường</div></div>
+              </div>
+              <span class="mobile-acc-pct">47%</span>
+            </div>
+            <div class="progress-track" style="margin: 0 14px 10px;"><div class="progress-bar-fill orange" style="width: 47%;"></div></div>
+            <div class="mobile-acc-body" id="m-body-ojtek" style="display: none;">
+              <div class="mobile-sub-pos">
+                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">QC ngoại quan: 20 người</span><span style="font-weight: 700;">50%</span></div>
+                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 50%"></div></div>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs blue" style="width: 18px; height: 18px; font-size: 8.5px;">VC</span><span>Vũ Văn Cường</span></div>
+              </div>
+              <div class="mobile-sub-pos">
+                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">Vận hành máy: 10 người</span><span style="font-weight: 700;">40%</span></div>
+                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 40%"></div></div>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs indigo" style="width: 18px; height: 18px; font-size: 8.5px;">DA</span><span>DAMO (Vendor)</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mobile-accordion-card" style="margin-top: 8px;">
+            <div class="mobile-acc-header" onclick="toggleMobAcc('m-sungjee')">
+              <div class="mobile-acc-left">
+                <span class="toggle-arrow" id="m-arrow-sungjee">▶</span>
+                <div><div class="mobile-acc-title">SUNGJEE > Đóng gói T10</div><div class="mobile-acc-sub">12/25 người · Đỗ Minh Thắng</div></div>
+              </div>
+              <span class="mobile-acc-pct">48%</span>
+            </div>
+            <div class="progress-track" style="margin: 0 14px 10px;"><div class="progress-bar-fill green" style="width: 48%;"></div></div>
+            <div class="mobile-acc-body" id="m-body-sungjee" style="display: none;">
+              <div class="mobile-sub-pos">
+                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">Công nhân đóng gói: 25 người</span><span style="font-weight: 700;">48%</span></div>
+                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 48%"></div></div>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs green" style="width: 18px; height: 18px; font-size: 8.5px;">ĐT</span><span>Đỗ Minh Thắng</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mobile-accordion-card" style="margin-top: 8px;">
+            <div class="mobile-acc-header" onclick="toggleMobAcc('m-amo')">
+              <div class="mobile-acc-left">
+                <span class="toggle-arrow" id="m-arrow-amo">▶</span>
+                <div><div class="mobile-acc-title">AMO > Sản xuất T10</div><div class="mobile-acc-sub">6/15 người · Vũ Văn Cường</div></div>
+              </div>
+              <span class="mobile-acc-pct">40%</span>
+            </div>
+            <div class="progress-track" style="margin: 0 14px 10px;"><div class="progress-bar-fill red" style="width: 40%;"></div></div>
+            <div class="mobile-acc-body" id="m-body-amo" style="display: none;">
+              <div class="mobile-sub-pos">
+                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">Công nhân sản xuất: 15 người</span><span style="font-weight: 700;">40%</span></div>
+                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill red" style="width: 40%"></div></div>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs blue" style="width: 18px; height: 18px; font-size: 8.5px;">VC</span><span>Vũ Văn Cường</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mobile-section-heading" style="margin-top: 14px;">Chỉ tiêu cá nhân của tôi</div>
           <div class="mobile-overview-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <span style="font-weight: 600; font-size: 13.5px;">Lắp ráp + Kho (WESUM)</span>
@@ -1770,7 +1897,7 @@
         </div>
 
         <nav class="mobile-bottom-nav">
-          <button class="mobile-nav-btn" id="mobTabOrders2">
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('orders')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
               <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
@@ -1779,14 +1906,14 @@
             </svg>
             <span>Đơn hàng</span>
           </button>
-          <button class="mobile-nav-btn active" id="mobTabTargets2">
+          <button class="mobile-nav-btn active" onclick="switchMobileNavTab('targets')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 3v18h18"></path>
               <path d="m19 9-5 5-4-4-3 3"></path>
             </svg>
             <span>Chỉ tiêu</span>
           </button>
-          <button class="mobile-nav-btn" onclick="alert('Xem danh sách nhân lực')">
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('workers')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
               <circle cx="9" cy="7" r="4"></circle>
@@ -1795,7 +1922,172 @@
             </svg>
             <span>Nhân lực</span>
           </button>
-          <button class="mobile-nav-btn">
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('more')">
+            <span class="mobile-nav-badge">3</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="7" height="9" x="3" y="3" rx="1.5"></rect>
+              <rect width="7" height="5" x="14" y="3" rx="1.5"></rect>
+              <rect width="7" height="9" x="14" y="12" rx="1.5"></rect>
+              <rect width="7" height="5" x="3" y="16" rx="1.5"></rect>
+            </svg>
+            <span>Thêm</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- MOBILE SCREEN 3: NHÂN LỰC & HỒ SƠ CÔNG NHÂN -->
+      <div class="mobile-app-wrapper" id="mobileWorkersView" style="display: none;">
+        <header class="mobile-top-bar">
+          <div class="mobile-brand-wrap">
+            <button class="mobile-back-btn" onclick="switchMobileNavTab('orders')">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <div class="mobile-bar-titles">
+              <h2>Hồ sơ Nhân lực</h2>
+              <p>8 lao động đang hoạt động</p>
+            </div>
+          </div>
+          <button class="mobile-btn-pill white-btn" onclick="openModal('modalCreateWorker')">+ Thêm</button>
+        </header>
+
+        <div style="padding: 10px 14px; background: #0b4c8f;">
+          <input type="text" id="mobWorkerSearchInput" placeholder="Tìm tên, SĐT, CCCD..." style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); border: none; font-size: 13px; outline: none; background: #ffffff;">
+        </div>
+
+        <div class="mobile-body-content" id="mobileWorkerListContainer">
+          <!-- Rendered dynamically via app.js -->
+        </div>
+
+        <nav class="mobile-bottom-nav">
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('orders')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              <path d="M9 12h6"></path>
+              <path d="M9 16h4"></path>
+            </svg>
+            <span>Đơn hàng</span>
+          </button>
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('targets')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"></path>
+              <path d="m19 9-5 5-4-4-3 3"></path>
+            </svg>
+            <span>Chỉ tiêu</span>
+          </button>
+          <button class="mobile-nav-btn active" onclick="switchMobileNavTab('workers')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>Nhân lực</span>
+          </button>
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('more')">
+            <span class="mobile-nav-badge">3</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="7" height="9" x="3" y="3" rx="1.5"></rect>
+              <rect width="7" height="5" x="14" y="3" rx="1.5"></rect>
+              <rect width="7" height="9" x="14" y="12" rx="1.5"></rect>
+              <rect width="7" height="5" x="3" y="16" rx="1.5"></rect>
+            </svg>
+            <span>Thêm</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- MOBILE SCREEN 4: MENU & TIỆN ÍCH -->
+      <div class="mobile-app-wrapper" id="mobileMoreView" style="display: none;">
+        <header class="mobile-top-bar">
+          <div class="mobile-brand-wrap">
+            <button class="mobile-back-btn" onclick="switchMobileNavTab('orders')">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <div class="mobile-bar-titles">
+              <h2>Tiện ích & Cài đặt</h2>
+              <p>Hệ thống Quản lý Cung ứng Trang Way</p>
+            </div>
+          </div>
+        </header>
+
+        <div class="mobile-body-content">
+          <!-- Profile Quick Card -->
+          <div class="mobile-overview-card" style="display: flex; align-items: center; gap: 14px;">
+            <div class="avatar-md teal" style="width: 48px; height: 48px; font-size: 16px;">TH</div>
+            <div style="flex: 1;">
+              <strong style="font-size: 15px; color: var(--text-main);">Trần Thu Hà</strong>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Trưởng nhóm Tuyển dụng VP</div>
+              <div style="font-size: 11.5px; color: var(--primary-blue); font-weight: 600; margin-top: 4px;">📞 Hotline: 0988 123 456</div>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="mobile-section-heading">Tác vụ nhanh</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button class="mobile-menu-action-btn" onclick="openModal('modalCheckIn')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: var(--primary-blue);"><path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 11.5 7.35 11.76a1 1 0 0 0 1.3 0C12.95 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+              <span>Chấm công GPS</span>
+            </button>
+            <button class="mobile-menu-action-btn" onclick="openModal('modalCreateAdvance')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: var(--color-warning);"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg>
+              <span>Báo tạm ứng</span>
+            </button>
+            <button class="mobile-menu-action-btn" onclick="openModal('modalAssignTarget')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: var(--color-success);"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>Giao chỉ tiêu</span>
+            </button>
+            <button class="mobile-menu-action-btn" onclick="exportDataCSV('chu_ky')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: #8b5cf6;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
+              <span>Xuất báo cáo</span>
+            </button>
+          </div>
+
+          <!-- Section: Cài đặt hệ thống -->
+          <div class="mobile-section-heading" style="margin-top: 10px;">Quy trình & Nhà máy</div>
+          <div class="mobile-accordion-card">
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;" onclick="switchModule('factories')">
+              <span style="font-size: 13.5px; font-weight: 600;">Danh sách 4 Nhà máy trọng điểm</span>
+              <span style="color: var(--text-muted);">›</span>
+            </div>
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center;" onclick="switchModule('vendors')">
+              <span style="font-size: 13.5px; font-weight: 600;">Đối tác Vendor & Phân bổ</span>
+              <span style="color: var(--text-muted);">›</span>
+            </div>
+            <div style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;" onclick="switchModule('cycles')">
+              <span style="font-size: 13.5px; font-weight: 600;">Chu kỳ tính lương Tháng 10/2026</span>
+              <span style="color: var(--text-muted);">›</span>
+            </div>
+          </div>
+        </div>
+
+        <nav class="mobile-bottom-nav">
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('orders')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              <path d="M9 12h6"></path>
+              <path d="M9 16h4"></path>
+            </svg>
+            <span>Đơn hàng</span>
+          </button>
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('targets')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"></path>
+              <path d="m19 9-5 5-4-4-3 3"></path>
+            </svg>
+            <span>Chỉ tiêu</span>
+          </button>
+          <button class="mobile-nav-btn" onclick="switchMobileNavTab('workers')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>Nhân lực</span>
+          </button>
+          <button class="mobile-nav-btn active" onclick="switchMobileNavTab('more')">
             <span class="mobile-nav-badge">3</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect width="7" height="9" x="3" y="3" rx="1.5"></rect>

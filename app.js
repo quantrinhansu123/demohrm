@@ -2166,6 +2166,299 @@ window.toggleMobAcc = function(accId) {
   }
 };
 
+// ========================================================
+// MOBILE NAVIGATION & INTERACTIVE CONTROLS
+// ========================================================
+window.switchMobileNavTab = function(tabName, updateUrl = true) {
+  // Ensure we are in mobile view mode
+  appRoot.classList.add('mobile-mode');
+  desktopLayout.style.display = 'none';
+  mobileDeviceFrame.style.display = 'block';
+
+  // Mobile Views
+  const views = {
+    'orders': document.getElementById('mobileOrdersView'),
+    'targets': document.getElementById('mobileTargetsView'),
+    'workers': document.getElementById('mobileWorkersView'),
+    'more': document.getElementById('mobileMoreView')
+  };
+
+  // Hide all mobile views, then show target
+  Object.keys(views).forEach(key => {
+    if (views[key]) views[key].style.display = 'none';
+  });
+
+  if (views[tabName]) {
+    views[tabName].style.display = 'flex';
+  }
+
+  // Update active status for all bottom navs
+  document.querySelectorAll('.mobile-bottom-nav').forEach(nav => {
+    const buttons = nav.querySelectorAll('.mobile-nav-btn');
+    buttons.forEach(btn => {
+      const onclickAttr = btn.getAttribute('onclick') || '';
+      btn.classList.toggle('active', onclickAttr.includes(`'${tabName}'`));
+    });
+  });
+
+  // If switching to workers tab, render workers list
+  if (tabName === 'workers') {
+    renderMobileWorkers();
+  }
+
+  // Update URL hash
+  if (updateUrl) {
+    updateUrlHash(`mobile-${tabName}`);
+  }
+};
+
+// Filter orders on Mobile Screen 1 (Theo Tháng / Theo Quý / Theo Nhà Máy)
+window.setMobileOrderFilter = function(filterType, el) {
+  document.querySelectorAll('.mobile-tabs-strip .mobile-tab-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  if (el) el.classList.add('active');
+
+  const container = document.querySelector('#mobileOrdersView .mobile-body-content');
+  if (!container) return;
+
+  if (filterType === 'quarter') {
+    // Show quarterly summary
+    container.innerHTML = `
+      <div class="mobile-overview-card">
+        <div class="mobile-overview-top">
+          <div class="mobile-donut-gauge" style="width: 54px; height: 54px;">
+            <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#0052cc" stroke-width="4" pathLength="100" stroke-dasharray="18.6 81.4" stroke-dashoffset="0"/>
+            </svg>
+            <div class="donut-center-label"><span style="font-size: 11px; font-weight: 700;">19%</span></div>
+          </div>
+          <div>
+            <div class="mobile-overview-title">Tổng quan Quý 4/2026</div>
+            <div class="mobile-overview-val">78 / 420 người</div>
+            <div class="mobile-overview-sub">Tháng 10, 11, 12/2026</div>
+          </div>
+        </div>
+      </div>
+      <div class="mobile-section-heading">Chi tiết các tháng trong quý</div>
+      <div class="mobile-accordion-card">
+        <div class="mobile-acc-header" onclick="setMobileOrderFilter('month', document.querySelector('.mobile-tabs-strip .mobile-tab-item'))">
+          <div class="mobile-acc-left">
+            <span class="status-pill success" style="font-size: 10px;">Đang chạy</span>
+            <div class="mobile-acc-title">Tháng 10/2026</div>
+          </div>
+          <span class="mobile-acc-pct">48,3% (58/120)</span>
+        </div>
+      </div>
+      <div class="mobile-accordion-card">
+        <div class="mobile-acc-header">
+          <div class="mobile-acc-left">
+            <span class="status-pill warning" style="font-size: 10px;">Sắp tới</span>
+            <div class="mobile-acc-title">Tháng 11/2026</div>
+          </div>
+          <span class="mobile-acc-pct" style="color: var(--text-muted);">0% (0/140)</span>
+        </div>
+      </div>
+      <div class="mobile-accordion-card">
+        <div class="mobile-acc-header">
+          <div class="mobile-acc-left">
+            <span class="status-pill warning" style="font-size: 10px;">Sắp tới</span>
+            <div class="mobile-acc-title">Tháng 12/2026</div>
+          </div>
+          <span class="mobile-acc-pct" style="color: var(--text-muted);">0% (0/160)</span>
+        </div>
+      </div>
+    `;
+  } else {
+    // Restore default month orders
+    container.innerHTML = `
+      <!-- WESUM -->
+      <div class="mobile-order-card" onclick="openMobOrderDetail('WESUM')">
+        <div class="mobile-order-top">
+          <div class="mobile-donut-gauge">
+            <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f59e0b" stroke-width="4" pathLength="100" stroke-dasharray="16 84" stroke-dashoffset="0"/>
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#10b981" stroke-width="4" pathLength="100" stroke-dasharray="52 48" stroke-dashoffset="-16"/>
+            </svg>
+            <div class="donut-center-label"><span style="font-size: 11px; font-weight: 700;">52%</span></div>
+          </div>
+          <div class="mobile-order-info">
+            <div class="mobile-order-name">WESUM – Lắp ráp T10</div>
+            <div class="mobile-order-manager">Phụ trách: Trần Thu Hà</div>
+            <div class="mobile-status-tag success">Đúng tiến độ</div>
+          </div>
+        </div>
+        <div class="mobile-stats-row">
+          <div class="mobile-mini-stat"><div class="val">50</div><div class="lbl">Chỉ tiêu</div></div>
+          <div class="mobile-mini-stat"><div class="val">26</div><div class="lbl">Đi làm</div></div>
+          <div class="mobile-mini-stat"><div class="val">3</div><div class="lbl">Vị trí</div></div>
+          <div class="mobile-mini-stat"><div class="val">2</div><div class="lbl">Vendor</div></div>
+        </div>
+        <div class="mobile-pos-list">
+          <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">Công nhân lắp ráp</span><span class="ratio">18/30 · 60%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 60%"></div></div></div>
+          <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">QC ngoại quan</span><span class="ratio">6/12 · 50%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 50%"></div></div></div>
+          <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">Nhân viên kho</span><span class="ratio">2/8 · 25%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 25%"></div></div></div>
+        </div>
+      </div>
+
+      <!-- OJTEK -->
+      <div class="mobile-order-card" onclick="openMobOrderDetail('OJTEK')">
+        <div class="mobile-order-top">
+          <div class="mobile-donut-gauge">
+            <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f59e0b" stroke-width="4" pathLength="100" stroke-dasharray="47 53" stroke-dashoffset="0"/>
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#10b981" stroke-width="4" pathLength="100" stroke-dasharray="30 70" stroke-dashoffset="-47"/>
+            </svg>
+            <div class="donut-center-label"><span style="font-size: 11px; font-weight: 700;">47%</span></div>
+          </div>
+          <div class="mobile-order-info">
+            <div class="mobile-order-name">OJTEK – QC & vận hành T10</div>
+            <div class="mobile-order-manager">Phụ trách: Vũ Văn Cường</div>
+            <div class="mobile-status-tag warning">Chậm tiến độ</div>
+          </div>
+        </div>
+        <div class="mobile-stats-row">
+          <div class="mobile-mini-stat"><div class="val">30</div><div class="lbl">Chỉ tiêu</div></div>
+          <div class="mobile-mini-stat"><div class="val">14</div><div class="lbl">Đi làm</div></div>
+          <div class="mobile-mini-stat"><div class="val">2</div><div class="lbl">Vị trí</div></div>
+          <div class="mobile-mini-stat"><div class="val">1</div><div class="lbl">Vendor</div></div>
+        </div>
+        <div class="mobile-pos-list">
+          <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">QC ngoại quan</span><span class="ratio">10/20 · 50%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 50%"></div></div></div>
+          <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">Vận hành máy</span><span class="ratio">4/10 · 40%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 40%"></div></div></div>
+        </div>
+      </div>
+
+      <!-- SUNGJEE -->
+      <div class="mobile-order-card" onclick="openMobOrderDetail('SUNGJEE')">
+        <div class="mobile-order-top">
+          <div class="mobile-donut-gauge">
+            <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#10b981" stroke-width="4" pathLength="100" stroke-dasharray="48 52" stroke-dashoffset="0"/>
+            </svg>
+            <div class="donut-center-label"><span style="font-size: 11px; font-weight: 700;">48%</span></div>
+          </div>
+          <div class="mobile-order-info">
+            <div class="mobile-order-name">SUNGJEE – Đóng gói T10</div>
+            <div class="mobile-order-manager">Phụ trách: Đỗ Minh Thắng</div>
+            <div class="mobile-status-tag success">Đúng tiến độ</div>
+          </div>
+        </div>
+        <div class="mobile-stats-row">
+          <div class="mobile-mini-stat"><div class="val">25</div><div class="lbl">Chỉ tiêu</div></div>
+          <div class="mobile-mini-stat"><div class="val">12</div><div class="lbl">Đi làm</div></div>
+          <div class="mobile-mini-stat"><div class="val">1</div><div class="lbl">Vị trí</div></div>
+          <div class="mobile-mini-stat"><div class="val">2</div><div class="lbl">Vendor</div></div>
+        </div>
+        <div class="mobile-pos-list">
+          <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">Công nhân đóng gói</span><span class="ratio">12/25 · 48%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 48%"></div></div></div>
+        </div>
+      </div>
+
+      <!-- AMO -->
+      <div class="mobile-order-card" onclick="openMobOrderDetail('AMO')">
+        <div class="mobile-order-top">
+          <div class="mobile-donut-gauge">
+            <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
+              <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#ef4444" stroke-width="4" pathLength="100" stroke-dasharray="40 60" stroke-dashoffset="0"/>
+            </svg>
+            <div class="donut-center-label"><span style="font-size: 11px; font-weight: 700;">40%</span></div>
+          </div>
+          <div class="mobile-order-info">
+            <div class="mobile-order-name">AMO – Sản xuất T10</div>
+            <div class="mobile-order-manager">Phụ trách: Vũ Văn Cường</div>
+            <div class="mobile-status-tag danger">Có rủi ro</div>
+          </div>
+        </div>
+        <div class="mobile-stats-row">
+          <div class="mobile-mini-stat"><div class="val">15</div><div class="lbl">Chỉ tiêu</div></div>
+          <div class="mobile-mini-stat"><div class="val">6</div><div class="lbl">Đi làm</div></div>
+          <div class="mobile-mini-stat"><div class="val">1</div><div class="lbl">Vị trí</div></div>
+          <div class="mobile-mini-stat"><div class="val">0</div><div class="lbl">Vendor</div></div>
+        </div>
+        <div class="mobile-pos-list">
+          <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">Công nhân sản xuất</span><span class="ratio">6/15 · 40%</span></div><div class="progress-track"><div class="progress-bar-fill red" style="width: 40%"></div></div></div>
+        </div>
+      </div>
+    `;
+  }
+};
+
+// Open order detail from mobile card
+window.openMobOrderDetail = function(factoryCode) {
+  switchMobileNavTab('targets');
+  // Auto open the accordion for that factory
+  const body = document.getElementById(`m-body-${factoryCode.toLowerCase()}`);
+  const arrow = document.getElementById(`m-arrow-${factoryCode.toLowerCase()}`);
+  if (body) {
+    body.style.display = 'block';
+    if (arrow) arrow.textContent = '▼';
+  }
+};
+
+// Render Mobile Worker Cards (Screen 3)
+window.renderMobileWorkers = function() {
+  const container = document.getElementById('mobileWorkerListContainer');
+  if (!container) return;
+
+  const searchInput = document.getElementById('mobWorkerSearchInput');
+  const term = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+  const filtered = state.workers.filter(w => {
+    return w.name.toLowerCase().includes(term) ||
+           w.phone.includes(term) ||
+           w.citizen_id.includes(term) ||
+           w.company.toLowerCase().includes(term);
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 40px 14px; color: var(--text-muted);">
+        <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+        <p style="font-size: 13px;">Không tìm thấy lao động phù hợp</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(w => {
+    let statusClass = 'success';
+    if (w.status === 'Chờ đi làm') statusClass = 'warning';
+    if (w.status === 'Tạm nghỉ') statusClass = 'info';
+    if (w.status === 'Nghỉ việc' || w.status === 'Không đi làm') statusClass = 'danger';
+
+    const avatarInitial = w.initials || w.name.charAt(w.name.lastIndexOf(' ') + 1) || 'N';
+
+    return `
+      <div class="mobile-worker-card" onclick="viewWorkerDetail(${w.id})">
+        <div class="mobile-worker-top-row">
+          <div class="mobile-worker-main">
+            <div class="worker-avatar-thumb ${w.avatarColor || 'avatar-blue'}" style="width: 36px; height: 36px; font-size: 13px;">
+              ${avatarInitial}
+            </div>
+            <div>
+              <strong style="font-size: 14px; color: var(--text-main);">${w.name}</strong>
+              <div style="font-size: 11px; color: var(--text-muted);">${w.code} · ${w.hometown}</div>
+            </div>
+          </div>
+          <span class="status-pill ${statusClass}" style="font-size: 10.5px;">${w.status}</span>
+        </div>
+        <div class="mobile-worker-meta-grid">
+          <div>🏢 Nhà máy: <strong style="color: var(--text-main);">${w.company}</strong></div>
+          <div>📞 SĐT: <strong style="color: var(--primary-blue);">${w.phone}</strong></div>
+          <div>💼 Vị trí: <span>${w.position}</span></div>
+          <div>⏱ Ngày công: <strong style="color: var(--color-success);">${w.worked_days} công</strong></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+};
+
 // Event Listeners Setup
 document.addEventListener('DOMContentLoaded', () => {
   // Bind View Mode Buttons
@@ -2178,7 +2471,6 @@ document.addEventListener('DOMContentLoaded', () => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
       const mod = item.dataset.module;
-      // Remove active from teams, factories, cycles
       document.querySelectorAll('.team-list .sub-item').forEach(sub => sub.classList.remove('active'));
       document.querySelectorAll('.factory-list .sub-item').forEach(sub => sub.classList.remove('active'));
       document.querySelectorAll('.cycle-item, .cycle-header').forEach(ci => ci.classList.remove('active'));
@@ -2201,7 +2493,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Bind Sidebar Factory Items (NHÀ MÁY ĐANG THEO DÕI - INTERACTIVE SWITCHING)
+  // Bind Sidebar Factory Items (NHÀ MÁY ĐANG THEO DÕI)
   document.querySelectorAll('.factory-list .sub-item').forEach(item => {
     item.addEventListener('click', () => {
       const fName = item.getAttribute('data-factory-name');
@@ -2209,7 +2501,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Bind Sidebar Cycle Items (CHU KỲ - INTERACTIVE SWITCHING)
+  // Bind Sidebar Cycle Items (CHU KỲ)
   document.querySelectorAll('.cycle-item, .cycle-header').forEach(item => {
     item.addEventListener('click', () => {
       const cycleId = item.getAttribute('data-cycle-id');
@@ -2236,6 +2528,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (workerStatus) workerStatus.addEventListener('change', renderWorkersTable);
   if (workerType) workerType.addEventListener('change', renderWorkersTable);
 
+  // Bind Mobile Worker Search Input
+  const mobWorkerSearch = document.getElementById('mobWorkerSearchInput');
+  if (mobWorkerSearch) {
+    mobWorkerSearch.addEventListener('input', renderMobileWorkers);
+  }
+
   // Search filter for orders
   const orderSearchInput = document.getElementById('orderSearchInput');
   if (orderSearchInput) {
@@ -2249,7 +2547,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Initial table rendering
+  // Initial table & views rendering
   applyRBACRules();
   renderWorkersTable();
   renderAttendanceTable();
@@ -2260,6 +2558,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderTeamView('vinh-phuc');
   renderFactoryView('WESUM');
   renderCycleView('T10-2026');
+  renderMobileWorkers();
 
   // URL Hash Routing initialization & hashchange listener
   handleUrlRouting();
@@ -2286,9 +2585,13 @@ window.handleUrlRouting = function() {
   const sub = parts[1];
 
   if (main === 'mobile-orders') {
-    switchViewMode('mobile-orders', false);
+    switchMobileNavTab('orders', false);
   } else if (main === 'mobile-targets') {
-    switchViewMode('mobile-targets', false);
+    switchMobileNavTab('targets', false);
+  } else if (main === 'mobile-workers') {
+    switchMobileNavTab('workers', false);
+  } else if (main === 'mobile-more') {
+    switchMobileNavTab('more', false);
   } else if (main === 'teams') {
     switchTeam(sub || 'vinh-phuc', false);
   } else if (main === 'factories') {
@@ -2304,6 +2607,7 @@ window.handleUrlRouting = function() {
     switchModule('orders', true);
   }
 };
+
 
 
 

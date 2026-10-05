@@ -44,6 +44,13 @@
   padding: 0;
 }
 
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-main);
@@ -139,26 +146,30 @@ body {
 
 /* Layout Containers */
 .app-container {
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   display: flex;
-  background: var(--bg-body);
+  background: var(--bg-main);
+  overflow: hidden;
 }
 
 .app-container.mobile-mode {
   background: #0f172a;
   min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   padding: 16px 12px 40px;
+  overflow-y: auto;
 }
 
 .desktop-layout {
   display: flex;
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .mobile-device-frame {
@@ -174,13 +185,6 @@ body {
   flex-direction: column;
 }
 
-/* DESKTOP LAYOUT */
-.desktop-layout {
-  display: flex;
-  width: 100%;
-  min-height: 100vh;
-}
-
 /* SIDEBAR */
 .sidebar {
   width: 260px;
@@ -190,6 +194,7 @@ body {
   flex-direction: column;
   flex-shrink: 0;
   padding: 18px 12px;
+  height: 100vh;
   overflow-y: auto;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -454,8 +459,12 @@ body {
   flex-direction: column;
   min-width: 0;
   height: 100vh;
+  max-height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
   background-color: var(--bg-main);
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 .top-header {
@@ -620,7 +629,10 @@ body {
 }
 
 .page-body {
-  padding: 24px 32px 40px;
+  padding: 24px 32px 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 /* ORDER CARDS */

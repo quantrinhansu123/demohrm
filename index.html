@@ -1180,78 +1180,400 @@
       </main>
 
       <!-- ========================================================
-           MODULE 5: QUẢN LÝ VENDOR
+           MODULE 5: QUẢN LÝ VENDOR & CẤP HẠN MỨC
            ======================================================== -->
       <main class="main-viewport module-view" id="viewVendors" style="display: none;">
         <header class="top-header">
           <div class="top-header-row">
             <div>
-              <h1 class="page-title">Quản lý Vendor & Cấp hạn mức</h1>
+              <h1 class="page-title">Quản lý Vendor & Cấp hạn mức đối tác</h1>
               <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
-                Theo dõi đối tác cung ứng, hạn mức phân bổ, số lượng thực tế đi làm và đối soát chênh lệch
+                Theo dõi đối tác cung ứng, hạn mức phân bổ theo nhà máy/ca làm việc, số lượng thực tế đi làm và đối soát chênh lệch SLA
               </p>
             </div>
             <div class="header-actions">
-              <button class="btn-primary" onclick="alert('Thêm đối tác Vendor mới')">
-                <span>+</span> Thêm Vendor
+              <button class="btn-secondary" onclick="exportDataCSV('vendors')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Xuất báo cáo
+              </button>
+              <button class="btn-primary" onclick="openModal('modalAddVendor')">
+                <span>+</span> Cấp hạn mức / Thêm Vendor
               </button>
             </div>
           </div>
         </header>
 
         <div class="page-body">
+          <!-- 4 KPI Summary Cards -->
+          <div class="summary-kpi-row" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 0;">
+            <div class="kpi-card">
+              <div class="kpi-title">TỔNG ĐỐI TÁC VENDOR</div>
+              <div class="kpi-big-value">3 <span>đơn vị</span></div>
+              <div class="kpi-subtext">2 Đơn vị ngoài · 1 Nguồn nội bộ</div>
+              <div class="kpi-subtext" style="color: var(--color-success); font-weight: 600; margin-top: 4px;">100% hợp đồng hiệu lực</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-title">TỔNG HẠN MỨC GIAO</div>
+              <div class="kpi-big-value">120 <span>lao động</span></div>
+              <div class="kpi-subtext">Chỉ tiêu phân bổ Tháng 10/2026</div>
+              <div class="kpi-subtext">Phủ sóng 4 nhà máy trọng điểm</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-card-header" style="margin-bottom: 4px;">
+                <span class="kpi-title">THỰC TẾ ĐÃ CUNG ỨNG</span>
+                <span class="status-pill success" style="font-size: 11px; padding: 2px 7px;">ĐẠT 81.7%</span>
+              </div>
+              <div class="kpi-big-value" style="color: var(--primary-blue);">98 <span>/ 120</span></div>
+              <div class="progress-track" style="margin-bottom: 6px; height: 7px;">
+                <div class="progress-bar-fill blue" style="width: 81.7%;"></div>
+              </div>
+              <div class="kpi-subtext">98 lao động đang làm việc tại xưởng</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-card-header" style="margin-bottom: 4px;">
+                <span class="kpi-title">CHÊNH LỆCH CẦN BÙ</span>
+                <span class="status-pill warning" style="font-size: 11px; padding: 2px 7px;">CẦN BỔ SUNG</span>
+              </div>
+              <div class="kpi-big-value" style="color: var(--color-danger);">-22 <span>người</span></div>
+              <div class="kpi-subtext">DAMO: -5 · DJC: -5 · Nội bộ: -12</div>
+              <div class="kpi-subtext" style="color: var(--color-warning); font-weight: 600; margin-top: 4px;">Hạn chót bù quân số: 06/10</div>
+            </div>
+          </div>
+
+          <!-- Module Toolbar Filter -->
+          <div class="module-toolbar" style="margin-bottom: 0;">
+            <div class="search-box" style="width: 280px;">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="text" id="vendorSearchInput" placeholder="Tìm theo mã, tên Vendor, người đại diện..." oninput="filterVendorTable()">
+            </div>
+            <div class="filter-group">
+              <select class="form-select" id="vendorFactoryFilter" onchange="filterVendorTable()">
+                <option value="">Tất cả Nhà máy</option>
+                <option value="WESUM">Nhà máy WESUM</option>
+                <option value="OJTEK">Nhà máy OJTEK</option>
+                <option value="SUNGJEE">Nhà máy SUNGJEE</option>
+                <option value="AMO">Nhà máy AMO</option>
+              </select>
+              <select class="form-select" id="vendorRateFilter" onchange="filterVendorTable()">
+                <option value="">Tất cả Tỷ lệ đạt</option>
+                <option value="high">Đạt chuẩn (>= 85%)</option>
+                <option value="medium">Cần cải thiện (70% - 84%)</option>
+                <option value="low">Cảnh báo thiếu hụt (&lt; 70%)</option>
+              </select>
+              <select class="form-select" id="vendorTypeFilter" onchange="filterVendorTable()">
+                <option value="">Tất cả Loại đối tác</option>
+                <option value="outside">Vendor cung ứng ngoài</option>
+                <option value="internal">Nguồn tuyển dụng nội bộ</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Main Vendor List Table Card -->
           <div class="data-table-card">
+            <div style="padding: 14px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #fafbfc;">
+              <div>
+                <strong style="font-size: 14.5px; color: var(--text-main);">Danh sách Đối tác Cung ứng & Hiệu suất Hạn mức</strong>
+                <span style="font-size: 12px; color: var(--text-muted); margin-left: 8px;">(Tháng 10/2026)</span>
+              </div>
+              <span class="status-pill info" style="font-size: 11.5px;">3 Nhà cung ứng hoạt động</span>
+            </div>
             <div class="table-responsive">
-              <table class="custom-table">
+              <table class="custom-table" id="vendorMainTable">
                 <thead>
                   <tr>
                     <th>Mã Vendor</th>
-                    <th>Tên Vendor</th>
+                    <th>Tên Vendor & Loại hình</th>
                     <th style="white-space: nowrap;">Người đại diện</th>
                     <th style="white-space: nowrap;">SĐT Liên hệ</th>
-                    <th>Công ty hợp tác</th>
-                    <th>Số lượng giao</th>
-                    <th>Thực tế đi làm</th>
-                    <th>Chênh lệch</th>
-                    <th>Tỷ lệ đạt</th>
+                    <th>Nhà máy phụ trách</th>
+                    <th style="text-align: right;">Hạn mức giao</th>
+                    <th style="text-align: right;">Thực tế đi làm</th>
+                    <th style="text-align: center;">Chênh lệch</th>
+                    <th style="width: 170px;">Tỷ lệ đạt & SLA</th>
+                    <th style="text-align: center;">Trạng thái</th>
+                    <th style="text-align: center;">Thao tác</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr>
-                    <td><strong>VD-DJC</strong></td>
-                    <td><strong>Công ty Cung ứng Nhân lực DJC</strong></td>
-                    <td style="white-space: nowrap;"><strong>Đỗ Cường</strong></td>
-                    <td style="white-space: nowrap;"><code style="font-size: 13px;">0913 222 111</code></td>
-                    <td>WESUM, SUNGJEE</td>
-                    <td>35 người</td>
-                    <td><strong>30 người</strong></td>
-                    <td><span class="status-pill warning">-5 người</span></td>
-                    <td><strong style="color: var(--color-success);">85.7%</strong></td>
+                <tbody id="vendorTableBody">
+                  <tr data-factory="WESUM,SUNGJEE" data-rate="85.7" data-type="outside">
+                    <td><span class="status-pill info" style="font-weight: 700;">VD-DJC</span></td>
+                    <td>
+                      <div style="font-weight: 600; color: var(--text-main);">Công ty Cung ứng Nhân lực DJC</div>
+                      <div style="font-size: 11px; color: var(--text-muted);">Đối tác Cung ứng ngoài · Ký HĐ từ 03/2025</div>
+                    </td>
+                    <td style="white-space: nowrap;">
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="avatar-xs teal">ĐC</span>
+                        <strong>Đỗ Cường</strong>
+                      </div>
+                    </td>
+                    <td style="white-space: nowrap;"><code style="font-size: 12.5px; color: var(--primary-blue); font-weight: 600;">0913 222 111</code></td>
+                    <td>
+                      <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                        <span class="status-pill gray" style="font-size: 11px;">WESUM (20)</span>
+                        <span class="status-pill gray" style="font-size: 11px;">SUNGJEE (15)</span>
+                      </div>
+                    </td>
+                    <td style="text-align: right; font-weight: 600;">35 người</td>
+                    <td style="text-align: right;"><strong style="color: var(--color-success); font-size: 14px;">30 người</strong></td>
+                    <td style="text-align: center;"><span class="status-pill warning" style="font-weight: 700;">-5 người</span></td>
+                    <td>
+                      <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 3px;">
+                        <strong style="color: var(--color-success);">85.7%</strong>
+                        <span style="color: var(--text-muted);">SLA: Đạt</span>
+                      </div>
+                      <div class="progress-track" style="height: 6px;">
+                        <div class="progress-bar-fill green" style="width: 85.7%;"></div>
+                      </div>
+                    </td>
+                    <td style="text-align: center;"><span class="status-pill success">Hoạt động tốt</span></td>
+                    <td style="text-align: center;">
+                      <div style="display: flex; gap: 6px; justify-content: center;">
+                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 11.5px;" onclick="alert('Xem chi tiết Vendor DJC')">Chi tiết</button>
+                        <button class="btn-primary" style="padding: 4px 8px; font-size: 11.5px;" onclick="openModal('modalAddVendor')">+ Cấp thêm</button>
+                      </div>
+                    </td>
                   </tr>
-                  <tr>
-                    <td><strong>VD-DAMO</strong></td>
-                    <td><strong>Đối tác Lao động DAMO</strong></td>
-                    <td style="white-space: nowrap;"><strong>Trịnh Đại</strong></td>
-                    <td style="white-space: nowrap;"><code style="font-size: 13px;">0989 333 444</code></td>
-                    <td>OJTEK</td>
-                    <td>15 người</td>
-                    <td><strong>10 người</strong></td>
-                    <td><span class="status-pill danger">-5 người</span></td>
-                    <td><strong style="color: var(--color-warning);">66.7%</strong></td>
+
+                  <tr data-factory="OJTEK" data-rate="66.7" data-type="outside">
+                    <td><span class="status-pill info" style="font-weight: 700;">VD-DAMO</span></td>
+                    <td>
+                      <div style="font-weight: 600; color: var(--text-main);">Đối tác Lao động DAMO</div>
+                      <div style="font-size: 11px; color: var(--text-muted);">Đối tác Cung ứng ngoài · Ký HĐ từ 06/2025</div>
+                    </td>
+                    <td style="white-space: nowrap;">
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="avatar-xs amber">TĐ</span>
+                        <strong>Trịnh Đại</strong>
+                      </div>
+                    </td>
+                    <td style="white-space: nowrap;"><code style="font-size: 12.5px; color: var(--primary-blue); font-weight: 600;">0989 333 444</code></td>
+                    <td>
+                      <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                        <span class="status-pill gray" style="font-size: 11px;">OJTEK (15)</span>
+                      </div>
+                    </td>
+                    <td style="text-align: right; font-weight: 600;">15 người</td>
+                    <td style="text-align: right;"><strong style="color: var(--color-warning); font-size: 14px;">10 người</strong></td>
+                    <td style="text-align: center;"><span class="status-pill danger" style="font-weight: 700;">-5 người</span></td>
+                    <td>
+                      <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 3px;">
+                        <strong style="color: var(--color-warning);">66.7%</strong>
+                        <span style="color: var(--color-danger); font-weight: 600;">Cảnh báo SLA</span>
+                      </div>
+                      <div class="progress-track" style="height: 6px;">
+                        <div class="progress-bar-fill orange" style="width: 66.7%;"></div>
+                      </div>
+                    </td>
+                    <td style="text-align: center;"><span class="status-pill warning">Cần bù quân số</span></td>
+                    <td style="text-align: center;">
+                      <div style="display: flex; gap: 6px; justify-content: center;">
+                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 11.5px;" onclick="alert('Xem chi tiết Vendor DAMO')">Chi tiết</button>
+                        <button class="btn-primary" style="padding: 4px 8px; font-size: 11.5px;" onclick="openModal('modalAddVendor')">+ Cấp thêm</button>
+                      </div>
+                    </td>
                   </tr>
-                  <tr>
-                    <td><strong>VD-NOIBO</strong></td>
-                    <td><strong>Nguồn Tuyển dụng Nội bộ Trang Way</strong></td>
-                    <td style="white-space: nowrap;"><strong>Trần Thu Hà</strong></td>
-                    <td style="white-space: nowrap;"><code style="font-size: 13px;">0979 555 123</code></td>
-                    <td>WESUM, OJTEK, AMO</td>
-                    <td>70 người</td>
-                    <td><strong>58 người</strong></td>
-                    <td><span class="status-pill info">-12 người</span></td>
-                    <td><strong style="color: var(--color-success);">82.8%</strong></td>
+
+                  <tr data-factory="WESUM,OJTEK,AMO" data-rate="82.8" data-type="internal">
+                    <td><span class="status-pill success" style="font-weight: 700;">VD-NOIBO</span></td>
+                    <td>
+                      <div style="font-weight: 600; color: var(--text-main);">Nguồn Tuyển dụng Nội bộ Trang Way</div>
+                      <div style="font-size: 11px; color: var(--text-muted);">Đội ngũ Tuyển dụng Trực thuộc Công ty</div>
+                    </td>
+                    <td style="white-space: nowrap;">
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="avatar-xs indigo">TH</span>
+                        <strong>Trần Thu Hà</strong>
+                      </div>
+                    </td>
+                    <td style="white-space: nowrap;"><code style="font-size: 12.5px; color: var(--primary-blue); font-weight: 600;">0979 555 123</code></td>
+                    <td>
+                      <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                        <span class="status-pill gray" style="font-size: 11px;">WESUM (25)</span>
+                        <span class="status-pill gray" style="font-size: 11px;">OJTEK (15)</span>
+                        <span class="status-pill gray" style="font-size: 11px;">AMO (15)</span>
+                        <span class="status-pill gray" style="font-size: 11px;">SUNGJEE (15)</span>
+                      </div>
+                    </td>
+                    <td style="text-align: right; font-weight: 600;">70 người</td>
+                    <td style="text-align: right;"><strong style="color: var(--color-success); font-size: 14px;">58 người</strong></td>
+                    <td style="text-align: center;"><span class="status-pill info" style="font-weight: 700;">-12 người</span></td>
+                    <td>
+                      <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-bottom: 3px;">
+                        <strong style="color: var(--color-success);">82.8%</strong>
+                        <span style="color: var(--text-muted);">SLA: Ổn định</span>
+                      </div>
+                      <div class="progress-track" style="height: 6px;">
+                        <div class="progress-bar-fill blue" style="width: 82.8%;"></div>
+                      </div>
+                    </td>
+                    <td style="text-align: center;"><span class="status-pill success">Nòng cốt</span></td>
+                    <td style="text-align: center;">
+                      <div style="display: flex; gap: 6px; justify-content: center;">
+                        <button class="btn-secondary" style="padding: 4px 8px; font-size: 11.5px;" onclick="alert('Xem chi tiết Tuyển dụng nội bộ')">Chi tiết</button>
+                        <button class="btn-primary" style="padding: 4px 8px; font-size: 11.5px;" onclick="openModal('modalAddVendor')">+ Cấp thêm</button>
+                      </div>
+                    </td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- 2 Bottom Panels: Factory Quota Matrix & Daily Shift Audit Logs -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Panel 1: Factory Quota Allocation Matrix -->
+            <div class="data-table-card">
+              <div style="padding: 14px 20px; border-bottom: 1px solid var(--border-color); background: #fafbfc; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong style="font-size: 14px; color: var(--text-main);">Phân bổ Hạn mức theo Nhà máy & Ca</strong>
+                  <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 1px;">Ma trận đáp ứng lao động tại 4 đối tác sản xuất</div>
+                </div>
+                <span class="status-pill gray" style="font-size: 11px;">4 Nhà máy</span>
+              </div>
+              <div class="table-responsive">
+                <table class="custom-table" style="font-size: 12.5px;">
+                  <thead>
+                    <tr>
+                      <th>Nhà máy & Ca làm</th>
+                      <th>Vendor cấp</th>
+                      <th style="text-align: right;">Giao</th>
+                      <th style="text-align: right;">Thực tế</th>
+                      <th style="text-align: center;">Tiến độ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <strong>WESUM Việt Nam</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">Ca ngày (08:00 - 17:00)</div>
+                      </td>
+                      <td>
+                        <div>VD-DJC (18/20)</div>
+                        <div style="color: var(--text-muted); font-size: 11px;">Nội bộ (22/25)</div>
+                      </td>
+                      <td style="text-align: right; font-weight: 600;">45</td>
+                      <td style="text-align: right; font-weight: 700; color: var(--color-success);">40</td>
+                      <td style="text-align: center;"><span class="status-pill success" style="font-size: 11px;">88.9%</span></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>OJTEK Bá Thiện</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">Ca xoay (06:00 - 14:00)</div>
+                      </td>
+                      <td>
+                        <div>VD-DAMO (10/15)</div>
+                        <div style="color: var(--text-muted); font-size: 11px;">Nội bộ (11/15)</div>
+                      </td>
+                      <td style="text-align: right; font-weight: 600;">30</td>
+                      <td style="text-align: right; font-weight: 700; color: var(--color-warning);">21</td>
+                      <td style="text-align: center;"><span class="status-pill warning" style="font-size: 11px;">70.0%</span></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>SUNGJEE Electronics</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">Ca đêm (20:00 - 05:00)</div>
+                      </td>
+                      <td>
+                        <div>VD-DJC (12/15)</div>
+                        <div style="color: var(--text-muted); font-size: 11px;">Nội bộ (13/15)</div>
+                      </td>
+                      <td style="text-align: right; font-weight: 600;">30</td>
+                      <td style="text-align: right; font-weight: 700; color: var(--color-success);">25</td>
+                      <td style="text-align: center;"><span class="status-pill success" style="font-size: 11px;">83.3%</span></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>AMO Quang Minh</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">Hành chính (07:30 - 16:30)</div>
+                      </td>
+                      <td>
+                        <div>Nội bộ (12/15)</div>
+                      </td>
+                      <td style="text-align: right; font-weight: 600;">15</td>
+                      <td style="text-align: right; font-weight: 700; color: var(--color-success);">12</td>
+                      <td style="text-align: center;"><span class="status-pill success" style="font-size: 11px;">80.0%</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Panel 2: Daily Shift Handover & Audit Log -->
+            <div class="data-table-card">
+              <div style="padding: 14px 20px; border-bottom: 1px solid var(--border-color); background: #fafbfc; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong style="font-size: 14px; color: var(--text-main);">Nhật ký Đối soát Giao ca Vendor</strong>
+                  <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 1px;">Biên bản xác nhận quân số thực tế qua cổng nhà máy</div>
+                </div>
+                <span class="status-pill success" style="font-size: 11px;">Trực tiếp hôm nay</span>
+              </div>
+              <div class="table-responsive">
+                <table class="custom-table" style="font-size: 12.5px;">
+                  <thead>
+                    <tr>
+                      <th>Thời gian & Nhà máy</th>
+                      <th>Vendor</th>
+                      <th style="text-align: center;">Cam kết / Thực</th>
+                      <th>Lý do chênh lệch</th>
+                      <th style="text-align: center;">Biên bản</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <strong>04/10 · 07:45</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">WESUM Việt Nam</div>
+                      </td>
+                      <td><span class="status-pill info" style="font-size: 11px;">VD-DJC</span></td>
+                      <td style="text-align: center;">
+                        <strong style="color: var(--text-main);">20 / 18</strong>
+                      </td>
+                      <td style="font-size: 11.5px; color: var(--text-secondary);">2 LĐ quên CCCD gốc, đã gọi bổ sung ca chiều</td>
+                      <td style="text-align: center;"><span class="status-pill success" style="font-size: 10.5px;">Đã ký chốt</span></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>04/10 · 05:50</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">OJTEK Bá Thiện</div>
+                      </td>
+                      <td><span class="status-pill warning" style="font-size: 11px;">VD-DAMO</span></td>
+                      <td style="text-align: center;">
+                        <strong style="color: var(--color-danger);">15 / 10</strong>
+                      </td>
+                      <td style="font-size: 11.5px; color: var(--text-secondary);">5 LĐ báo sốt nghỉ đột xuất, cam kết bù ca mai</td>
+                      <td style="text-align: center;"><span class="status-pill warning" style="font-size: 10.5px;">Chờ đối soát</span></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>03/10 · 19:40</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">SUNGJEE</div>
+                      </td>
+                      <td><span class="status-pill info" style="font-size: 11px;">VD-DJC</span></td>
+                      <td style="text-align: center;">
+                        <strong style="color: var(--text-main);">15 / 12</strong>
+                      </td>
+                      <td style="font-size: 11.5px; color: var(--text-secondary);">3 LĐ trễ xe đưa đón 15p, đã vào xưởng lúc 20:00</td>
+                      <td style="text-align: center;"><span class="status-pill success" style="font-size: 10.5px;">Đã ký chốt</span></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>03/10 · 07:30</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">AMO Quang Minh</div>
+                      </td>
+                      <td><span class="status-pill success" style="font-size: 11px;">Nội bộ</span></td>
+                      <td style="text-align: center;">
+                        <strong style="color: var(--text-main);">15 / 12</strong>
+                      </td>
+                      <td style="font-size: 11.5px; color: var(--text-secondary);">Đạt 100% quân số yêu cầu ca ngày xưởng 1</td>
+                      <td style="text-align: center;"><span class="status-pill success" style="font-size: 10.5px;">Đã ký chốt</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -2948,6 +3270,76 @@
         <div class="modal-footer">
           <button type="button" class="btn-secondary" onclick="closeModal('modalAssignTarget')">Hủy</button>
           <button type="submit" class="btn-primary">Xác nhận giao</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Cấp hạn mức / Thêm Vendor mới -->
+  <div class="modal-overlay" id="modalAddVendor">
+    <div class="modal-content" style="max-width: 540px;">
+      <div class="modal-header">
+        <h3>Cấp Hạn Mức Đối Tác Vendor</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalAddVendor')">&times;</button>
+      </div>
+      <form onsubmit="handleAllocateVendor(event)">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Đối tác Vendor *</label>
+              <select class="form-select" id="allocVendorSelect" required>
+                <option value="VD-DJC">Công ty Cung ứng Nhân lực DJC (Đỗ Cường)</option>
+                <option value="VD-DAMO">Đối tác Lao động DAMO (Trịnh Đại)</option>
+                <option value="VD-NOIBO">Nguồn Tuyển dụng Nội bộ Trang Way</option>
+                <option value="NEW">+ Thêm đối tác mới...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Nhà máy tiếp nhận *</label>
+              <select class="form-select" id="allocFactorySelect" required>
+                <option value="WESUM">WESUM Việt Nam (Khai Quang)</option>
+                <option value="OJTEK">OJTEK (Bá Thiện 2)</option>
+                <option value="SUNGJEE">SUNGJEE Electronics (Bình Xuyên)</option>
+                <option value="AMO">AMO Linh kiện (Quang Minh)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Hạn mức cấp thêm (Người) *</label>
+              <input type="number" class="form-input" id="allocNumber" value="10" min="1" max="200" required>
+            </div>
+            <div class="form-group">
+              <label>Ca làm việc</label>
+              <select class="form-select" id="allocShift">
+                <option value="day">Ca ngày (08:00 - 17:00)</option>
+                <option value="night">Ca đêm (20:00 - 05:00)</option>
+                <option value="rotating">Ca xoay 3 ca</option>
+                <option value="admin">Hành chính</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Chu kỳ áp dụng</label>
+              <input type="text" class="form-input" value="Tháng 10/2026" readonly>
+            </div>
+            <div class="form-group">
+              <label>Hạn chót bàn giao quân số</label>
+              <input type="date" class="form-input" value="2026-10-08">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Ghi chú cam kết SLA & Đối soát</label>
+            <textarea class="form-input" style="height: 65px; resize: vertical;" placeholder="Cam kết tỷ lệ đi làm tối thiểu 85%, đối soát điểm danh tại cổng 07:45 hàng ngày..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalAddVendor')">Hủy</button>
+          <button type="submit" class="btn-primary">Xác nhận cấp hạn mức</button>
         </div>
       </form>
     </div>

@@ -2630,6 +2630,69 @@ window.handleUrlRouting = function() {
   }
 };
 
+// Vendor Search & Filter Handler
+window.filterVendorTable = function() {
+  const searchInput = document.getElementById('vendorSearchInput');
+  const factorySelect = document.getElementById('vendorFactoryFilter');
+  const rateSelect = document.getElementById('vendorRateFilter');
+  const typeSelect = document.getElementById('vendorTypeFilter');
+
+  const term = (searchInput ? searchInput.value : '').toLowerCase().trim();
+  const factory = factorySelect ? factorySelect.value : '';
+  const rate = rateSelect ? rateSelect.value : '';
+  const type = typeSelect ? typeSelect.value : '';
+
+  const rows = document.querySelectorAll('#vendorTableBody tr');
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    const rowFactory = row.getAttribute('data-factory') || '';
+    const rowRate = parseFloat(row.getAttribute('data-rate') || '0');
+    const rowType = row.getAttribute('data-type') || '';
+
+    let matchSearch = !term || text.includes(term);
+    let matchFactory = !factory || rowFactory.includes(factory);
+    let matchType = !type || rowType === type;
+    let matchRate = true;
+
+    if (rate === 'high') matchRate = (rowRate >= 85);
+    else if (rate === 'medium') matchRate = (rowRate >= 70 && rowRate < 85);
+    else if (rate === 'low') matchRate = (rowRate < 70);
+
+    if (matchSearch && matchFactory && matchType && matchRate) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+};
+
+// Vendor Quota Allocation Form Handler
+window.handleAllocateVendor = function(e) {
+  e.preventDefault();
+  const vendor = document.getElementById('allocVendorSelect').value;
+  const factory = document.getElementById('allocFactorySelect').value;
+  const num = document.getElementById('allocNumber').value;
+  const shift = document.getElementById('allocShift').value;
+
+  alert(`Đã cấp thêm hạn mức thành công!\n- Đối tác: ${vendor}\n- Nhà máy: ${factory}\n- Số lượng: +${num} lao động\n- Ca: ${shift}`);
+  closeModal('modalAddVendor');
+};
+
+// Global CSV Export Handler
+window.exportDataCSV = function(type) {
+  const typeNames = {
+    'vendors': 'Báo cáo Hạn mức & Tỷ lệ Đối tác Vendor',
+    'cham_cong': 'Bảng Chấm công & Điểm danh GPS',
+    'bang_luong': 'Bảng Lương & Tạm ứng Lao động',
+    'lao_dong': 'Danh sách Hồ sơ & CCCD Lao động',
+    'tai_chinh': 'Báo cáo Thu Chi Quỹ Công ty',
+    'hoa_hong': 'Bảng Quyết toán Hoa hồng Tuyển dụng'
+  };
+
+  const title = typeNames[type] || 'Báo cáo dữ liệu hệ thống';
+  alert(`Đang xuất file Excel/CSV: ${title} (Tháng 10/2026) thành công!`);
+};
+
 
 
 

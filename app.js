@@ -684,14 +684,20 @@ function switchModule(moduleId, updateUrl = true) {
 }
 
 // View Mode Switcher (Desktop vs Mobile)
-function switchViewMode(mode, updateUrl = true) {
+window.switchViewMode = function(mode, updateUrl = true) {
   state.currentView = mode;
 
   viewButtons.forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === mode);
   });
 
+  const sideDesktop = document.getElementById('sideNavDesktop');
+  const sideMobile = document.getElementById('sideNavMobile');
+
   if (mode.startsWith('desktop')) {
+    if (sideDesktop) sideDesktop.classList.add('active');
+    if (sideMobile) sideMobile.classList.remove('active');
+
     appRoot.classList.remove('mobile-mode');
     desktopLayout.style.display = 'flex';
     mobileDeviceFrame.style.display = 'none';
@@ -702,24 +708,13 @@ function switchViewMode(mode, updateUrl = true) {
       switchModule('dashboard', updateUrl);
     }
   } else if (mode.startsWith('mobile')) {
-    appRoot.classList.add('mobile-mode');
-    desktopLayout.style.display = 'none';
-    mobileDeviceFrame.style.display = 'block';
+    if (sideDesktop) sideDesktop.classList.remove('active');
+    if (sideMobile) sideMobile.classList.add('active');
 
-    const mobileOrders = document.getElementById('mobileOrdersView');
-    const mobileTargets = document.getElementById('mobileTargetsView');
-
-    if (mode === 'mobile-orders') {
-      if (mobileOrders) mobileOrders.style.display = 'flex';
-      if (mobileTargets) mobileTargets.style.display = 'none';
-      if (updateUrl) updateUrlHash('mobile-orders');
-    } else if (mode === 'mobile-targets') {
-      if (mobileOrders) mobileOrders.style.display = 'none';
-      if (mobileTargets) mobileTargets.style.display = 'flex';
-      if (updateUrl) updateUrlHash('mobile-targets');
-    }
+    const tabName = mode.replace('mobile-', '') || 'orders';
+    switchMobileNavTab(tabName, updateUrl);
   }
-}
+};
 
 // Modal Controls
 window.openModal = function(modalId) {

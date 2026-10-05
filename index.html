@@ -148,6 +148,21 @@
           </a>
         </nav>
 
+        <!-- Section: Chế độ hiển thị -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">CHẾ ĐỘ HIỂN THỊ</div>
+          <div class="team-list">
+            <div class="sub-item active" id="sideNavDesktop" onclick="switchViewMode('desktop-orders')" title="Giao diện màn hình máy tính">
+              <span class="badge-avatar blue" style="background: #2563eb; font-size: 11px;">PC</span>
+              <span>Bản Desktop</span>
+            </div>
+            <div class="sub-item" id="sideNavMobile" onclick="switchViewMode('mobile-orders')" title="Mô phỏng ứng dụng Mobile App">
+              <span class="badge-avatar purple" style="background: #7c3aed; font-size: 11px;">APP</span>
+              <span>Bản Mobile App</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Section: Nhóm của tôi (INTERACTIVE) -->
         <div class="sidebar-section">
           <div class="sidebar-section-title">NHÓM CỦA TÔI</div>
@@ -1576,6 +1591,17 @@
     <!-- ========================================================
          2. MOBILE DEVICE SIMULATION WRAPPER
          ======================================================== -->
+    <div class="mobile-simulation-toolbar" id="mobSimToolbar">
+      <div class="mob-sim-title">
+        <span class="mob-sim-dot"></span>
+        <span>Mô phỏng Mobile App (Trang Way)</span>
+      </div>
+      <button class="mob-sim-btn-exit" onclick="switchViewMode('desktop-orders')" title="Quay lại giao diện Desktop">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span>Bản Desktop</span>
+      </button>
+    </div>
+
     <div class="mobile-device-frame" id="mobileDeviceFrame">
       
       <!-- MOBILE SCREEN 1: ĐƠN HÀNG CUNG ỨNG (ẢNH 1) -->

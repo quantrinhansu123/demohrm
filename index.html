@@ -1,0 +1,2491 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trang Way - Hệ thống Quản lý Cung ứng Lao động</title>
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="logo.png">
+  <!-- Google Fonts: Be Vietnam Pro -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="app-container" id="appRoot">
+
+    <!-- ==========================================
+         1. DESKTOP MAIN LAYOUT
+         ========================================== -->
+    <div class="desktop-layout" id="desktopLayout">
+      
+      <!-- DESKTOP SIDEBAR -->
+      <aside class="sidebar">
+        <!-- Brand / Logo -->
+        <div class="brand-header">
+          <div class="brand-logo-icon">
+            <img src="logo.png" alt="Trang Way Logo" class="brand-logo-img">
+          </div>
+          <div class="brand-text">
+            <h1>Trang Way</h1>
+            <p>Cung ứng nhân lực</p>
+          </div>
+        </div>
+
+        <!-- Sidebar Search -->
+        <div class="sidebar-search">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" placeholder="Tìm kiếm chức năng..." id="sidebarSearchInput">
+        </div>
+
+        <!-- Main Navigation -->
+        <nav class="sidebar-nav">
+          <a class="nav-item" data-module="dashboard" id="navDashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="7" height="9" x="3" y="3" rx="1.5"></rect>
+              <rect width="7" height="5" x="14" y="3" rx="1.5"></rect>
+              <rect width="7" height="9" x="14" y="12" rx="1.5"></rect>
+              <rect width="7" height="5" x="3" y="16" rx="1.5"></rect>
+            </svg>
+            <span>Tổng quan (Dashboard)</span>
+          </a>
+
+          <a class="nav-item active" data-module="orders" id="navOrders">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              <path d="M9 12h6"></path>
+              <path d="M9 16h4"></path>
+            </svg>
+            <span>Đơn hàng cung ứng</span>
+          </a>
+
+          <a class="nav-item" data-module="workers" id="navWorkers">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>Người lao động (Hồ sơ)</span>
+          </a>
+
+          <a class="nav-item" data-module="companies" id="navCompanies">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"></path>
+              <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path>
+              <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"></path>
+              <path d="M10 6h4"></path>
+              <path d="M10 10h4"></path>
+              <path d="M10 14h4"></path>
+              <path d="M10 18h4"></path>
+            </svg>
+            <span>Khách hàng & Địa điểm</span>
+          </a>
+
+          <a class="nav-item" data-module="vendors" id="navVendors">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+            <span>Quản lý Vendor & Cấp số</span>
+          </a>
+
+          <a class="nav-item" data-module="attendance" id="navAttendance">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 11.5 7.35 11.76a1 1 0 0 0 1.3 0C12.95 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <span>Chấm công (GPS)</span>
+          </a>
+
+          <a class="nav-item" data-module="payroll" id="navPayroll">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="14" x="2" y="5" rx="2"></rect>
+              <line x1="2" x2="22" y1="10" y2="10"></line>
+              <line x1="6" x2="10" y1="15" y2="15"></line>
+            </svg>
+            <span>Lương & Tạm ứng</span>
+          </a>
+
+          <!-- Financial Module (Restricted) -->
+          <a class="nav-item rbac-finance" data-module="finance" id="navFinance">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" x2="12" y1="2" y2="22"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+            <span>Tài chính (Thu/Chi)</span>
+          </a>
+
+          <!-- Commission Module (Director / Vice Director only) -->
+          <a class="nav-item rbac-commission" data-module="commission" id="navCommission">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="8" r="6"></circle>
+              <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>
+            </svg>
+            <span>Hoa hồng dự kiến</span>
+          </a>
+
+          <a class="nav-item" data-module="reports" id="navReports">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"></path>
+              <path d="m19 9-5 5-4-4-3 3"></path>
+            </svg>
+            <span>Báo cáo & Thống kê</span>
+          </a>
+
+          <a class="nav-item rbac-audit" data-module="audit" id="navAudit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <path d="m9 12 2 2 4-4"></path>
+            </svg>
+            <span>Lịch sử thao tác (Audit)</span>
+          </a>
+        </nav>
+
+        <!-- Section: Nhóm của tôi (INTERACTIVE) -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">NHÓM CỦA TÔI</div>
+          <div class="team-list">
+            <div class="sub-item" id="sideTeamVP" data-team-id="vinh-phuc" title="Bấm để xem chi tiết và KPI nhóm Tuyển dụng Vĩnh Phúc">
+              <span class="badge-avatar teal">V</span>
+              <span>Tuyển dụng Vĩnh Phúc</span>
+            </div>
+            <div class="sub-item" id="sideTeamHN" data-team-id="ha-noi" title="Bấm để xem chi tiết và KPI nhóm Tuyển dụng Hà Nội">
+              <span class="badge-avatar green">H</span>
+              <span>Tuyển dụng Hà Nội</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Nhà máy đang theo dõi (INTERACTIVE) -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">NHÀ MÁY ĐANG THEO DÕI</div>
+          <div class="factory-list">
+            <div class="sub-item" data-factory-name="WESUM" title="Lọc đơn hàng theo nhà máy WESUM">
+              <span class="badge-avatar blue">W</span>
+              <span>WESUM</span>
+            </div>
+            <div class="sub-item" data-factory-name="OJTEK" title="Lọc đơn hàng theo nhà máy OJTEK">
+              <span class="badge-avatar indigo">O</span>
+              <span>OJTEK</span>
+            </div>
+            <div class="sub-item" data-factory-name="SUNGJEE" title="Lọc đơn hàng theo nhà máy SUNGJEE">
+              <span class="badge-avatar cyan">S</span>
+              <span>SUNGJEE</span>
+            </div>
+            <div class="sub-item" data-factory-name="AMO" title="Lọc đơn hàng theo nhà máy AMO">
+              <span class="badge-avatar pink">A</span>
+              <span>AMO</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Chu kỳ -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">CHU KỲ</div>
+          <div class="cycle-list">
+            <div class="cycle-group">
+              <div class="cycle-header" data-cycle-id="Q4-2026" style="cursor: pointer;" title="Xem tổng quan Quý 4/2026">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>Quý 4/2026</span>
+              </div>
+              <div class="cycle-sub-items">
+                <div class="cycle-item active" id="cycleMonth10" data-cycle-id="T10-2026" data-cycle-name="Tháng 10/2026">Tháng 10/2026</div>
+                <div class="cycle-item" data-cycle-id="T11-2026" data-cycle-name="Tháng 11/2026">Tháng 11/2026</div>
+                <div class="cycle-item" data-cycle-id="T12-2026" data-cycle-name="Tháng 12/2026">Tháng 12/2026</div>
+              </div>
+            </div>
+            <div class="cycle-group">
+              <div class="cycle-header" data-cycle-id="Q3-2026" style="cursor: pointer;" title="Xem tổng quan Quý 3/2026">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>Quý 3/2026</span>
+              </div>
+              <div class="cycle-sub-items">
+                <div class="cycle-item" data-cycle-id="T7-2026" data-cycle-name="Tháng 7/2026">Tháng 7/2026</div>
+                <div class="cycle-item" data-cycle-id="T8-2026" data-cycle-name="Tháng 8/2026">Tháng 8/2026</div>
+                <div class="cycle-item" data-cycle-id="T9-2026" data-cycle-name="Tháng 9/2026">Tháng 9/2026</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- ========================================================
+           MODULE: TỔNG QUAN CHU KỲ TUYỂN DỤNG & QUYẾT TOÁN (CYCLE VIEW)
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewCycle" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="badge-avatar teal" style="width: 34px; height: 34px; font-size: 14px; border-radius: 8px;">CK</span>
+                <h1 class="page-title" id="cycleDetailTitle">Chu kỳ Tháng 10/2026</h1>
+                <span class="status-pill success" id="cycleDetailStatus">Đang diễn ra</span>
+              </div>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;" id="cycleDetailSubtitle">
+                Thuộc Quý 4/2026 · Khung thời gian: 01/10/2026 – 31/10/2026 · Hạn chốt công tính lương: 05/11/2026
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-secondary" onclick="exportDataCSV('chu_ky')">Xuất Báo Cáo Chu Kỳ</button>
+              <button class="btn-primary" onclick="lockCycleData()">Chốt sổ chu kỳ</button>
+            </div>
+          </div>
+          <nav class="tab-navigation">
+            <button class="tab-btn active" onclick="switchCycleTab('orders')">ĐƠN HÀNG TRONG CHU KỲ</button>
+            <button class="tab-btn" onclick="switchCycleTab('payroll')">BẢNG LƯƠNG QUYẾT TOÁN</button>
+            <button class="tab-btn" onclick="switchCycleTab('commission')">HOA HỒNG DỰ KIẾN</button>
+            <button class="tab-btn" onclick="switchCycleTab('growth')">SO SÁNH TĂNG TRƯỞNG</button>
+          </nav>
+        </header>
+
+        <div class="page-body">
+          <!-- 3 KPI Cards for the Cycle -->
+          <div class="summary-kpi-row">
+            <div class="kpi-card">
+              <div class="kpi-title">CHỈ TIÊU & THỰC ĐẠT CHU KỲ</div>
+              <div class="kpi-big-value" id="cycleHeadcount">78 / 120 <span>lao động</span></div>
+              <div class="kpi-subtext" id="cycleProgressText">Tiến độ chu kỳ: <strong>65.0%</strong> (Còn 26 ngày)</div>
+              <div class="progress-track" style="margin-top: 8px;">
+                <div class="progress-bar-fill green" id="cycleProgressBar" style="width: 65%;"></div>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-title">DOANH THU & LỢI NHUẬN GỘP</div>
+              <div class="kpi-big-value" style="color: var(--primary-blue);" id="cycleRevenue">545.000.000 <span>VNĐ</span></div>
+              <div class="kpi-subtext" id="cycleExpense">Chi phí Vendor & Tạm ứng: <strong>380.000.000 VNĐ</strong></div>
+              <div class="kpi-subtext" style="color: var(--color-success); font-weight: 600; margin-top: 4px;" id="cycleProfit">Lợi nhuận gộp: 165.000.000 VNĐ (30.2%)</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-title">TỔNG NGÀY CÔNG & TẠM ỨNG</div>
+              <div class="kpi-big-value" style="color: #7c3aed;" id="cycleDaysTotal">1.450 <span>ngày công</span></div>
+              <div class="kpi-subtext" id="cycleAdvanceTotal">Đã duyệt tạm ứng: <strong>6.000.000 VNĐ</strong> (12 lao động)</div>
+              <div class="kpi-subtext" style="color: var(--primary-blue); font-weight: 600; margin-top: 4px;">Độ chính xác GPS: 99.2%</div>
+            </div>
+          </div>
+
+          <!-- Dynamic Container for Cycle Tabs -->
+          <div id="cycleTabContentContainer">
+            <!-- Rendered dynamically via app.js -->
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE: CHI TIẾT NHÓM CỦA TÔI (TEAM DETAIL VIEW)
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewTeam" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <h1 class="page-title" id="teamDetailTitle">Nhóm Tuyển dụng Vĩnh Phúc</h1>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;" id="teamDetailSubtitle">
+                Trưởng nhóm: Trần Thu Hà · 3 thành viên · Phụ trách 3 nhà máy trọng điểm
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-secondary" onclick="exportDataCSV('nhom_tuyen_dung')">Xuất Báo Cáo Nhóm</button>
+              <button class="btn-primary" onclick="openModal('modalAssignTarget')">
+                <span>+</span> Giao chỉ tiêu mới
+              </button>
+            </div>
+          </div>
+          <nav class="tab-navigation">
+            <button class="tab-btn active" onclick="switchTeamTab('kpi')">BẢNG XẾP HẠNG KPI</button>
+            <button class="tab-btn" onclick="switchTeamTab('factories')">NHÀ MÁY PHỤ TRÁCH</button>
+            <button class="tab-btn" onclick="switchTeamTab('interviews')">LỊCH PHỎNG VẤN</button>
+          </nav>
+        </header>
+
+        <div class="page-body">
+          <!-- 3 KPI Cards for the Team -->
+          <div class="summary-kpi-row">
+            <div class="kpi-card">
+              <div class="kpi-title">CHỈ TIÊU CỦA NHÓM (THÁNG 10)</div>
+              <div class="kpi-big-value" id="teamTargetValue">105 <span>người</span></div>
+              <div class="kpi-subtext" id="teamActualValue">Đã đi làm thực tế: <strong>52 người</strong> (Đạt 49.5%)</div>
+              <div class="progress-track" style="margin-top: 8px;">
+                <div class="progress-bar-fill green" id="teamProgressBar" style="width: 49.5%;"></div>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-title">DỰ ÁN / NHÀ MÁY ĐANG CHẠY</div>
+              <div class="kpi-big-value" style="color: var(--primary-blue);" id="teamFactoryCount">3 <span>nhà máy</span></div>
+              <div class="kpi-subtext" id="teamFactoryList">WESUM, OJTEK, SUNGJEE</div>
+              <div class="kpi-subtext" style="color: var(--color-success); font-weight: 600; margin-top: 4px;">2 đúng tiến độ · 1 chậm nhẹ</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-title">HOẠT ĐỘNG TUẦN NÀY</div>
+              <div class="kpi-big-value" style="color: #7c3aed;">14 <span>ứng viên</span></div>
+              <div class="kpi-subtext">8 lịch phỏng vấn · 6 hồ sơ chờ nhận việc</div>
+              <div class="kpi-subtext" style="color: var(--color-danger); font-weight: 600; margin-top: 4px;">Check-in tuần: Hạn hôm nay</div>
+            </div>
+          </div>
+
+          <!-- Section: Danh sách Thành viên & Đánh giá KPI -->
+          <div style="margin-bottom: 24px;">
+            <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--text-main);">
+              Bảng xếp hạng hiệu suất thành viên trong nhóm
+            </h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;" id="teamMemberListContainer">
+              <!-- Rendered dynamically via app.js -->
+            </div>
+          </div>
+
+          <!-- Section: Đơn hàng nhà máy nhóm đang phụ trách -->
+          <div style="margin-top: 28px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+              <div>
+                <h3 style="font-size: 16px; font-weight: 700; color: var(--text-main);">
+                  Tiến độ các nhà máy nhóm đang phụ trách
+                </h3>
+                <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+                  Bảng chi tiết toàn bộ tiến độ phân bổ quân số và chỉ tiêu tuyển dụng thực tế theo từng đơn hàng nhà máy (Hiển thị đầy đủ, không giới hạn chiều cao)
+                </p>
+              </div>
+              <button class="btn-sm btn-secondary" onclick="exportDataCSV('nhom_tuyen_dung')">Xuất Báo Cáo Tiến Độ</button>
+            </div>
+            <div class="data-table-card team-orders-card">
+              <div class="table-responsive">
+                <table class="custom-table" id="teamOrdersTable">
+                  <thead>
+                    <tr>
+                      <th style="white-space: nowrap;">Nhà máy & Đơn hàng</th>
+                      <th style="white-space: nowrap;">Người phụ trách</th>
+                      <th style="white-space: nowrap;">Chỉ tiêu giao</th>
+                      <th style="white-space: nowrap;">Đã đi làm</th>
+                      <th style="white-space: nowrap; min-width: 180px;">Tiến độ hoàn thành</th>
+                      <th style="white-space: nowrap;">Trạng thái</th>
+                      <th style="white-space: nowrap; text-align: center;">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="teamOrdersTableBody">
+                    <!-- Rendered dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE: CHI TIẾT NHÀ MÁY ĐANG THEO DÕI (FACTORY DETAIL VIEW)
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewFactory" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="badge-avatar blue" id="factoryHeaderAvatar" style="width: 34px; height: 34px; font-size: 15px; border-radius: 8px;">W</span>
+                <h1 class="page-title" id="factoryDetailTitle">Công ty TNHH WESUM Việt Nam</h1>
+              </div>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 4px;" id="factoryDetailSubtitle">
+                KCN Khai Quang, TP. Vĩnh Yên, Vĩnh Phúc · Hotline: 0211 3868 999 · Người phụ trách chính: Trần Thu Hà
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-secondary" onclick="exportDataCSV('nha_may')">Xuất DS Lao Động</button>
+              <button class="btn-primary" onclick="openModal('modalCreateOrder')">
+                <span>+</span> Tạo đơn tuyển mới
+              </button>
+            </div>
+          </div>
+          <nav class="tab-navigation">
+            <button class="tab-btn active" onclick="switchFactoryTab('overview')">TỔNG QUAN LAO ĐỘNG</button>
+            <button class="tab-btn" onclick="switchFactoryTab('workers')">DANH SÁCH CÔNG NHÂN</button>
+            <button class="tab-btn" onclick="switchFactoryTab('gps')">TỌA ĐỘ GPS & CHECK-IN</button>
+            <button class="tab-btn" onclick="switchFactoryTab('vendors')">VENDOR THAM GIA</button>
+          </nav>
+        </header>
+
+        <div class="page-body">
+          <!-- 3 KPI Cards for the Factory -->
+          <div class="summary-kpi-row">
+            <div class="kpi-card">
+              <div class="kpi-title">TỔNG LAO ĐỘNG ĐANG LÀM VIỆC</div>
+              <div class="kpi-big-value" id="factoryWorkerCount">38 / 50 <span>người</span></div>
+              <div class="kpi-subtext" id="factoryFulfillment">Tỷ lệ lấp đầy: <strong>76.0%</strong> (Chỉ tiêu tháng 10: 50 người)</div>
+              <div class="progress-track" style="margin-top: 8px;">
+                <div class="progress-bar-fill green" id="factoryProgressBar" style="width: 76%;"></div>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-title">CHẤM CÔNG GPS HÔM NAY</div>
+              <div class="kpi-big-value" style="color: var(--color-success);" id="factoryAttendanceRate">98% <span>đúng giờ</span></div>
+              <div class="kpi-subtext" id="factoryAttendanceDetail">37/38 công nhân đã check-in · 1 người đi muộn</div>
+              <div class="kpi-subtext" style="color: var(--primary-blue); font-weight: 600; margin-top: 4px;" id="factoryGeofenceText">Bán kính Geofence: 50 mét</div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-title">ĐƠN GIÁ CUNG ỨNG & THU PHÍ</div>
+              <div class="kpi-big-value" style="color: #7c3aed;" id="factoryPriceRate">280.000đ <span>/ngày</span></div>
+              <div class="kpi-subtext" id="factoryRevenue">Doanh thu dự kiến T10: <strong>220.000.000 VNĐ</strong></div>
+              <div class="kpi-subtext" style="color: var(--color-success); font-weight: 600; margin-top: 4px;">Kỳ thanh toán: Ngày 05 hàng tháng</div>
+            </div>
+          </div>
+
+          <!-- Dynamic Container for Factory Tabs -->
+          <div id="factoryTabContentContainer">
+            <!-- Rendered dynamically via app.js -->
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE 1: ĐƠN HÀNG CUNG ỨNG (SCREEN 1 / ẢNH 1)
+           ======================================================== -->
+      <main class="main-viewport module-view active" id="viewOrders">
+        <header class="top-header">
+          <div class="top-header-row">
+            <h1 class="page-title">Đơn hàng cung ứng</h1>
+            <div class="header-actions">
+              <div class="search-box">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" placeholder="Tìm đơn hàng..." id="orderSearchInput">
+              </div>
+              <button class="btn-secondary" onclick="exportDataCSV('don_hang')">
+                Xuất CSV
+              </button>
+              <button class="btn-primary" onclick="openModal('modalCreateOrder')">
+                <span>+</span> Tạo đơn hàng
+              </button>
+            </div>
+          </div>
+          <nav class="tab-navigation">
+            <button class="tab-btn active">THEO THÁNG</button>
+            <button class="tab-btn">THEO QUÝ</button>
+            <button class="tab-btn">THEO NHÀ MÁY</button>
+          </nav>
+        </header>
+
+        <div class="page-body">
+          <div class="order-cards-container">
+            <!-- Card 1: WESUM -->
+            <article class="order-card" data-title="WESUM – Lắp ráp T10">
+              <div class="card-summary-col">
+                <span class="status-badge-running">ĐANG CHẠY</span>
+                <h2 class="order-title">WESUM – Lắp ráp T10</h2>
+                <div class="order-period">Tháng 10 · 01/10 – 31/10/2026</div>
+                <div class="order-manager">Phụ trách: Trần Thu Hà</div>
+                <div class="order-stats-grid">
+                  <div class="stat-item"><div class="stat-label">Chỉ tiêu</div><div class="stat-value">50 người</div></div>
+                  <div class="stat-item"><div class="stat-label">Đã đi làm</div><div class="stat-value">26</div></div>
+                  <div class="stat-item"><div class="stat-label">Vị trí tuyển</div><div class="stat-value">3</div></div>
+                  <div class="stat-item"><div class="stat-label">Vendor tham gia</div><div class="stat-value">2</div></div>
+                </div>
+              </div>
+
+              <div class="card-positions-col">
+                <div class="positions-header">
+                  <span class="col-title">Vị trí tuyển chính</span>
+                  <span class="col-sub">Tiến độ giao người</span>
+                </div>
+                <div class="position-list">
+                  <div class="position-row">
+                    <div class="position-meta">
+                      <div class="position-name-wrap"><span class="position-idx">01</span><span class="position-name">Công nhân lắp ráp</span></div>
+                      <span class="position-progress-text">18/30 · 60%</span>
+                    </div>
+                    <div class="progress-track"><div class="progress-bar-fill green" style="width: 60%"></div></div>
+                  </div>
+                  <div class="position-row">
+                    <div class="position-meta">
+                      <div class="position-name-wrap"><span class="position-idx">02</span><span class="position-name">QC ngoại quan</span></div>
+                      <span class="position-progress-text">6/12 · 50%</span>
+                    </div>
+                    <div class="progress-track"><div class="progress-bar-fill green" style="width: 50%"></div></div>
+                  </div>
+                  <div class="position-row">
+                    <div class="position-meta">
+                      <div class="position-name-wrap"><span class="position-idx">03</span><span class="position-name">Nhân viên kho</span></div>
+                      <span class="position-progress-text">2/8 · 25%</span>
+                    </div>
+                    <div class="progress-track"><div class="progress-bar-fill green" style="width: 25%"></div></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card-donut-col">
+                <div class="donut-header">Tổng quan hồ sơ</div>
+                <div class="donut-body">
+                  <div class="donut-chart-wrap">
+                    <svg class="donut-chart-svg" viewBox="0 0 42 42">
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4.5"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#cbd5e1" stroke-width="4.5" pathLength="100" stroke-dasharray="24 76" stroke-dashoffset="0"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f59e0b" stroke-width="4.5" pathLength="100" stroke-dasharray="16 84" stroke-dashoffset="-24"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#38bdf8" stroke-width="4.5" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-40"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#10b981" stroke-width="4.5" pathLength="100" stroke-dasharray="52 48" stroke-dashoffset="-48"/>
+                    </svg>
+                    <div class="donut-center-label"><div class="number">50</div><div class="text">hồ sơ</div></div>
+                  </div>
+                  <div class="donut-legend">
+                    <div class="legend-item"><span class="legend-dot green"></span> Đã đi làm ( 26 )</div>
+                    <div class="legend-item"><span class="legend-dot blue"></span> Chờ nhận việc ( 4 )</div>
+                    <div class="legend-item"><span class="legend-dot orange"></span> Hẹn PV ( 8 )</div>
+                    <div class="legend-item"><span class="legend-dot grey"></span> Mới ứng tuyển ( 12 )</div>
+                  </div>
+                </div>
+                <div class="card-footer-status">
+                  <span class="status-label">Trạng thái</span>
+                  <span class="status-value success">Đúng tiến độ</span>
+                </div>
+              </div>
+            </article>
+
+            <!-- Card 2: OJTEK -->
+            <article class="order-card" data-title="OJTEK – QC & vận hành T10">
+              <div class="card-summary-col">
+                <span class="status-badge-running">ĐANG CHẠY</span>
+                <h2 class="order-title">OJTEK – QC & vận hành T10</h2>
+                <div class="order-period">Tháng 10 · 01/10 – 31/10/2026</div>
+                <div class="order-manager">Phụ trách: Vũ Văn Cường</div>
+                <div class="order-stats-grid">
+                  <div class="stat-item"><div class="stat-label">Chỉ tiêu</div><div class="stat-value">30 người</div></div>
+                  <div class="stat-item"><div class="stat-label">Đã đi làm</div><div class="stat-value">14</div></div>
+                  <div class="stat-item"><div class="stat-label">Vị trí tuyển</div><div class="stat-value">2</div></div>
+                  <div class="stat-item"><div class="stat-label">Vendor tham gia</div><div class="stat-value">1</div></div>
+                </div>
+              </div>
+              <div class="card-positions-col">
+                <div class="positions-header"><span class="col-title">Vị trí tuyển chính</span><span class="col-sub">Tiến độ giao người</span></div>
+                <div class="position-list">
+                  <div class="position-row">
+                    <div class="position-meta"><div class="position-name-wrap"><span class="position-idx">01</span><span class="position-name">QC ngoại quan</span></div><span class="position-progress-text">10/20 · 50%</span></div>
+                    <div class="progress-track"><div class="progress-bar-fill green" style="width: 50%"></div></div>
+                  </div>
+                  <div class="position-row">
+                    <div class="position-meta"><div class="position-name-wrap"><span class="position-idx">02</span><span class="position-name">Vận hành máy</span></div><span class="position-progress-text">4/10 · 40%</span></div>
+                    <div class="progress-track"><div class="progress-bar-fill green" style="width: 40%"></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="card-donut-col">
+                <div class="donut-header">Tổng quan hồ sơ</div>
+                <div class="donut-body">
+                  <div class="donut-chart-wrap">
+                    <svg class="donut-chart-svg" viewBox="0 0 42 42">
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4.5"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#cbd5e1" stroke-width="4.5" pathLength="100" stroke-dasharray="30 70" stroke-dashoffset="0"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f59e0b" stroke-width="4.5" pathLength="100" stroke-dasharray="16.7 83.3" stroke-dashoffset="-30"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#38bdf8" stroke-width="4.5" pathLength="100" stroke-dasharray="6.6 93.4" stroke-dashoffset="-46.7"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#10b981" stroke-width="4.5" pathLength="100" stroke-dasharray="46.7 53.3" stroke-dashoffset="-53.3"/>
+                    </svg>
+                    <div class="donut-center-label"><div class="number">30</div><div class="text">hồ sơ</div></div>
+                  </div>
+                  <div class="donut-legend">
+                    <div class="legend-item"><span class="legend-dot green"></span> Đã đi làm ( 14 )</div>
+                    <div class="legend-item"><span class="legend-dot blue"></span> Chờ nhận việc ( 2 )</div>
+                    <div class="legend-item"><span class="legend-dot orange"></span> Hẹn PV ( 5 )</div>
+                    <div class="legend-item"><span class="legend-dot grey"></span> Mới ứng tuyển ( 9 )</div>
+                  </div>
+                </div>
+                <div class="card-footer-status"><span class="status-label">Trạng thái</span><span class="status-value warning">Chậm tiến độ</span></div>
+              </div>
+            </article>
+
+            <!-- Card 3: SUNGJEE -->
+            <article class="order-card" data-title="SUNGJEE – Đóng gói T10">
+              <div class="card-summary-col">
+                <span class="status-badge-running">ĐANG CHẠY</span>
+                <h2 class="order-title">SUNGJEE – Đóng gói T10</h2>
+                <div class="order-period">Tháng 10 · 01/10 – 31/10/2026</div>
+                <div class="order-manager">Phụ trách: Đỗ Minh Thắng</div>
+                <div class="order-stats-grid">
+                  <div class="stat-item"><div class="stat-label">Chỉ tiêu</div><div class="stat-value">25 người</div></div>
+                  <div class="stat-item"><div class="stat-label">Đã đi làm</div><div class="stat-value">12</div></div>
+                  <div class="stat-item"><div class="stat-label">Vị trí tuyển</div><div class="stat-value">1</div></div>
+                  <div class="stat-item"><div class="stat-label">Vendor tham gia</div><div class="stat-value">2</div></div>
+                </div>
+              </div>
+              <div class="card-positions-col">
+                <div class="positions-header"><span class="col-title">Vị trí tuyển chính</span><span class="col-sub">Tiến độ giao người</span></div>
+                <div class="position-list">
+                  <div class="position-row">
+                    <div class="position-meta"><div class="position-name-wrap"><span class="position-idx">01</span><span class="position-name">Công nhân đóng gói</span></div><span class="position-progress-text">12/25 · 48%</span></div>
+                    <div class="progress-track"><div class="progress-bar-fill green" style="width: 48%"></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="card-donut-col">
+                <div class="donut-header">Tổng quan hồ sơ</div>
+                <div class="donut-body">
+                  <div class="donut-chart-wrap">
+                    <svg class="donut-chart-svg" viewBox="0 0 42 42">
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4.5"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#cbd5e1" stroke-width="4.5" pathLength="100" stroke-dasharray="24 76" stroke-dashoffset="0"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f59e0b" stroke-width="4.5" pathLength="100" stroke-dasharray="16 84" stroke-dashoffset="-24"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#38bdf8" stroke-width="4.5" pathLength="100" stroke-dasharray="12 88" stroke-dashoffset="-40"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#10b981" stroke-width="4.5" pathLength="100" stroke-dasharray="48 52" stroke-dashoffset="-52"/>
+                    </svg>
+                    <div class="donut-center-label"><div class="number">25</div><div class="text">hồ sơ</div></div>
+                  </div>
+                  <div class="donut-legend">
+                    <div class="legend-item"><span class="legend-dot green"></span> Đã đi làm ( 12 )</div>
+                    <div class="legend-item"><span class="legend-dot blue"></span> Chờ nhận việc ( 3 )</div>
+                    <div class="legend-item"><span class="legend-dot orange"></span> Hẹn PV ( 4 )</div>
+                    <div class="legend-item"><span class="legend-dot grey"></span> Mới ứng tuyển ( 6 )</div>
+                  </div>
+                </div>
+                <div class="card-footer-status"><span class="status-label">Trạng thái</span><span class="status-value success">Đúng tiến độ</span></div>
+              </div>
+            </article>
+
+            <!-- Card 4: AMO -->
+            <article class="order-card" data-title="AMO – Sản xuất T10">
+              <div class="card-summary-col">
+                <span class="status-badge-running">ĐANG CHẠY</span>
+                <h2 class="order-title">AMO – Sản xuất T10</h2>
+                <div class="order-period">Tháng 10 · 01/10 – 31/10/2026</div>
+                <div class="order-manager">Phụ trách: Vũ Văn Cường</div>
+                <div class="order-stats-grid">
+                  <div class="stat-item"><div class="stat-label">Chỉ tiêu</div><div class="stat-value">15 người</div></div>
+                  <div class="stat-item"><div class="stat-label">Đã đi làm</div><div class="stat-value">6</div></div>
+                  <div class="stat-item"><div class="stat-label">Vị trí tuyển</div><div class="stat-value">1</div></div>
+                  <div class="stat-item"><div class="stat-label">Vendor tham gia</div><div class="stat-value">0</div></div>
+                </div>
+              </div>
+              <div class="card-positions-col">
+                <div class="positions-header"><span class="col-title">Vị trí tuyển chính</span><span class="col-sub">Tiến độ giao người</span></div>
+                <div class="position-list">
+                  <div class="position-row">
+                    <div class="position-meta"><div class="position-name-wrap"><span class="position-idx">01</span><span class="position-name">Công nhân sản xuất</span></div><span class="position-progress-text">6/15 · 40%</span></div>
+                    <div class="progress-track"><div class="progress-bar-fill green" style="width: 40%"></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="card-donut-col">
+                <div class="donut-header">Tổng quan hồ sơ</div>
+                <div class="donut-body">
+                  <div class="donut-chart-wrap">
+                    <svg class="donut-chart-svg" viewBox="0 0 42 42">
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4.5"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#cbd5e1" stroke-width="4.5" pathLength="100" stroke-dasharray="25 75" stroke-dashoffset="0"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f59e0b" stroke-width="4.5" pathLength="100" stroke-dasharray="16.7 83.3" stroke-dashoffset="-25"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#38bdf8" stroke-width="4.5" pathLength="100" stroke-dasharray="8.3 91.7" stroke-dashoffset="-41.7"/>
+                      <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#10b981" stroke-width="4.5" pathLength="100" stroke-dasharray="50 50" stroke-dashoffset="-50"/>
+                    </svg>
+                    <div class="donut-center-label"><div class="number">12</div><div class="text">hồ sơ</div></div>
+                  </div>
+                  <div class="donut-legend">
+                    <div class="legend-item"><span class="legend-dot green"></span> Đã đi làm ( 6 )</div>
+                    <div class="legend-item"><span class="legend-dot blue"></span> Chờ nhận việc ( 1 )</div>
+                    <div class="legend-item"><span class="legend-dot orange"></span> Hẹn PV ( 2 )</div>
+                    <div class="legend-item"><span class="legend-dot grey"></span> Mới ứng tuyển ( 3 )</div>
+                  </div>
+                </div>
+                <div class="card-footer-status"><span class="status-label">Trạng thái</span><span class="status-value danger">Có rủi ro</span></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE 2: TỔNG QUAN THÁNG 10 (SCREEN 2 / ẢNH 4)
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewDashboard" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <h1 class="page-title">Tháng 10</h1>
+            <div class="header-actions">
+              <button class="btn-primary" onclick="openModal('modalCreateOrder')">
+                <span>+</span> Tạo mới ▾
+              </button>
+              <div class="user-profile-header">
+                <div class="user-avatar-badge" id="currentUserAvatar">TH</div>
+                <div class="user-meta">
+                  <div class="user-meta-name" id="currentUserName">Trần Thu Hà</div>
+                  <div class="user-meta-role" id="currentUserRole">Quản trị viên · Tuyển dụng VP</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <nav class="tab-navigation">
+            <button class="tab-btn active" onclick="switchModule('dashboard')">TỔNG QUAN</button>
+            <button class="tab-btn" onclick="switchModule('orders')">CÂY CHỈ TIÊU</button>
+            <button class="tab-btn" onclick="switchTeam('vinh-phuc')">THÀNH VIÊN</button>
+            <button class="tab-btn" onclick="switchModule('attendance')">CHECK-IN</button>
+            <button class="tab-btn" onclick="switchTeam('vinh-phuc'); switchTeamTab('kpi');">BẢNG XẾP HẠNG</button>
+          </nav>
+        </header>
+
+        <div class="page-body">
+          <div class="dashboard-grid">
+            <div class="dashboard-main-col">
+              <!-- 3 KPI Cards -->
+              <div class="summary-kpi-row">
+                <div class="kpi-card">
+                  <div class="kpi-title">CHỈ TIÊU CUNG ỨNG</div>
+                  <div class="kpi-big-value">120 <span>người</span></div>
+                  <div class="kpi-subtext">4 đơn hàng · 7 vị trí tuyển</div>
+                  <div class="kpi-subtext">Ngày 5 / 31 · 01/10 – 31/10/2026</div>
+                </div>
+
+                <div class="kpi-card">
+                  <div class="kpi-title">TRẠNG THÁI ĐƠN HÀNG</div>
+                  <div class="kpi-card-status-body">
+                    <div class="mini-donut-status">
+                      <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+                        <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4.5"/>
+                        <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#ef4444" stroke-width="4.5" pathLength="100" stroke-dasharray="25 75" stroke-dashoffset="0"/>
+                        <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f59e0b" stroke-width="4.5" pathLength="100" stroke-dasharray="25 75" stroke-dashoffset="-25"/>
+                        <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#10b981" stroke-width="4.5" pathLength="100" stroke-dasharray="50 50" stroke-dashoffset="-50"/>
+                      </svg>
+                      <div class="mini-donut-center">4 đơn</div>
+                    </div>
+                    <div class="kpi-status-legend">
+                      <div class="legend-item"><span class="legend-dot green"></span> 2 đúng tiến độ</div>
+                      <div class="legend-item"><span class="legend-dot orange"></span> 1 chậm tiến độ</div>
+                      <div class="legend-item"><span class="legend-dot red"></span> 1 có rủi ro</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="kpi-card">
+                  <div class="kpi-card-header">
+                    <span class="kpi-title">TIẾN ĐỘ HIỆN TẠI</span>
+                    <span class="status-badge-running" style="margin: 0;">ĐANG CHẠY</span>
+                  </div>
+                  <div class="kpi-big-value">48,3%</div>
+                  <div class="progress-track" style="margin-bottom: 8px;">
+                    <div class="progress-bar-fill blue" style="width: 48.3%"></div>
+                  </div>
+                  <div class="kpi-subtext">58 người đã đi làm · 46 ứng viên mới tuần này</div>
+                </div>
+              </div>
+
+              <!-- Main Tree Table Card -->
+              <div class="tree-table-card">
+                <div class="tree-header-row">
+                  <div class="tree-header-left">
+                    <div class="tree-mini-gauge">
+                      <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+                        <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
+                        <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#0052cc" stroke-width="4" pathLength="100" stroke-dasharray="48.3 51.7" stroke-dashoffset="0"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="tree-gauge-title">Tổng chỉ tiêu cung ứng tháng 10: 120 người</div>
+                      <div class="tree-gauge-sub">Hiện tại: 58 người – 48,3%</div>
+                    </div>
+                  </div>
+                  <div class="tree-header-right">
+                    <div class="tree-col-owner"><span class="avatar-xs teal">TH</span><span>Trần Thu Hà</span></div>
+                    <div class="tree-col-date">01/10 – 31/10</div>
+                    <div class="tree-col-progress">
+                      <span class="progress-num">48,3%</span>
+                      <div class="progress-track"><div class="progress-bar-fill blue" style="width: 48.3%;"></div></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="tree-body">
+                  <!-- WESUM -->
+                  <div class="tree-group">
+                    <div class="tree-row parent-row" onclick="toggleTreeGroup('wesum')">
+                      <div class="tree-col-item">
+                        <span class="toggle-arrow" id="arrow-wesum">▼</span>
+                        <div><div class="tree-item-title">WESUM > Lắp ráp T10</div><div class="tree-item-meta">Chỉ tiêu 50 · đã đi làm 26</div></div>
+                      </div>
+                      <div class="tree-header-right">
+                        <div class="tree-col-owner"><span class="avatar-xs teal">TH</span><span>Trần Thu Hà</span></div>
+                        <div class="tree-col-date">01/10 – 31/10</div>
+                        <div class="tree-col-progress">
+                          <span class="progress-num">52%</span>
+                          <div class="progress-track"><div class="progress-bar-fill green" style="width: 52%;"></div></div>
+                        </div>
+                        <span class="tree-row-actions">···</span>
+                      </div>
+                    </div>
+                    <div class="tree-children" id="children-wesum">
+                      <div class="tree-row child-row">
+                        <div class="tree-col-item">
+                          <span style="color: #94a3b8; font-size: 13px; margin-right: 2px;">•</span>
+                          <span class="tree-item-title">Công nhân lắp ráp: 30 người</span>
+                        </div>
+                        <div class="tree-header-right">
+                          <div class="tree-col-owner"><span class="avatar-xs teal">TH</span><span>Trần Thu Hà</span></div>
+                          <div class="tree-col-date">01/10 – 31/10</div>
+                          <div class="tree-col-progress">
+                            <span class="progress-num">60%</span>
+                            <div class="progress-track"><div class="progress-bar-fill blue" style="width: 60%;"></div></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="tree-row child-row">
+                        <div class="tree-col-item">
+                          <span style="color: #94a3b8; font-size: 13px; margin-right: 2px;">•</span>
+                          <span class="tree-item-title">QC ngoại quan: 12 người</span>
+                        </div>
+                        <div class="tree-header-right">
+                          <div class="tree-col-owner"><span class="avatar-xs blue">DJ</span><span>DJC (Vendor)</span></div>
+                          <div class="tree-col-date">01/10 – 31/10</div>
+                          <div class="tree-col-progress">
+                            <span class="progress-num">50%</span>
+                            <div class="progress-track"><div class="progress-bar-fill blue" style="width: 50%;"></div></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="tree-row child-row">
+                        <div class="tree-col-item">
+                          <span style="color: #94a3b8; font-size: 13px; margin-right: 2px;">•</span>
+                          <span class="tree-item-title">Nhân viên kho: 8 người</span>
+                        </div>
+                        <div class="tree-header-right">
+                          <div class="tree-col-owner"><span class="avatar-xs teal">TH</span><span>Trần Thu Hà</span></div>
+                          <div class="tree-col-date">01/10 – 31/10</div>
+                          <div class="tree-col-progress">
+                            <span class="progress-num">25%</span>
+                            <div class="progress-track"><div class="progress-bar-fill blue" style="width: 25%;"></div></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- OJTEK -->
+                  <div class="tree-group">
+                    <div class="tree-row parent-row" onclick="toggleTreeGroup('ojtek')">
+                      <div class="tree-col-item">
+                        <span class="toggle-arrow" id="arrow-ojtek">▼</span>
+                        <div><div class="tree-item-title">OJTEK > QC & vận hành T10</div><div class="tree-item-meta">Chỉ tiêu 30 · đã đi làm 14</div></div>
+                      </div>
+                      <div class="tree-header-right">
+                        <div class="tree-col-owner"><span class="avatar-xs blue">VC</span><span>Vũ Văn Cường</span></div>
+                        <div class="tree-col-date">01/10 – 31/10</div>
+                        <div class="tree-col-progress">
+                          <span class="progress-num">46.7%</span>
+                          <div class="progress-track"><div class="progress-bar-fill orange" style="width: 46.7%;"></div></div>
+                        </div>
+                        <span class="tree-row-actions">···</span>
+                      </div>
+                    </div>
+                    <div class="tree-children" id="children-ojtek">
+                      <div class="tree-row child-row">
+                        <div class="tree-col-item">
+                          <span style="color: #94a3b8; font-size: 13px; margin-right: 2px;">•</span>
+                          <span class="tree-item-title">QC ngoại quan: 20 người</span>
+                        </div>
+                        <div class="tree-header-right">
+                          <div class="tree-col-owner"><span class="avatar-xs blue">VC</span><span>Vũ Văn Cường</span></div>
+                          <div class="tree-col-date">01/10 – 31/10</div>
+                          <div class="tree-col-progress">
+                            <span class="progress-num">50%</span>
+                            <div class="progress-track"><div class="progress-bar-fill blue" style="width: 50%;"></div></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="tree-row child-row">
+                        <div class="tree-col-item">
+                          <span style="color: #94a3b8; font-size: 13px; margin-right: 2px;">•</span>
+                          <span class="tree-item-title">Vận hành máy: 10 người</span>
+                        </div>
+                        <div class="tree-header-right">
+                          <div class="tree-col-owner"><span class="avatar-xs indigo">DA</span><span>DAMO (Vendor)</span></div>
+                          <div class="tree-col-date">01/10 – 31/10</div>
+                          <div class="tree-col-progress">
+                            <span class="progress-num">40%</span>
+                            <div class="progress-track"><div class="progress-bar-fill blue" style="width: 40%;"></div></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- SUNGJEE -->
+                  <div class="tree-group">
+                    <div class="tree-row parent-row">
+                      <div class="tree-col-item">
+                        <span class="toggle-arrow collapsed">▶</span>
+                        <div><div class="tree-item-title">SUNGJEE > Đóng gói T10</div><div class="tree-item-meta">Chỉ tiêu 25 · đã đi làm 12</div></div>
+                      </div>
+                      <div class="tree-header-right">
+                        <div class="tree-col-owner"><span class="avatar-xs green">ĐT</span><span>Đỗ Minh Thắng</span></div>
+                        <div class="tree-col-date">01/10 – 31/10</div>
+                        <div class="tree-col-progress">
+                          <span class="progress-num">48%</span>
+                          <div class="progress-track"><div class="progress-bar-fill green" style="width: 48%;"></div></div>
+                        </div>
+                        <span class="tree-row-actions">···</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- AMO -->
+                  <div class="tree-group">
+                    <div class="tree-row parent-row">
+                      <div class="tree-col-item">
+                        <span class="toggle-arrow collapsed">▶</span>
+                        <div><div class="tree-item-title">AMO > Sản xuất T10</div><div class="tree-item-meta">Chỉ tiêu 15 · đã đi làm 6</div></div>
+                      </div>
+                      <div class="tree-header-right">
+                        <div class="tree-col-owner"><span class="avatar-xs blue">VC</span><span>Vũ Văn Cường</span></div>
+                        <div class="tree-col-date">01/10 – 31/10</div>
+                        <div class="tree-col-progress">
+                          <span class="progress-num">40%</span>
+                          <div class="progress-track"><div class="progress-bar-fill red" style="width: 40%;"></div></div>
+                        </div>
+                        <span class="tree-row-actions">···</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Sidebar Column -->
+            <div class="dashboard-sidebar-col">
+              <div class="side-card">
+                <div class="quick-stats-list">
+                  <div class="quick-stat-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle></svg><span>Phụ trách 1 đơn hàng · 2 vị trí</span></div>
+                  <div class="quick-stat-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg><span>192 NLĐ đã tuyển (luỹ kế)</span></div>
+                  <div class="quick-stat-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg><span>8 lịch phỏng vấn tuần này</span></div>
+                </div>
+              </div>
+
+              <div class="side-card">
+                <div class="side-card-title">Chỉ tiêu cá nhân</div>
+                <div class="personal-target-box">
+                  <div class="target-row-meta"><span class="title">Lắp ráp + Kho (WESUM)</span><span class="count">20 / 38</span></div>
+                  <div class="progress-track"><div class="progress-bar-fill green" style="width: 52.6%;"></div></div>
+                  <div class="target-footer-note">Còn 26 ngày · cần thêm 18 người</div>
+                </div>
+              </div>
+
+              <div class="side-card">
+                <div class="side-card-title">Việc cần xử lý</div>
+                <div class="action-items-list">
+                  <div class="action-row"><span>Báo ứng chờ duyệt</span><span class="badge-pill-danger">3</span></div>
+                  <div class="action-row"><span>Ứng viên chờ nhận việc</span><span class="badge-pill-gray">5</span></div>
+                  <div class="action-row"><span>Check-in tiến độ tuần</span><span class="badge-text-danger">Hạn hôm nay</span></div>
+                </div>
+              </div>
+
+              <!-- Interactive Team Widget -->
+              <div class="side-card">
+                <div class="side-card-title">Nhóm của tôi</div>
+                <div class="team-widget-group" id="cardTeamWidget" title="Bấm để mở trang quản trị nhóm Tuyển dụng Vĩnh Phúc">
+                  <div class="team-widget-title">Tuyển dụng Vĩnh Phúc ↗</div>
+                  <div class="team-widget-stats">52% · 3 đơn hàng · 3 thành viên</div>
+                  <div class="avatar-stack">
+                    <span class="avatar-xs teal">TH</span>
+                    <span class="avatar-xs blue">VC</span>
+                    <span class="avatar-xs green">ĐT</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE 3: QUẢN LÝ NGƯỜI LAO ĐỘNG
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewWorkers" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <h1 class="page-title">Hồ sơ Người lao động</h1>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+                Quản lý thông tin định danh, CCCD bảo mật, quá trình làm việc và người phụ trách
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-secondary" onclick="exportDataCSV('nguoi_lao_dong')">Xuất CSV</button>
+              <button class="btn-primary" onclick="openModal('modalCreateWorker')">
+                <span>+</span> Thêm người lao động
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-body">
+          <div class="module-toolbar">
+            <div class="filter-group">
+              <input type="text" placeholder="Tìm theo Tên, SĐT, CCCD..." class="form-input" id="workerSearchFilter" style="width: 240px;">
+              <select class="form-select" id="workerCompanyFilter">
+                <option value="">Tất cả công ty</option>
+                <option value="WESUM">WESUM</option>
+                <option value="OJTEK">OJTEK</option>
+                <option value="SUNGJEE">SUNGJEE</option>
+                <option value="AMO">AMO</option>
+              </select>
+              <select class="form-select" id="workerStatusFilter">
+                <option value="">Tất cả trạng thái</option>
+                <option value="Đang làm">Đang làm</option>
+                <option value="Chờ đi làm">Chờ đi làm</option>
+                <option value="Tạm nghỉ">Tạm nghỉ</option>
+                <option value="Nghỉ việc">Nghỉ việc</option>
+                <option value="Không đi làm">Không đi làm</option>
+              </select>
+              <select class="form-select" id="workerTypeFilter">
+                <option value="">Loại: Tất cả</option>
+                <option value="Thời vụ">Thời vụ</option>
+                <option value="Chính thức">Chính thức</option>
+              </select>
+            </div>
+            <div style="font-size: 13px; color: var(--text-muted);">
+              Tổng số: <strong id="workerTotalCount" style="color: var(--text-main);">8</strong> hồ sơ
+            </div>
+          </div>
+
+          <div class="data-table-card">
+            <div class="table-responsive">
+              <table class="custom-table" id="workersTable">
+                <thead>
+                  <tr>
+                    <th style="white-space: nowrap;">Ảnh & Họ và tên</th>
+                    <th style="white-space: nowrap;">Số ĐT</th>
+                    <th style="white-space: nowrap;">Quê quán</th>
+                    <th style="white-space: nowrap;">CCCD / Định danh</th>
+                    <th style="white-space: nowrap;">Công ty & Vị trí</th>
+                    <th style="white-space: nowrap;">Loại hình</th>
+                    <th style="white-space: nowrap;">Recruiter / Nguồn</th>
+                    <th style="white-space: nowrap;">Trạng thái</th>
+                    <th style="white-space: nowrap;">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="workersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE 4: KHÁCH HÀNG & ĐỊA ĐIỂM
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewCompanies" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <h1 class="page-title">Công ty Khách hàng & Địa điểm</h1>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+                Quản lý doanh nghiệp tiếp nhận lao động, KCN, tọa độ GPS và bán kính chấm công
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-primary" onclick="alert('Thêm công ty khách hàng mới')">
+                <span>+</span> Thêm công ty
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-body">
+          <div class="data-table-card">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Mã DN</th>
+                    <th>Tên Công ty</th>
+                    <th>Địa chỉ KCN</th>
+                    <th style="white-space: nowrap;">Người liên hệ</th>
+                    <th style="white-space: nowrap;">SĐT Liên hệ</th>
+                    <th>Tọa độ GPS (Bán kính)</th>
+                    <th>Lao động đang làm</th>
+                    <th>Nhu cầu tuyển</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>DN-WESUM</strong></td>
+                    <td><strong>Công ty TNHH WESUM Việt Nam</strong></td>
+                    <td>Lô A2, KCN Khai Quang, Vĩnh Phúc</td>
+                    <td style="white-space: nowrap;"><strong>Nguyễn Văn An</strong></td>
+                    <td style="white-space: nowrap;"><code style="font-size: 13px;">0912 345 678</code></td>
+                    <td><code>21.3128, 105.6021</code> (300m)</td>
+                    <td><span class="status-pill info">26 người</span></td>
+                    <td>50 người</td>
+                    <td><span class="status-pill success">Hoạt động</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>DN-OJTEK</strong></td>
+                    <td><strong>Công ty Cổ phần Công nghệ OJTEK</strong></td>
+                    <td>Lô CN3, KCN Bá Thiện 2, Vĩnh Phúc</td>
+                    <td style="white-space: nowrap;"><strong>Lê Thị Bình</strong></td>
+                    <td style="white-space: nowrap;"><code style="font-size: 13px;">0988 765 432</code></td>
+                    <td><code>21.3411, 105.6420</code> (250m)</td>
+                    <td><span class="status-pill info">14 người</span></td>
+                    <td>30 người</td>
+                    <td><span class="status-pill success">Hoạt động</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>DN-SUNGJEE</strong></td>
+                    <td><strong>SUNGJEE Electronics VN</strong></td>
+                    <td>KCN Bình Xuyên, Vĩnh Phúc</td>
+                    <td style="white-space: nowrap;"><strong>Kim Min Ho</strong></td>
+                    <td style="white-space: nowrap;"><code style="font-size: 13px;">0977 123 987</code></td>
+                    <td><code>21.2890, 105.6601</code> (200m)</td>
+                    <td><span class="status-pill info">12 người</span></td>
+                    <td>25 người</td>
+                    <td><span class="status-pill success">Hoạt động</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>DN-AMO</strong></td>
+                    <td><strong>Tập đoàn Sản xuất linh kiện AMO</strong></td>
+                    <td>KCN Quang Minh, Mê Linh, Hà Nội</td>
+                    <td style="white-space: nowrap;"><strong>Hoàng Minh Tuấn</strong></td>
+                    <td style="white-space: nowrap;"><code style="font-size: 13px;">0904 555 888</code></td>
+                    <td><code>21.2155, 105.7892</code> (400m)</td>
+                    <td><span class="status-pill info">6 người</span></td>
+                    <td>15 người</td>
+                    <td><span class="status-pill success">Hoạt động</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE 5: QUẢN LÝ VENDOR
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewVendors" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <h1 class="page-title">Quản lý Vendor & Cấp hạn mức</h1>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+                Theo dõi đối tác cung ứng, hạn mức phân bổ, số lượng thực tế đi làm và đối soát chênh lệch
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-primary" onclick="alert('Thêm đối tác Vendor mới')">
+                <span>+</span> Thêm Vendor
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-body">
+          <div class="data-table-card">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Mã Vendor</th>
+                    <th>Tên Vendor</th>
+                    <th style="white-space: nowrap;">Người đại diện</th>
+                    <th style="white-space: nowrap;">SĐT Liên hệ</th>
+                    <th>Công ty hợp tác</th>
+                    <th>Số lượng giao</th>
+                    <th>Thực tế đi làm</th>
+                    <th>Chênh lệch</th>
+                    <th>Tỷ lệ đạt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>VD-DJC</strong></td>
+                    <td><strong>Công ty Cung ứng Nhân lực DJC</strong></td>
+                    <td style="white-space: nowrap;"><strong>Đỗ Cường</strong></td>
+                    <td style="white-space: nowrap;"><code style="font-size: 13px;">0913 222 111</code></td>
+                    <td>WESUM, SUNGJEE</td>
+                    <td>35 người</td>
+                    <td><strong>30 người</strong></td>
+                    <td><span class="status-pill warning">-5 người</span></td>
+                    <td><strong style="color: var(--color-success);">85.7%</strong></td>
+                  </tr>
+                  <tr>
+                    <td><strong>VD-DAMO</strong></td>
+                    <td><strong>Đối tác Lao động DAMO</strong></td>
+                    <td style="white-space: nowrap;"><strong>Trịnh Đại</strong></td>
+                    <td style="white-space: nowrap;"><code style="font-size: 13px;">0989 333 444</code></td>
+                    <td>OJTEK</td>
+                    <td>15 người</td>
+                    <td><strong>10 người</strong></td>
+                    <td><span class="status-pill danger">-5 người</span></td>
+                    <td><strong style="color: var(--color-warning);">66.7%</strong></td>
+                  </tr>
+                  <tr>
+                    <td><strong>VD-NOIBO</strong></td>
+                    <td><strong>Nguồn Tuyển dụng Nội bộ Trang Way</strong></td>
+                    <td style="white-space: nowrap;"><strong>Trần Thu Hà</strong></td>
+                    <td style="white-space: nowrap;"><code style="font-size: 13px;">0979 555 123</code></td>
+                    <td>WESUM, OJTEK, AMO</td>
+                    <td>70 người</td>
+                    <td><strong>58 người</strong></td>
+                    <td><span class="status-pill info">-12 người</span></td>
+                    <td><strong style="color: var(--color-success);">82.8%</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE 6: CHẤM CÔNG GPS
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewAttendance" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <h1 class="page-title">Chấm công & Điểm danh GPS</h1>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+                Ghi nhận giờ vào/ra thực tế, kiểm tra tọa độ GPS so với bán kính nhà máy và tính số ngày công
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-secondary" onclick="exportDataCSV('cham_cong')">Xuất bảng công</button>
+              <button class="btn-primary" onclick="openModal('modalCheckIn')">
+                <span>+</span> Check-in nhanh
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-body">
+          <div class="data-table-card">
+            <div class="table-responsive">
+              <table class="custom-table" id="attendanceTable">
+                <thead>
+                  <tr>
+                    <th style="white-space: nowrap;">Họ tên & Ảnh</th>
+                    <th style="white-space: nowrap;">Nhà máy / Địa điểm</th>
+                    <th style="white-space: nowrap;">Ca làm</th>
+                    <th style="white-space: nowrap;">Giờ vào</th>
+                    <th style="white-space: nowrap;">Giờ ra</th>
+                    <th style="white-space: nowrap;">Tọa độ GPS (Khoảng cách)</th>
+                    <th style="white-space: nowrap;">Công tính</th>
+                    <th style="white-space: nowrap;">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody id="attendanceTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE 7: LƯƠNG & TẠM ỨNG
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewPayroll" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <h1 class="page-title">Quản lý Lương & Tạm ứng Lao động</h1>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+                Tính lương theo số ngày công thực tế, đối soát tạm ứng lao động thời vụ và phiếu thanh toán
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-secondary" onclick="exportDataCSV('bang_luong')">Xuất bảng lương</button>
+              <button class="btn-primary" onclick="openModal('modalCreateAdvance')">
+                <span>+</span> Thêm tạm ứng
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-body">
+          <div class="data-table-card">
+            <div class="table-responsive">
+              <table class="custom-table" id="payrollTable">
+                <thead>
+                  <tr>
+                    <th style="white-space: nowrap;">Họ tên & Ảnh</th>
+                    <th style="white-space: nowrap;">Công ty</th>
+                    <th style="white-space: nowrap;">Loại hình</th>
+                    <th style="white-space: nowrap;">Số ngày công</th>
+                    <th style="white-space: nowrap;">Đơn giá/ngày</th>
+                    <th style="white-space: nowrap;">Tổng lương (Gross)</th>
+                    <th style="white-space: nowrap;">Đã tạm ứng</th>
+                    <th style="white-space: nowrap;">Thực lĩnh (Net)</th>
+                    <th style="white-space: nowrap;">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody id="payrollTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE 8: TÀI CHÍNH THU / CHI
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewFinance" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <h1 class="page-title">Quản lý Tài chính (Thu & Chi)</h1>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+                Theo dõi các khoản thu doanh nghiệp, chi phí vận hành, chi lương và số dư dòng tiền
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-secondary" onclick="exportDataCSV('tai_chinh')">Xuất báo cáo</button>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-body">
+          <div class="summary-kpi-row">
+            <div class="kpi-card">
+              <div class="kpi-title">TỔNG THU (DOANH THU)</div>
+              <div class="kpi-big-value" style="color: var(--color-success);">680.000.000 <span>VNĐ</span></div>
+              <div class="kpi-subtext">Thu phí cung ứng từ 4 doanh nghiệp</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">TỔNG CHI (CHI PHÍ & LƯƠNG)</div>
+              <div class="kpi-big-value" style="color: var(--color-danger);">492.500.000 <span>VNĐ</span></div>
+              <div class="kpi-subtext">Chi trả lương, vendor, xe đưa đón, quản lý</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">CHÊNH LỆCH (LỢI NHUẬN GỘP)</div>
+              <div class="kpi-big-value" style="color: var(--primary-blue);">+187.500.000 <span>VNĐ</span></div>
+              <div class="kpi-subtext">Biên lợi nhuận: 27.5%</div>
+            </div>
+          </div>
+
+          <div class="data-table-card">
+            <div class="table-responsive">
+              <table class="custom-table" id="financeTable">
+                <thead>
+                  <tr>
+                    <th>Mã GD</th>
+                    <th>Ngày</th>
+                    <th>Loại</th>
+                    <th>Danh mục</th>
+                    <th>Nội dung giao dịch</th>
+                    <th>Đối tác / NLĐ liên quan</th>
+                    <th>Số tiền</th>
+                    <th>Người tạo / Duyệt</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody id="financeTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE 9: HOA HỒNG DỰ KIẾN
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewCommission" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <h1 class="page-title">Báo cáo Hoa hồng Dự kiến</h1>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+                Công thức: <code>Hoa hồng = Đơn giá hoa hồng x Số ngày làm việc thực tế</code> (Chỉ Giám đốc & Phó Giám đốc)
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-secondary" onclick="exportDataCSV('hoa_hong')">Xuất Excel</button>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-body">
+          <div class="summary-kpi-row">
+            <div class="kpi-card">
+              <div class="kpi-title">TỔNG HOA HỒNG DỰ KIẾN (T10)</div>
+              <div class="kpi-big-value" style="color: #7c3aed;">52.800.000 <span>VNĐ</span></div>
+              <div class="kpi-subtext">Tính trên 58 lao động đang làm việc thực tế</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">ĐƠN GIÁ TRUNG BÌNH</div>
+              <div class="kpi-big-value">40.000 <span>VNĐ/ngày</span></div>
+              <div class="kpi-subtext">Theo hợp đồng dịch vụ cung ứng</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">TỔNG SỐ CÔNG ĐÃ TÍCH LŨY</div>
+              <div class="kpi-big-value">1.320 <span>ngày công</span></div>
+              <div class="kpi-subtext">Truy vết nguồn gốc từ bảng chấm công</div>
+            </div>
+          </div>
+
+          <div class="data-table-card">
+            <div class="table-responsive">
+              <table class="custom-table" id="commissionTable">
+                <thead>
+                  <tr>
+                    <th style="white-space: nowrap;">Họ tên & Ảnh</th>
+                    <th style="white-space: nowrap;">Doanh nghiệp làm việc</th>
+                    <th style="white-space: nowrap;">Kỳ tính</th>
+                    <th style="white-space: nowrap;">Số ngày công thực tế</th>
+                    <th style="white-space: nowrap;">Đơn giá hoa hồng</th>
+                    <th style="white-space: nowrap;">Hoa hồng dự kiến</th>
+                    <th style="white-space: nowrap;">Ghi chú / Người duyệt</th>
+                  </tr>
+                </thead>
+                <tbody id="commissionTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE 10: BÁO CÁO & THỐNG KÊ
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewReports" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <h1 class="page-title">Báo cáo & Thống kê Cung ứng</h1>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+                Thống kê tuyển dụng, tỷ lệ đi làm (Conversion rate), phân tích theo Recruiter, Vendor và Nhà máy
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn-secondary" onclick="exportDataCSV('bao_cao_thong_ke')">Xuất Báo Cáo</button>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-body">
+          <div class="summary-kpi-row">
+            <div class="kpi-card">
+              <div class="kpi-title">TỶ LỆ ĐI LÀM (CONVERSION)</div>
+              <div class="kpi-big-value" style="color: var(--color-success);">82.8%</div>
+              <div class="kpi-subtext">58 đi làm / 70 người trúng tuyển</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">TOP RECRUITER XUẤT SẮC</div>
+              <div class="kpi-big-value" style="font-size: 24px;">Trần Thu Hà <span>(26 NLĐ)</span></div>
+              <div class="kpi-subtext">Đạt 104% chỉ tiêu giao</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-title">TOP VENDOR HIỆU QUẢ</div>
+              <div class="kpi-big-value" style="font-size: 24px;">DJC <span>(30/35 NLĐ)</span></div>
+              <div class="kpi-subtext">Tỷ lệ cung ứng đúng hạn 85.7%</div>
+            </div>
+          </div>
+
+          <div class="data-table-card">
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Chỉ tiêu thống kê</th>
+                    <th>Kế hoạch giao</th>
+                    <th>Thực tế đạt</th>
+                    <th>Tỷ lệ hoàn thành</th>
+                    <th>Đánh giá chất lượng</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Tuyển dụng Nhà máy WESUM</strong></td>
+                    <td>50 người</td>
+                    <td><strong>26 người</strong></td>
+                    <td>52% (Đúng tiến độ)</td>
+                    <td><span class="status-pill success">Tốt</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Tuyển dụng Nhà máy OJTEK</strong></td>
+                    <td>30 người</td>
+                    <td><strong>14 người</strong></td>
+                    <td>46.7% (Chậm nhẹ)</td>
+                    <td><span class="status-pill warning">Cần đẩy mạnh</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Tuyển dụng Nhà máy SUNGJEE</strong></td>
+                    <td>25 người</td>
+                    <td><strong>12 người</strong></td>
+                    <td>48% (Đúng tiến độ)</td>
+                    <td><span class="status-pill success">Tốt</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Tuyển dụng Nhà máy AMO</strong></td>
+                    <td>15 người</td>
+                    <td><strong>6 người</strong></td>
+                    <td>40% (Có rủi ro)</td>
+                    <td><span class="status-pill danger">Bổ sung Vendor</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- ========================================================
+           MODULE 11: LỊCH SỬ THAO TÁC
+           ======================================================== -->
+      <main class="main-viewport module-view" id="viewAudit" style="display: none;">
+        <header class="top-header">
+          <div class="top-header-row">
+            <div>
+              <h1 class="page-title">Nhật ký Lịch sử Thao tác (Audit Log)</h1>
+              <p style="font-size: 12.5px; color: var(--text-muted); margin-top: 2px;">
+                Ghi nhận mọi thao tác nhạy cảm trên CCCD, tài chính, phân quyền và dữ liệu người lao động
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <div class="page-body">
+          <div class="data-table-card">
+            <div class="table-responsive">
+              <table class="custom-table" id="auditTable">
+                <thead>
+                  <tr>
+                    <th>Thời gian</th>
+                    <th>Người thao tác</th>
+                    <th>Vai trò</th>
+                    <th>Hành động</th>
+                    <th>Đối tượng / Bảng</th>
+                    <th>Chi tiết thay đổi</th>
+                    <th>Địa chỉ IP</th>
+                  </tr>
+                </thead>
+                <tbody id="auditTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+
+    </div>
+
+    <!-- ========================================================
+         2. MOBILE DEVICE SIMULATION WRAPPER
+         ======================================================== -->
+    <div class="mobile-device-frame" id="mobileDeviceFrame">
+      
+      <!-- MOBILE SCREEN 1: ĐƠN HÀNG CUNG ỨNG (ẢNH 3) -->
+      <div class="mobile-app-wrapper" id="mobileOrdersView">
+        <header class="mobile-top-bar">
+          <div class="mobile-brand-wrap">
+            <div class="brand-logo-icon" style="width: 34px; height: 34px; padding: 2px;">
+              <img src="logo.png" alt="Trang Way Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px;">
+            </div>
+            <div class="mobile-bar-titles">
+              <h2>Đơn hàng cung ứng</h2>
+              <p>Trang Way · 01/10 – 31/10/2026</p>
+            </div>
+          </div>
+          <button class="mobile-btn-circle" onclick="openModal('modalCreateOrder')">+</button>
+        </header>
+
+        <div class="mobile-metrics-strip">
+          <div class="mobile-metric-box"><div class="label">Chỉ tiêu</div><div class="value">120</div></div>
+          <div class="mobile-metric-box"><div class="label">Đã đi làm</div><div class="value">58</div></div>
+          <div class="mobile-metric-box"><div class="label">Tiến độ</div><div class="value">48,3%</div></div>
+        </div>
+
+        <div class="mobile-tabs-strip">
+          <div class="mobile-tab-item active">THEO THÁNG</div>
+          <div class="mobile-tab-item">THEO QUÝ</div>
+          <div class="mobile-tab-item">THEO NHÀ MÁY</div>
+        </div>
+
+        <div class="mobile-body-content">
+          <!-- WESUM -->
+          <div class="mobile-order-card">
+            <div class="mobile-order-top">
+              <div class="mobile-donut-gauge">
+                <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f59e0b" stroke-width="4" pathLength="100" stroke-dasharray="16 84" stroke-dashoffset="0"/>
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#10b981" stroke-width="4" pathLength="100" stroke-dasharray="52 48" stroke-dashoffset="-16"/>
+                </svg>
+                <div class="donut-center-label"><span style="font-size: 11px; font-weight: 700;">52%</span></div>
+              </div>
+              <div class="mobile-order-info">
+                <div class="mobile-order-name">WESUM – Lắp ráp T10</div>
+                <div class="mobile-order-manager">Phụ trách: Trần Thu Hà</div>
+                <div class="mobile-status-tag success">Đúng tiến độ</div>
+              </div>
+            </div>
+            <div class="mobile-stats-row">
+              <div class="mobile-mini-stat"><div class="val">50</div><div class="lbl">Chỉ tiêu</div></div>
+              <div class="mobile-mini-stat"><div class="val">26</div><div class="lbl">Đi làm</div></div>
+              <div class="mobile-mini-stat"><div class="val">3</div><div class="lbl">Vị trí</div></div>
+              <div class="mobile-mini-stat"><div class="val">2</div><div class="lbl">Vendor</div></div>
+            </div>
+            <div class="mobile-pos-list">
+              <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">Công nhân lắp ráp</span><span class="ratio">18/30 · 60%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 60%"></div></div></div>
+              <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">QC ngoại quan</span><span class="ratio">6/12 · 50%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 50%"></div></div></div>
+              <div class="mobile-pos-item"><div class="mobile-pos-meta"><span class="title">Nhân viên kho</span><span class="ratio">2/8 · 25%</span></div><div class="progress-track"><div class="progress-bar-fill green" style="width: 25%"></div></div></div>
+            </div>
+          </div>
+
+          <!-- OJTEK -->
+          <div class="mobile-order-card">
+            <div class="mobile-order-top">
+              <div class="mobile-donut-gauge">
+                <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#f59e0b" stroke-width="4" pathLength="100" stroke-dasharray="47 53" stroke-dashoffset="0"/>
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#10b981" stroke-width="4" pathLength="100" stroke-dasharray="30 70" stroke-dashoffset="-47"/>
+                </svg>
+                <div class="donut-center-label"><span style="font-size: 11px; font-weight: 700;">47%</span></div>
+              </div>
+              <div class="mobile-order-info">
+                <div class="mobile-order-name">OJTEK – QC & vận hành T10</div>
+                <div class="mobile-order-manager">Phụ trách: Vũ Văn Cường</div>
+                <div class="mobile-status-tag warning">Chậm tiến độ</div>
+              </div>
+            </div>
+            <div class="mobile-stats-row">
+              <div class="mobile-mini-stat"><div class="val">30</div><div class="lbl">Chỉ tiêu</div></div>
+              <div class="mobile-mini-stat"><div class="val">14</div><div class="lbl">Đi làm</div></div>
+              <div class="mobile-mini-stat"><div class="val">2</div><div class="lbl">Vị trí</div></div>
+              <div class="mobile-mini-stat"><div class="val">1</div><div class="lbl">Vendor</div></div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="mobile-bottom-nav">
+          <button class="mobile-nav-btn active" id="mobTabOrders">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              <path d="M9 12h6"></path>
+              <path d="M9 16h4"></path>
+            </svg>
+            <span>Đơn hàng</span>
+          </button>
+          <button class="mobile-nav-btn" id="mobTabTargets">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"></path>
+              <path d="m19 9-5 5-4-4-3 3"></path>
+            </svg>
+            <span>Chỉ tiêu</span>
+          </button>
+          <button class="mobile-nav-btn" onclick="alert('Xem danh sách nhân lực')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>Nhân lực</span>
+          </button>
+          <button class="mobile-nav-btn">
+            <span class="mobile-nav-badge">3</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="7" height="9" x="3" y="3" rx="1.5"></rect>
+              <rect width="7" height="5" x="14" y="3" rx="1.5"></rect>
+              <rect width="7" height="9" x="14" y="12" rx="1.5"></rect>
+              <rect width="7" height="5" x="3" y="16" rx="1.5"></rect>
+            </svg>
+            <span>Thêm</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- MOBILE SCREEN 2: CÂY CHỈ TIÊU (ẢNH 2) -->
+      <div class="mobile-app-wrapper" id="mobileTargetsView" style="display: none;">
+        <header class="mobile-top-bar">
+          <div class="mobile-brand-wrap">
+            <button class="mobile-back-btn" id="mobBackToOrders">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <div class="mobile-bar-titles">
+              <h2>Tháng 10</h2>
+              <p>Ngày 5 / 31 · 4 đơn hàng · 7 vị trí</p>
+            </div>
+          </div>
+          <button class="mobile-btn-pill white-btn" onclick="openModal('modalCheckIn')">Check-in</button>
+        </header>
+
+        <div class="mobile-body-content">
+          <div class="mobile-overview-card">
+            <div class="mobile-overview-top">
+              <div class="mobile-donut-gauge" style="width: 64px; height: 64px;">
+                <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#0052cc" stroke-width="4" pathLength="100" stroke-dasharray="48 52" stroke-dashoffset="0"/>
+                </svg>
+                <div class="donut-center-label"><span style="font-size: 13px; font-weight: 700;">48%</span></div>
+              </div>
+              <div>
+                <div class="mobile-overview-title">Tổng chỉ tiêu cung ứng</div>
+                <div class="mobile-overview-val">58 / 120 người</div>
+                <div class="mobile-overview-sub">Phụ trách: Trần Thu Hà</div>
+              </div>
+            </div>
+            <div class="mobile-tag-pills-row">
+              <span class="mobile-tag-pill success">2 đúng tiến độ</span>
+              <span class="mobile-tag-pill warning">1 chậm</span>
+              <span class="mobile-tag-pill danger">1 rủi ro</span>
+            </div>
+          </div>
+
+          <div class="mobile-section-heading">Cây chỉ tiêu</div>
+          <div class="mobile-accordion-card">
+            <div class="mobile-acc-header" onclick="toggleMobAcc('m-wesum')">
+              <div class="mobile-acc-left">
+                <span class="toggle-arrow" id="m-arrow-wesum">▼</span>
+                <div><div class="mobile-acc-title">WESUM > Lắp ráp T10</div><div class="mobile-acc-sub">26/50 người · Trần Thu Hà</div></div>
+              </div>
+              <span class="mobile-acc-pct">52%</span>
+            </div>
+            <div class="progress-track" style="margin: 0 14px 10px;"><div class="progress-bar-fill green" style="width: 52%;"></div></div>
+            <div class="mobile-acc-body" id="m-body-wesum">
+              <div class="mobile-sub-pos">
+                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">Công nhân lắp ráp: 30 người</span><span style="font-weight: 700;">60%</span></div>
+                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 60%"></div></div>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs teal" style="width: 18px; height: 18px; font-size: 8.5px;">TH</span><span>Trần Thu Hà</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mobile-section-heading" style="margin-top: 10px;">Chỉ tiêu cá nhân của tôi</div>
+          <div class="mobile-overview-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-weight: 600; font-size: 13.5px;">Lắp ráp + Kho (WESUM)</span>
+              <span style="font-weight: 700; font-size: 14.5px;">20 / 38</span>
+            </div>
+            <div class="progress-track" style="margin-bottom: 8px;"><div class="progress-bar-fill green" style="width: 52.6%;"></div></div>
+            <div style="font-size: 11.5px; color: var(--text-muted);">Còn 26 ngày · cần thêm 18 người</div>
+          </div>
+        </div>
+
+        <nav class="mobile-bottom-nav">
+          <button class="mobile-nav-btn" id="mobTabOrders2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+              <path d="M9 12h6"></path>
+              <path d="M9 16h4"></path>
+            </svg>
+            <span>Đơn hàng</span>
+          </button>
+          <button class="mobile-nav-btn active" id="mobTabTargets2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"></path>
+              <path d="m19 9-5 5-4-4-3 3"></path>
+            </svg>
+            <span>Chỉ tiêu</span>
+          </button>
+          <button class="mobile-nav-btn" onclick="alert('Xem danh sách nhân lực')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span>Nhân lực</span>
+          </button>
+          <button class="mobile-nav-btn">
+            <span class="mobile-nav-badge">3</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="7" height="9" x="3" y="3" rx="1.5"></rect>
+              <rect width="7" height="5" x="14" y="3" rx="1.5"></rect>
+              <rect width="7" height="9" x="14" y="12" rx="1.5"></rect>
+              <rect width="7" height="5" x="3" y="16" rx="1.5"></rect>
+            </svg>
+            <span>Thêm</span>
+          </button>
+        </nav>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Modal: Xem Chi Tiết Hồ Sơ & Ảnh CCCD Người Lao Động -->
+  <div class="modal-overlay" id="modalWorkerDetail">
+    <div class="modal-content modal-profile-dialog">
+      <!-- Modal Header -->
+      <div class="modal-header worker-detail-modal-header">
+        <div class="modal-title-with-badge">
+          <h3>Hồ Sơ Chi Tiết Người Lao Động</h3>
+          <span class="status-pill info" id="dtWorkerCodeBadge">NLD-001</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeModal('modalWorkerDetail')">&times;</button>
+      </div>
+
+      <!-- Worker Hero Banner -->
+      <div class="worker-hero-banner">
+        <div class="worker-avatar-large" id="dtWorkerAvatar">L</div>
+        <div class="worker-hero-info">
+          <div class="worker-hero-name-row">
+            <h2 id="dtWorkerName">Trần Văn Long</h2>
+            <span class="status-pill success" id="dtWorkerStatus">Đang làm</span>
+            <span class="status-pill warning" id="dtWorkerType">Thời vụ</span>
+          </div>
+          <div class="worker-hero-meta-row">
+            <span>Doanh nghiệp: <strong id="dtWorkerCompany">WESUM Việt Nam</strong></span>
+            <span>Vị trí: <span id="dtWorkerPosition">Công nhân lắp ráp</span></span>
+            <span>Phụ trách: <span id="dtWorkerRecruiter">Trần Thu Hà</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Internal Navigation Tabs -->
+      <div class="profile-tabs-bar">
+        <button class="profile-tab-btn active" id="tabBtnPersonal" onclick="switchWorkerDetailTab('personal')">
+          1. Hồ Sơ & Ảnh CCCD
+        </button>
+        <button class="profile-tab-btn" id="tabBtnJob" onclick="switchWorkerDetailTab('job')">
+          2. Điều Phối & Công Việc
+        </button>
+        <button class="profile-tab-btn" id="tabBtnPayroll" onclick="switchWorkerDetailTab('payroll')">
+          3. Chấm Công & Tạm Ứng
+        </button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="modal-body profile-tab-content-area">
+        <!-- TAB 1: THÔNG TIN CÁ NHÂN & ẢNH CCCD -->
+        <div class="profile-tab-pane active" id="paneDetailPersonal">
+          <!-- Personal Info Grid -->
+          <div class="profile-section-card">
+            <div class="section-card-header">
+              <span class="section-title">Thông tin định danh cá nhân</span>
+              <span class="badge-audit-logged" id="dtAuditBadge">RBAC Signed URL</span>
+            </div>
+            <div class="info-grid-3">
+              <div class="info-item">
+                <span class="info-label">Họ và tên:</span>
+                <span class="info-value strong" id="dtInfoName">Trần Văn Long</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Mã NLĐ:</span>
+                <span class="info-value" id="dtInfoCode">NLD-001</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Số điện thoại:</span>
+                <span class="info-value" id="dtInfoPhone">0981 234 567</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Số CCCD (12 số):</span>
+                <span class="info-value" id="dtInfoCitizenId">026094001234</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Quê quán:</span>
+                <span class="info-value" id="dtInfoHometown">Vĩnh Phúc</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Địa chỉ thường trú:</span>
+                <span class="info-value" id="dtInfoAddress">Khai Quang, Vĩnh Yên, Vĩnh Phúc</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Ngày sinh:</span>
+                <span class="info-value" id="dtInfoDob">15/06/1996</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Giới tính:</span>
+                <span class="info-value" id="dtInfoGender">Nam</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Nơi cấp CCCD:</span>
+                <span class="info-value">Cục CSQLHC về TTXH</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- PHOTO GALLERY: CCCD & PORTRAIT -->
+          <div class="profile-section-card">
+            <div class="section-card-header">
+              <span class="section-title">Giấy tờ tùy thân & Ảnh CCCD gắn chip</span>
+              <span class="badge-status-green">EKYC Đã xác thực</span>
+            </div>
+
+            <!-- Permission Security Warning if unprivileged -->
+            <div id="dtCccdPermissionWarning" class="cccd-security-alert" style="display: none;">
+              <span class="alert-icon"></span>
+              <div class="alert-text">
+                <strong>Chế độ xem bảo mật (Private Storage):</strong> Vai trò của bạn bị giới hạn quyền truy cập ảnh CCCD gốc. Hình ảnh hiển thị dưới dạng làm mờ theo chính sách an toàn thông tin.
+              </div>
+            </div>
+
+            <div class="cccd-cards-container" id="dtCccdContainer">
+              <!-- Portrait Photo Card -->
+              <div class="cccd-photo-card">
+                <div class="cccd-card-label">Ảnh thẻ chân dung 3x4</div>
+                <div class="portrait-photo-box" id="dtPortraitBox">
+                  <div class="portrait-avatar-placeholder" id="dtPortraitAvatar">
+                    <svg width="44" height="44" fill="none" stroke="#64748b" stroke-width="1.5" viewBox="0 0 24 24">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;" id="dtPortraitNameLabel">Ảnh chân dung</span>
+                  </div>
+                </div>
+                <div class="photo-card-footer">
+                  <span class="badge-verified">Hợp lệ</span>
+                  <button type="button" class="btn-sm-text" onclick="alert('Đã cập nhật ảnh chân dung mới')">Đổi ảnh</button>
+                </div>
+              </div>
+
+              <!-- CCCD Front Side -->
+              <div class="cccd-photo-card cccd-card-wide">
+                <div class="cccd-card-label">CCCD Mặt trước (Có Chip & Quốc huy)</div>
+                <div class="cccd-mockup-front" id="dtCccdFront">
+                  <div class="cccd-mockup-header">
+                    <div class="cccd-emblem"></div>
+                    <div class="cccd-title-block">
+                      <span class="cccd-nation">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</span>
+                      <span class="cccd-doc-name">CĂN CƯỚC CÔNG DÂN / CITIZEN IDENTITY CARD</span>
+                    </div>
+                  </div>
+                  <div class="cccd-mockup-body">
+                    <div class="cccd-chip-icon">
+                      <div class="chip-inner"></div>
+                    </div>
+                    <div class="cccd-photo-thumb" id="dtCccdThumb">
+                      <span id="dtThumbInitials">3x4</span>
+                    </div>
+                    <div class="cccd-info-lines">
+                      <div class="cccd-line-num">Số / No.: <strong id="dtCccdCardNum">026 094 001234</strong></div>
+                      <div class="cccd-line">Họ và tên: <strong id="dtCccdCardName">TRẦN VĂN LONG</strong></div>
+                      <div class="cccd-line">Ngày sinh: <span id="dtCccdCardDob">15/06/1996</span> - Giới tính: <span id="dtCccdCardGender">Nam</span></div>
+                      <div class="cccd-line">Quê quán: <span id="dtCccdCardOrigin">Vĩnh Phúc</span></div>
+                      <div class="cccd-line">Nơi thường trú: <span id="dtCccdCardAddress">Khai Quang, Vĩnh Yên, Vĩnh Phúc</span></div>
+                    </div>
+                    <div class="cccd-qr-box">
+                      <div class="cccd-qr-pattern"></div>
+                      <span style="font-size: 8px; color: #475569;">QR Code</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="photo-card-footer">
+                  <span class="badge-verified">Mặt trước rõ nét</span>
+                  <button type="button" class="btn-sm-text" onclick="alert('Đang hiển thị ảnh gốc mặt trước độ phân giải cao...')">Phóng to</button>
+                </div>
+              </div>
+
+              <!-- CCCD Back Side -->
+              <div class="cccd-photo-card cccd-card-wide">
+                <div class="cccd-card-label">CCCD Mặt sau (Chip điện tử & MRZ)</div>
+                <div class="cccd-mockup-back" id="dtCccdBack">
+                  <div class="cccd-back-top">
+                    <div class="cccd-fingerprint-box">
+                      <span style="font-size: 8.5px; color: #64748b;">Đặc điểm: Nốt ruồi c.1cm dưới sau mép phải</span>
+                    </div>
+                    <div class="cccd-seal-box">
+                      <div class="seal-circle">CỤC CSQLHC</div>
+                      <span style="font-size: 8.5px; color: #475569;">Cấp: 10/08/2021</span>
+                    </div>
+                    <div class="cccd-gold-chip">
+                      <div class="gold-chip-core"></div>
+                    </div>
+                  </div>
+                  <div class="cccd-mrz-lines" id="dtCccdMrz">
+                    <code id="dtCccdMrzLine1">IDVNM026094001234&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code><br>
+                    <code>9606152M3106155VNM&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;6</code><br>
+                    <code id="dtCccdMrzName">TRAN&lt;&lt;VAN&lt;LONG&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>
+                  </div>
+                </div>
+                <div class="photo-card-footer">
+                  <span class="badge-verified">Mặt sau hợp lệ</span>
+                  <button type="button" class="btn-sm-text" onclick="alert('Đang hiển thị ảnh gốc mặt sau độ phân giải cao...')">Phóng to</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: ĐIỀU PHỐI & CÔNG VIỆC -->
+        <div class="profile-tab-pane" id="paneDetailJob">
+          <div class="profile-section-card">
+            <div class="section-card-header">
+              <span class="section-title">Thông tin vị trí & Đơn vị tiếp nhận</span>
+            </div>
+            <div class="info-grid-2">
+              <div class="info-item">
+                <span class="info-label">Doanh nghiệp tiếp nhận:</span>
+                <span class="info-value strong" id="dtJobCompany">WESUM Việt Nam</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Địa điểm KCN:</span>
+                <span class="info-value" id="dtJobLocation">KCN Khai Quang, TP. Vĩnh Yên, Vĩnh Phúc</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Vị trí đảm nhiệm:</span>
+                <span class="info-value" id="dtJobPosition">Công nhân lắp ráp</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Loại hình hợp đồng:</span>
+                <span class="info-value" id="dtJobType">Lao động thời vụ</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Ca làm việc mặc định:</span>
+                <span class="info-value">Ca 1 (08:00 - 17:00)</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Người tuyển dụng phụ trách:</span>
+                <span class="info-value" id="dtJobRecruiter">Trần Thu Hà</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-section-card">
+            <div class="section-card-header">
+              <span class="section-title">Tiến độ & Lịch sử điều phối</span>
+            </div>
+            <div class="timeline-list">
+              <div class="timeline-item">
+                <div class="timeline-dot success"></div>
+                <div class="timeline-content">
+                  <div class="timeline-title">Bắt đầu làm việc tại nhà máy</div>
+                  <div class="timeline-desc">Đã hoàn thành thủ tục check-in đầu ca, cấp thẻ ra vào và bảo hộ lao động.</div>
+                  <div class="timeline-time">01/10/2026 07:45 · Điều phối viên: Trần Thu Hà</div>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot info"></div>
+                <div class="timeline-content">
+                  <div class="timeline-title">Tiếp nhận hồ sơ & Duyệt ảnh CCCD</div>
+                  <div class="timeline-desc">Hồ sơ CCCD đã tải lên và đối soát EKYC thành công, đủ điều kiện cung ứng.</div>
+                  <div class="timeline-time">29/09/2026 14:20 · Người duyệt: Trần Thu Hà</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: CHẤM CÔNG & QUYẾT TOÁN TẠM ỨNG -->
+        <div class="profile-tab-pane" id="paneDetailPayroll">
+          <div class="summary-kpi-row" style="margin-bottom: 16px;">
+            <div class="kpi-mini-card">
+              <div class="kpi-mini-title">TỔNG NGÀY CÔNG (T10)</div>
+              <div class="kpi-mini-val" id="dtPayrollDays" style="color: var(--primary-blue);">5 ngày</div>
+              <div class="kpi-mini-sub">Đơn giá: <strong id="dtPayrollRate">280.000đ/ngày</strong></div>
+            </div>
+            <div class="kpi-mini-card">
+              <div class="kpi-mini-title">TỔNG LƯƠNG TÍCH LŨY</div>
+              <div class="kpi-mini-val" id="dtPayrollGross" style="color: var(--color-success);">1.400.000đ</div>
+              <div class="kpi-mini-sub">Tạm tính theo công</div>
+            </div>
+            <div class="kpi-mini-card">
+              <div class="kpi-mini-title">ĐÃ TẠM ỨNG</div>
+              <div class="kpi-mini-val" id="dtPayrollAdvance" style="color: var(--color-danger);">500.000đ</div>
+              <div class="kpi-mini-sub">Đã giải ngân tiền mặt</div>
+            </div>
+            <div class="kpi-mini-card">
+              <div class="kpi-mini-title">THỰC NHẬN CÒN LẠI</div>
+              <div class="kpi-mini-val" id="dtPayrollNet" style="color: #0284c7;">900.000đ</div>
+              <div class="kpi-mini-sub">Sẽ quyết toán cuối kỳ</div>
+            </div>
+          </div>
+
+          <div class="profile-section-card">
+            <div class="section-card-header">
+              <span class="section-title">Lịch sử chấm công GPS các ngày gần nhất</span>
+              <button type="button" class="btn-sm btn-primary" onclick="openAdvanceModalForCurrentWorker()">+ Tạo tạm ứng</button>
+            </div>
+            <div class="table-responsive">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Ngày</th>
+                    <th>Ca làm việc</th>
+                    <th>Giờ vào</th>
+                    <th>Giờ ra</th>
+                    <th>Tọa độ GPS</th>
+                    <th>Công</th>
+                    <th>Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody id="dtAttendanceRows">
+                  <tr>
+                    <td>05/10/2026</td>
+                    <td>Ca 1 (08:00 - 17:00)</td>
+                    <td><strong style="color: var(--color-success);">07:50</strong></td>
+                    <td>17:05</td>
+                    <td><code>21.3129, 105.6022</code></td>
+                    <td><strong>1.0</strong></td>
+                    <td><span class="status-pill success">Hợp lệ</span></td>
+                  </tr>
+                  <tr>
+                    <td>04/10/2026</td>
+                    <td>Ca 1 (08:00 - 17:00)</td>
+                    <td><strong style="color: var(--color-success);">07:52</strong></td>
+                    <td>17:00</td>
+                    <td><code>21.3128, 105.6021</code></td>
+                    <td><strong>1.0</strong></td>
+                    <td><span class="status-pill success">Hợp lệ</span></td>
+                  </tr>
+                  <tr>
+                    <td>03/10/2026</td>
+                    <td>Ca 1 (08:00 - 17:00)</td>
+                    <td><strong style="color: var(--color-success);">07:48</strong></td>
+                    <td>17:02</td>
+                    <td><code>21.3129, 105.6023</code></td>
+                    <td><strong>1.0</strong></td>
+                    <td><span class="status-pill success">Hợp lệ</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer" style="justify-content: space-between;">
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-secondary" onclick="openEditWorkerModalFromDetail()">Sửa thông tin</button>
+          <button type="button" class="btn-secondary" onclick="downloadWorkerProfilePdf()">Tải hồ sơ (PDF)</button>
+        </div>
+        <button type="button" class="btn-primary" onclick="closeModal('modalWorkerDetail')">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Thêm Người Lao Động -->
+  <div class="modal-overlay" id="modalCreateWorker">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Tạo Hồ sơ Người Lao Động Mới</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalCreateWorker')">&times;</button>
+      </div>
+      <form id="formCreateWorker" onsubmit="handleCreateWorker(event)">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Mã Người lao động *</label>
+              <input type="text" id="wCode" class="form-input" required placeholder="VD: NLD-009">
+            </div>
+            <div class="form-group">
+              <label>Họ và tên *</label>
+              <input type="text" id="wName" class="form-input" required placeholder="VD: Nguyễn Văn Nam">
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Số điện thoại *</label>
+              <input type="tel" id="wPhone" class="form-input" required placeholder="09xx xxx xxx">
+            </div>
+            <div class="form-group">
+              <label>Số CCCD / Định danh *</label>
+              <input type="text" id="wCitizenId" class="form-input" required placeholder="12 chữ số CCCD">
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Quê quán / Địa chỉ</label>
+              <input type="text" id="wHometown" class="form-input" placeholder="VD: Vĩnh Phúc, Phú Thọ...">
+            </div>
+            <div class="form-group">
+              <label>Công ty làm việc</label>
+              <select id="wCompany" class="form-select">
+                <option value="WESUM">WESUM - KCN Khai Quang</option>
+                <option value="OJTEK">OJTEK - KCN Bá Thiện</option>
+                <option value="SUNGJEE">SUNGJEE - KCN Bình Xuyên</option>
+                <option value="AMO">AMO - KCN Quang Minh</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Loại hình lao động</label>
+              <select id="wType" class="form-select">
+                <option value="Thời vụ">Thời vụ</option>
+                <option value="Chính thức">Chính thức</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Nhân viên phụ trách tuyển</label>
+              <select id="wRecruiter" class="form-select">
+                <option value="Trần Thu Hà">Trần Thu Hà</option>
+                <option value="Vũ Văn Cường">Vũ Văn Cường</option>
+                <option value="Đỗ Minh Thắng">Đỗ Minh Thắng</option>
+                <option value="Vendor DJC">Vendor DJC</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalCreateWorker')">Hủy</button>
+          <button type="submit" class="btn-primary">Lưu hồ sơ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Chỉnh Sửa Người Lao Động -->
+  <div class="modal-overlay" id="modalEditWorker">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Chỉnh Sửa Hồ Sơ Người Lao Động</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalEditWorker')">&times;</button>
+      </div>
+      <form id="formEditWorker" onsubmit="handleEditWorker(event)">
+        <input type="hidden" id="editWorkerId">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Mã Người lao động *</label>
+              <input type="text" id="editWCode" class="form-input" required readonly style="background: #f1f5f9;">
+            </div>
+            <div class="form-group">
+              <label>Họ và tên *</label>
+              <input type="text" id="editWName" class="form-input" required>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Số điện thoại *</label>
+              <input type="tel" id="editWPhone" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Quê quán / Địa chỉ</label>
+              <input type="text" id="editWHometown" class="form-input">
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Công ty làm việc</label>
+              <select id="editWCompany" class="form-select">
+                <option value="WESUM">WESUM - KCN Khai Quang</option>
+                <option value="OJTEK">OJTEK - KCN Bá Thiện</option>
+                <option value="SUNGJEE">SUNGJEE - KCN Bình Xuyên</option>
+                <option value="AMO">AMO - KCN Quang Minh</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Vị trí công việc</label>
+              <input type="text" id="editWPosition" class="form-input" required>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Loại hình lao động</label>
+              <select id="editWType" class="form-select">
+                <option value="Thời vụ">Thời vụ</option>
+                <option value="Chính thức">Chính thức</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Trạng thái</label>
+              <select id="editWStatus" class="form-select">
+                <option value="Đang làm">Đang làm</option>
+                <option value="Chờ đi làm">Chờ đi làm</option>
+                <option value="Tạm nghỉ">Tạm nghỉ</option>
+                <option value="Không đi làm">Không đi làm</option>
+                <option value="Nghỉ việc">Nghỉ việc</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalEditWorker')">Hủy</button>
+          <button type="submit" class="btn-primary">Lưu thay đổi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Xem CCCD Bảo Mật -->
+  <div class="modal-overlay" id="modalViewCCCD">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>Tài liệu CCCD Bảo Mật (Private)</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalViewCCCD')">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;" id="cccdWorkerName">
+          Hồ sơ: Nguyễn Văn A - CCCD: 02609400****
+        </div>
+        <div style="background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: var(--radius-md); padding: 30px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+          <svg width="48" height="48" fill="none" stroke="#0052cc" stroke-width="1.5" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+            <circle cx="9" cy="10" r="2"></circle>
+            <line x1="15" y1="8" x2="17" y2="8"></line>
+            <line x1="15" y1="12" x2="17" y2="12"></line>
+            <line x1="7" y1="16" x2="17" y2="16"></line>
+          </svg>
+          <div style="font-size: 14px; font-weight: 700; color: var(--text-main);">Ảnh CCCD đã được mã hóa trên Private Storage</div>
+          <div style="font-size: 11.5px; color: var(--text-muted);">Truy cập bằng Signed URL tạm thời (Hết hạn sau 5 phút). Đã ghi nhận Audit Log.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModal('modalViewCCCD')">Đóng</button>
+        <button type="button" class="btn-primary" onclick="alert('Đã tải tài liệu bảo mật thành công (Audit log recorded).')">Tải tài liệu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Check-in Chấm công GPS -->
+  <div class="modal-overlay" id="modalCheckIn">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>Ghi nhận Check-in Chấm công GPS</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalCheckIn')">&times;</button>
+      </div>
+      <form onsubmit="handleCheckIn(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Chọn Người lao động *</label>
+            <select class="form-select" id="ciWorker" required>
+              <option value="NLD-001">NLD-001 - Trần Văn Long (WESUM)</option>
+              <option value="NLD-002">NLD-002 - Lê Thị Mai (WESUM)</option>
+              <option value="NLD-003">NLD-003 - Nguyễn Văn Tuấn (OJTEK)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Địa điểm làm việc</label>
+            <input type="text" class="form-input" value="WESUM - KCN Khai Quang (21.3128, 105.6021)" readonly>
+          </div>
+          <div class="form-group">
+            <label>Vị trí GPS hiện tại</label>
+            <input type="text" class="form-input" value="21.3129, 105.6022 (Cách cổng 15m - HỢP LỆ)" readonly style="color: var(--color-success); font-weight: 600;">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalCheckIn')">Hủy</button>
+          <button type="submit" class="btn-primary">Xác nhận Check-in</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Thêm Tạm ứng -->
+  <div class="modal-overlay" id="modalCreateAdvance">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>Phiếu Tạm Ứng Lao Động Thời Vụ</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalCreateAdvance')">&times;</button>
+      </div>
+      <form onsubmit="handleCreateAdvance(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Chọn Người lao động *</label>
+            <select class="form-select" id="advWorker" required>
+              <option value="NLD-001">NLD-001 - Trần Văn Long (Đã làm 5 ngày)</option>
+              <option value="NLD-002">NLD-002 - Lê Thị Mai (Đã làm 4 ngày)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Số tiền tạm ứng (VNĐ) *</label>
+            <input type="number" id="advAmount" class="form-input" required value="500000" step="50000">
+          </div>
+          <div class="form-group">
+            <label>Lý do tạm ứng</label>
+            <input type="text" id="advReason" class="form-input" value="Tạm ứng tiền ăn và sinh hoạt đầu tuần">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalCreateAdvance')">Hủy</button>
+          <button type="submit" class="btn-primary">Duyệt & Chi tiền</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Tạo Đơn hàng mới -->
+  <div class="modal-overlay" id="modalCreateOrder">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Tạo Đơn Hàng Cung Ứng / Nhu Cầu Tuyển Mới</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalCreateOrder')">&times;</button>
+      </div>
+      <form onsubmit="handleCreateOrder(event)">
+        <div class="modal-body">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Doanh nghiệp tiếp nhận *</label>
+              <select class="form-select" required>
+                <option>WESUM Việt Nam</option>
+                <option>OJTEK</option>
+                <option>SUNGJEE</option>
+                <option>AMO</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Tên đơn hàng *</label>
+              <input type="text" class="form-input" required placeholder="VD: Lắp ráp linh kiện T11">
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Chỉ tiêu số lượng (người) *</label>
+              <input type="number" class="form-input" required value="30">
+            </div>
+            <div class="form-group">
+              <label>Người phụ trách</label>
+              <select class="form-select">
+                <option>Trần Thu Hà</option>
+                <option>Vũ Văn Cường</option>
+                <option>Đỗ Minh Thắng</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalCreateOrder')">Hủy</button>
+          <button type="submit" class="btn-primary">Tạo đơn hàng</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Giao Chỉ tiêu cho Nhóm -->
+  <div class="modal-overlay" id="modalAssignTarget">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3>Giao Chỉ Tiêu & KPI Cho Nhóm</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalAssignTarget')">&times;</button>
+      </div>
+      <form onsubmit="handleAssignTarget(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nhóm nhận chỉ tiêu</label>
+            <input type="text" class="form-input" id="assignTeamName" value="Tuyển dụng Vĩnh Phúc" readonly>
+          </div>
+          <div class="form-group">
+            <label>Thành viên nhận chỉ tiêu</label>
+            <select class="form-select" id="assignMember">
+              <option value="Trần Thu Hà">Trần Thu Hà (Lead Vĩnh Phúc)</option>
+              <option value="Vũ Văn Cường">Vũ Văn Cường</option>
+              <option value="Đỗ Minh Thắng">Đỗ Minh Thắng</option>
+            </select>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label>Chỉ tiêu (Người) *</label>
+              <input type="number" class="form-input" id="assignNumber" value="10" min="1" required>
+            </div>
+            <div class="form-group">
+              <label>Dự án / Nhà máy</label>
+              <select class="form-select" id="assignFactory">
+                <option value="WESUM">WESUM (Lắp ráp)</option>
+                <option value="OJTEK">OJTEK (QC & Vận hành)</option>
+                <option value="SUNGJEE">SUNGJEE (Đóng gói)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalAssignTarget')">Hủy</button>
+          <button type="submit" class="btn-primary">Xác nhận giao</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

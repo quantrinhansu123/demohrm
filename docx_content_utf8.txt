@@ -1,0 +1,1360 @@
+﻿==================================================
+FILE: .\Yeu_cau_khach_hang_he_thong_quan_ly_cung_ung_lao_dong.docx
+==================================================
+TAI LI?U YEU C?U H? TH?NGGóc nhìn KHACH HANG / CH? DOANH NGHI?PH? th?ng qu?n ly cung ?ng lao d?ng
+Phiên b?n: 1.0Ngày: 05/10/2026Tài li?u dùng d? th?ng nh?t yêu c?u gi?a Khách hàng - PM/BA - Dev - QA tru?c khi tri?n khai.
+1. M?C DICH C?A H? TH?NG
+Khách hàng c?n m?t website n?i b? d? qu?n ly toàn b? ho?t d?ng cung ?ng lao d?ng cho các doanh nghi?p trong khu công nghi?p. H? th?ng ph?i giúp doanh nghi?p bi?t ro: dang cung ?ng bao nhiêu ngu?i, m?i ngu?i dang làm ? dâu, do ai tuy?n, di làm th?c t? bao nhiêu ngày, da thanh toán bao nhiêu ti?n, doanh thu/chi phí ra sao và các kho?n hoa h?ng d? ki?n là bao nhiêu.
+M?c tiêu chính:
+Thay th? vi?c qu?n ly b?ng Excel/Zalo/s? tay b?ng m?t h? th?ng t?p trung.
+Theo doi ngu?i lao d?ng t? lúc tuy?n  phân b?  di làm  ch?m công  thanh toán  ngh? vi?c.
+Theo doi s? lu?ng lao d?ng theo t?ng công ty, d?a di?m, vendor và nhân viên tuy?n d?ng.
+Có s? li?u tuy?n d?ng theo ngày/tháng/nam và theo kho?ng th?i gian b?t k?.
+Qu?n ly ti?n luong, t?m ?ng, thu/chi và hoa h?ng nhung ph?i gi?i h?n ngu?i du?c xem.
+Có l?ch s? thao tác d? bi?t ai da t?o/s?a/xem/t?i d? li?u quan tr?ng.
+Có th? m? r?ng h? th?ng sau này khi s? lu?ng lao d?ng và công ty tang.
+2. PH?M VI NGHI?P V?
+Phân h?
+Yêu c?u t? phía khách hàng
+Qu?n ly ngu?i lao d?ng
+H? so, CCCD, liên h?, quê quán, ngày b?t d?u, tình tr?ng làm vi?c và l?ch s? làm vi?c.
+Khách hàng/doanh nghi?p
+Qu?n ly công ty nh?n lao d?ng, d?a di?m làm vi?c, nhu c?u tuy?n và s? lu?ng dang làm.
+Tuy?n d?ng
+Theo doi ngu?i du?c tuy?n, nhân viên tuy?n d?ng, ngu?n tuy?n, vendor và k?t qu? di làm th?c t?.
+Phân b? lao d?ng
+Bi?t s? lu?ng du?c giao cho t?ng vendor/công ty/d?a di?m và s? lu?ng th?c t? di làm.
+Ch?m công
+Theo doi ngày/gi?/v? trí di làm; xác d?nh s? ngày làm th?c t?.
+Luong & t?m ?ng
+Nh?p kho?n thanh toán cho t?ng ngu?i, qu?n ly t?m ?ng d?i v?i lao d?ng th?i v?.
+Tài chính
+Theo doi doanh thu/chi phí/thu nh?p theo th?i gian; ch? ngu?i có quy?n m?i xem du?c.
+Hoa h?ng
+Nh?p don giá hoa h?ng và tính d? ki?n theo s? ngày làm th?c t?; ch? Giám d?c/Phó Giám d?c xem.
+Báo cáo
+Dashboard và báo cáo theo ngày/tháng/nam/kho?ng th?i gian, có b? l?c và xu?t d? li?u.
+Phân quy?n & l?ch s?
+M?i vai trò ch? du?c xem/thao tác ph?n phù h?p; luu l?ch s? thao tác quan tr?ng.
+3. VAI TRO NGU?I DUNG
+Vai trò
+M?c dích s? d?ng
+Thông tin nh?y c?m
+Giám d?c
+Qu?n ly toàn b? ho?t d?ng và tài chính.
+Du?c xem tài chính và hoa h?ng.
+Phó Giám d?c
+Di?u hành, ki?m tra ho?t d?ng.
+Du?c xem tài chính và hoa h?ng.
+Lead + Sales
+Qu?n ly khách hàng, nhu c?u tuy?n, di?u ph?i và theo doi k?t qu?.
+Không xem tài chính/hoa h?ng n?u không du?c c?p quy?n.
+Recruiter
+Tuy?n ngu?i, t?o h? so, theo doi ngu?i mình tuy?n.
+CCCD ch? du?c xem theo quy?n du?c c?p.
+Ngu?i lao d?ng
+D?i tu?ng du?c doanh nghi?p qu?n ly.
+Không ph?i tài kho?n qu?n tr? m?c d?nh.
+K? toán
+Nh?p/qu?n ly thanh toán, t?m ?ng, thu chi.
+Du?c xem tài chính theo quy?n; không m?c d?nh xem hoa h?ng.
+4. NGUYEN T?C PHAN QUY?N
+Quy?n xem và quy?n s?a ph?i du?c tách bi?t khi c?n thi?t.
+Ngu?i dùng ch? nhìn th?y ch?c nang/d? li?u mà mình du?c phép s? d?ng.
+Thông tin tài chính không du?c hi?n th? cho Recruiter/Lead/Sales n?u không có quy?n.
+Hoa h?ng d? ki?n ch? hi?n th? cho Giám d?c và Phó Giám d?c theo yêu c?u hi?n t?i.
+CCCD là d? li?u nh?y c?m v? m?t b?o m?t; vi?c xem/t?i ph?i có quy?n riêng.
+M?i thao tác quan tr?ng trên CCCD, tài chính, thanh toán và phân quy?n ph?i có l?ch s?.
+5. QU?N LY NGU?I LAO D?NG
+M?i ngu?i lao d?ng c?n có m?t h? so t?p trung. Thông tin khách hàng yêu c?u:
+Nhóm
+Thông tin c?n qu?n ly
+B?t bu?c?
+D?nh danh
+Ma ngu?i lao d?ng, h? tên, ngày sinh (n?u c?n), CCCD.
+Ma + h? tên
+Liên h?
+S? di?n tho?i, quê quán, d?a ch? liên h?.
+S? di?n tho?i
+H? so
+?nh CCCD m?t tru?c, m?t sau và tài li?u liên quan n?u có.
+Theo nghi?p v?
+Tuy?n d?ng
+Nhân viên tuy?n, ngu?n tuy?n, vendor, ngày tuy?n.
+Có
+Làm vi?c
+Công ty, d?a di?m, ngày b?t d?u, lo?i lao d?ng.
+Có
+Tr?ng thái
+Dang làm, ngh? vi?c, ch? di làm, không di làm, t?m d?ng...
+Có
+L?ch s?
+Các công ty/d?a di?m t?ng làm và th?i gian làm.
+Có
+5.1. Tr?ng thái ngu?i lao d?ng
+M?i tuy?n
+Da xác nh?n di làm
+Dang làm
+T?m ngh?
+Ngh? vi?c
+Không di làm
+Không d?t/lo?i
+5.2. Yêu c?u quan tr?ng
+M?t ngu?i không du?c t?o trùng h? so ch? vì h? du?c tuy?n l?i.
+M?t ngu?i có th? có nhi?u giai do?n làm vi?c ? các công ty khác nhau.
+Khi chuy?n công ty/d?a di?m ph?i luu l?ch s?, không ghi dè m?t l?ch s? cu.
+H? th?ng ph?i bi?t ngu?i lao d?ng da làm th?c t? bao nhiêu ngày trong t?ng giai do?n.
+6. QU?N LY CONG TY KHACH HANG VA D?A DI?M
+T?o/s?a/ng?ng s? d?ng công ty khách hàng.
+M?t công ty có th? có nhi?u d?a di?m làm vi?c.
+M?i d?a di?m có tên, d?a ch? và thông tin c?n thi?t d? ch?m công.
+Theo doi t?ng s? ngu?i dang làm t?i t?ng công ty/d?a di?m.
+Theo doi nhu c?u tuy?n c?a t?ng công ty.
+7. QU?N LY VENDOR
+Vendor là bên trung gian/d?i tác cung ?ng lao d?ng. Khách hàng c?n theo doi ngu?n vendor và s? lu?ng lao d?ng du?c phân b? cho t?ng vendor.
+Thông tin
+Yêu c?u
+Tên vendor
+B?t bu?c
+Ngu?n/ghi chú
+Cho phép ghi chú ngu?n vendor và thông tin liên quan
+S? lu?ng phân b?
+Theo t?ng yêu c?u tuy?n/công ty/d?t
+S? lu?ng th?c t?
+Theo s? ngu?i th?c t? di làm
+Chênh l?ch
+Cho bi?t thi?u/th?a so v?i s? lu?ng du?c giao
+L?ch s?
+Không m?t d? li?u phân b? cu
+8. QU?N LY TUY?N D?NG
+Khi tuy?n m?t ngu?i, h? th?ng c?n ghi nh?n ít nh?t:
+Thông tin
+Ví d? / yêu c?u
+Ngày tuy?n
+05/10/2026
+Nhân viên tuy?n
+Recruiter A
+Ngu?n
+Facebook, gi?i thi?u, vendor, website...
+Công ty c?n ngu?i
+Công ty A
+D?a di?m
+Nhà máy A - KCN X
+Lo?i lao d?ng
+Chính th?c / Th?i v?
+Ngày d? ki?n di làm
+06/10/2026
+K?t qu?
+Da di làm / Không di / Dang ch?
+Ghi chú
+Ly do, tình tr?ng h? so...
+8.1. Báo cáo tuy?n d?ng
+T?ng s? ngu?i tuy?n theo ngày.
+T?ng s? ngu?i tuy?n theo tháng.
+T?ng s? ngu?i tuy?n theo nam.
+T?ng s? ngu?i tuy?n trong kho?ng th?i gian b?t k?.
+S? ngu?i da tuy?n nhung không di làm.
+T? l? t? tuy?n  di làm.
+Th?ng kê theo Recruiter.
+Th?ng kê theo ngu?n tuy?n.
+Th?ng kê theo Vendor.
+Th?ng kê theo công ty khách hàng.
+Th?ng kê chính th?c/th?i v?.
+9. CH?M CONG / THEO DOI DI LAM
+Khách hàng c?n bi?t ngu?i lao d?ng có th?c s? di làm hay không và da làm bao nhiêu ngày. H? th?ng c?n h? tr? ch?m công g?n v?i d?a di?m và th?i gian.
+Thông tin
+Yêu c?u
+Ngu?i lao d?ng
+Xác d?nh chính xác ngu?i ch?m công
+Công ty/d?a di?m
+Bi?t ngu?i dó dang ch?m t?i dâu
+Ngày/gi?
+Luu th?i di?m ch?m công
+V? trí
+Có th? luu GPS n?u nghi?p v? yêu c?u
+Tr?ng thái
+H?p l? / không h?p l? / c?n ki?m tra
+S? ngày làm
+Tính du?c theo kho?ng th?i gian và d?t làm vi?c
+Luu y nghi?p v?: khách hàng c?n th?ng nh?t tru?c quy t?c tính '1 ngày công', ca làm, di mu?n/v? s?m, ngày ngh? và ch?m công nhi?u l?n trong ngày.
+10. LUONG, THANH TOAN VA T?M ?NG
+K? toán c?n nh?p du?c kho?n thanh toán chính xác cho t?ng ngu?i lao d?ng.
+Ch?c nang
+Yêu c?u
+Thanh toán
+Ch?n ngu?i lao d?ng, k? thanh toán, s? ti?n, ngày thanh toán, ghi chú.
+T?m ?ng
+Ap d?ng cho lao d?ng th?i v?; ghi s? ti?n, ngày t?m ?ng và tr?ng thái d?i soát.
+L?ch s?
+Xem các kho?n da thanh toán/t?m ?ng theo t?ng ngu?i.
+D?i soát
+Có th? d?i chi?u s? ngày làm v?i s? ti?n ph?i tr?.
+Báo cáo
+T?ng ti?n theo ngày/tháng/k?, công ty, ngu?i lao d?ng.
+Không du?c cho phép ngu?i không có quy?n s?a ti?n thanh toán. N?u s?a/xóa giao d?ch da ghi nh?n, ph?i luu l?ch s? thay d?i.
+11. THU NH?P - CHI PHI - TAI CHINH
+Khách hàng c?n m?t khu v?c tài chính riêng, ph?c v? vi?c nh?p và theo doi thu/chi theo ngày, tu?n, tháng và kho?ng th?i gian.
+Nh?p kho?n thu.
+Nh?p kho?n chi.
+Phân lo?i kho?n thu/chi.
+Ghi ngày, s? ti?n, n?i dung, ngu?i nh?p và d?i tu?ng liên quan.
+Xem t?ng thu, t?ng chi và chênh l?ch.
+L?c theo kho?ng th?i gian.
+Ch? ngu?i có quy?n tài chính m?i du?c xem d? li?u này.
+12. HOA H?NG D? KI?N
+Yêu c?u nghi?p v? hi?n t?i:
+N?i dung
+Yêu c?u
+Don giá
+Nh?p th? công don giá hoa h?ng.
+S? ngày làm
+L?y theo s? ngày làm th?c t? da du?c h? th?ng ghi nh?n.
+Công th?c
+Hoa h?ng d? ki?n = Don giá x S? ngày làm th?c t?.
+Ngu?i du?c xem
+Ch? Giám d?c và Phó Giám d?c theo yêu c?u hi?n t?i.
+L?ch s?
+Có th? ki?m tra don giá và s? ngày dùng d? tính.
+Di?u ch?nh
+N?u có di?u ch?nh th? công ph?i ghi nh?n ngu?i di?u ch?nh và ly do.
+13. DASHBOARD / TRANG T?NG QUAN
+Trang t?ng quan c?n giúp ngu?i qu?n ly nhìn nhanh tình hình kinh doanh.
+Khu v?c
+Thông tin mong mu?n
+Ngu?i lao d?ng
+T?ng s?, dang làm, ngh?, ch? di làm, theo công ty.
+Tuy?n d?ng
+S? ngu?i tuy?n hôm nay/tháng/nam/kho?ng th?i gian; t? l? di làm.
+Công ty
+S? ngu?i dang làm t?i t?ng công ty/d?a di?m.
+Vendor
+S? lu?ng du?c giao, th?c t? di làm, chênh l?ch.
+Ch?m công
+T?ng ngày công, ngu?i v?ng, s? ngày làm theo công ty.
+Thanh toán
+T?ng ti?n da thanh toán/t?m ?ng theo k?.
+Tài chính
+Thu, chi, chênh l?ch - ch? ngu?i có quy?n.
+Hoa h?ng
+Hoa h?ng d? ki?n - ch? Giám d?c/Phó Giám d?c.
+14. TIM KI?M, L?C VA XU?T D? LI?U
+Tìm ngu?i lao d?ng theo tên, s? di?n tho?i ho?c ma.
+L?c theo công ty, d?a di?m, vendor, recruiter, tr?ng thái.
+L?c theo ngày/tháng/nam ho?c kho?ng th?i gian b?t k?.
+Có th? l?c chính th?c/th?i v?.
+Các b?ng d? li?u l?n c?n có phân trang.
+Cho phép xu?t Excel/CSV d?i v?i các báo cáo du?c phép xu?t.
+D? li?u nh?y c?m nhu CCCD/tài chính ph?i tuân theo quy?n khi xu?t.
+15. YEU C?U D?I V?I CCCD VA D? LI?U CA NHAN
+Khách hàng yêu c?u h? th?ng b?o v? h? so CCCD và d? li?u cá nhân, không du?c coi dây là file thông thu?ng.
+?nh CCCD không du?c d? ? noi công khai mà b?t k? ai có link cung xem du?c.
+Ch? ngu?i có quy?n m?i du?c xem/t?i.
+H? th?ng ph?i ki?m tra quy?n ? phía server, không ch? ?n nút trên giao di?n.
+Có th? dùng link truy c?p t?m th?i cho ?nh CCCD thay vì link công khai c? d?nh.
+Luu l?ch s? ai da xem/t?i/thay d?i tài li?u.
+Không ghi ?nh CCCD ho?c thông tin nh?y c?m vào log ?ng d?ng.
+Có chính sách luu tr?/xóa d? li?u theo th?i gian và yêu c?u th?c t? c?a doanh nghi?p.
+Khi tri?n khai cloud, c?n th?ng nh?t noi luu tr? d? li?u và yêu c?u pháp ly liên quan tru?c khi dua d? li?u th?t lên h? th?ng.
+16. L?CH S? THAO TAC
+Khách hàng mu?n ki?m tra du?c các thao tác quan tr?ng.
+D?i tu?ng
+C?n luu l?ch s?
+Ngu?i lao d?ng
+T?o/s?a/tr?ng thái/h? so
+CCCD
+Xem/t?i/thêm/xóa/thay d?i
+Ch?m công
+T?o/s?a/xóa/di?u ch?nh
+Thanh toán
+T?o/s?a/xóa/duy?t n?u có
+Tài chính
+T?o/s?a/xóa giao d?ch
+Hoa h?ng
+Thay d?i don giá/di?u ch?nh
+Phân quy?n
+T?o/s?a/khóa tài kho?n ho?c thay d?i quy?n
+17. DANH SACH MAN HINH KHACH HANG MONG MU?N
+STT
+Màn hình
+M?c dích
+1
+Dang nh?p
+Dang nh?p tài kho?n và ki?m soát quy?n.
+2
+Dashboard
+T?ng quan s? ngu?i, tuy?n d?ng, ch?m công, thanh toán, tài chính theo quy?n.
+3
+Ngu?i lao d?ng
+Danh sách, tìm ki?m, l?c, t?o/s?a h? so.
+4
+Chi ti?t ngu?i lao d?ng
+Thông tin cá nhân, CCCD, tuy?n d?ng, l?ch s? làm vi?c, ch?m công, thanh toán.
+5
+Công ty khách hàng
+Danh sách công ty và d?a di?m.
+6
+Nhu c?u tuy?n
+S? lu?ng c?n tuy?n, lo?i lao d?ng, th?i gian, d?a di?m, tr?ng thái.
+7
+Tuy?n d?ng
+Danh sách ngu?i du?c tuy?n và k?t qu? di làm.
+8
+Vendor
+Danh sách vendor và phân b? lao d?ng.
+9
+Ch?m công
+Theo doi ch?m công theo ngu?i/công ty/ngày.
+10
+Thanh toán
+K? toán nh?p và xem thanh toán cho ngu?i lao d?ng.
+11
+T?m ?ng
+Theo doi t?m ?ng lao d?ng th?i v?.
+12
+Tài chính
+Thu/chi và báo cáo tài chính theo quy?n.
+13
+Hoa h?ng
+Don giá x ngày làm; ch? ngu?i du?c quy?n xem.
+14
+Báo cáo
+Báo cáo tuy?n d?ng, lao d?ng, công ty, vendor, ch?m công.
+15
+Tài kho?n & phân quy?n
+Qu?n ly user và quy?n.
+16
+L?ch s? thao tác
+Tra c?u audit log theo quy?n.
+18. TIEU CHI NGHI?M THU C?P NGHI?P V?
+Phân h?
+Di?u ki?n
+K?t qu? mong mu?n
+Worker
+T?o du?c h? so và tìm ki?m chính xác.
+D?t khi không m?t d? li?u và có tr?ng thái ro ràng.
+CCCD
+Ch? ngu?i có quy?n xem/t?i du?c.
+Tài kho?n không có quy?n không th? truy c?p tr?c ti?p.
+Recruitment
+Th?ng kê du?c s? tuy?n và s? th?c t? di làm.
+S? li?u l?c dúng theo kho?ng th?i gian.
+Assignment
+Bi?t ngu?i dang làm công ty/d?a di?m nào.
+Có l?ch s? khi chuy?n noi làm.
+Attendance
+Tính du?c s? ngày làm.
+Có d? li?u ngày/gi? và quy t?c tính ro ràng.
+Vendor
+Theo doi du?c giao bao nhiêu và th?c t? bao nhiêu.
+Có chênh l?ch.
+Payment
+Nh?p chính xác s? ti?n cho t?ng ngu?i.
+Có l?ch s? thanh toán.
+Advance
+Qu?n ly du?c t?m ?ng.
+Theo doi du?c da t?m ?ng và d?i soát.
+Finance
+Ch? ngu?i có quy?n du?c xem.
+Không l? trên dashboard c?a vai trò khác.
+Commission
+Tính dúng don giá x ngày làm.
+Ch? Giám d?c/Phó Giám d?c xem.
+Audit
+Tra du?c ai da thao tác.
+Có th?i gian, ngu?i thao tác và hành d?ng.
+Report
+L?c theo ngày/tháng/nam/kho?ng th?i gian.
+S? li?u nh?t quán v?i d? li?u chi ti?t.
+19. CAC TINH HU?NG TH?C T? DEV C?N HI?U
+Tình hu?ng
+Cách h? th?ng c?n x? ly
+Ngu?i A du?c Recruiter tuy?n
+T?o h? so  ghi nh?n ngu?n tuy?n  g?n Recruiter  g?n công ty/d?a di?m  xác d?nh lo?i lao d?ng.
+Ngu?i A không di làm
+Gi? l?i l?ch s? tuy?n nhung tr?ng thái k?t qu? là không di làm; không tính ngày công th?c t?.
+Ngu?i A di làm
+Chuy?n tr?ng thái sang dang làm và b?t d?u ghi nh?n ch?m công.
+Ngu?i A chuy?n công ty
+T?o giai do?n làm vi?c m?i; không xóa l?ch s? công ty cu.
+Vendor giao 50 ngu?i nhung ch? 42 ngu?i di làm
+H? th?ng th? hi?n 50 du?c phân b?, 42 th?c t?, thi?u 8.
+Lao d?ng th?i v? c?n ?ng ti?n
+K? toán t?o kho?n t?m ?ng g?n v?i dúng ngu?i và giai do?n làm vi?c.
+Giám d?c xem hoa h?ng
+H? th?ng l?y don giá da nh?p x s? ngày làm th?c t?.
+Recruiter m? h? so
+Ch? th?y d? li?u n?m trong ph?m vi quy?n; không du?c t? y xem tài chính/hoa h?ng.
+K? toán nh?p thanh toán
+Nh?p dúng ngu?i, ngày, k?, s? ti?n; d? li?u du?c luu l?ch s?.
+Ngu?i có quy?n s?a d? li?u
+H? th?ng luu ngu?i s?a, th?i di?m và n?i dung thay d?i quan tr?ng.
+20. CAC N?I DUNG KHACH HANG C?N CH?T TRU?C KHI DEV CODE
+Ch?m công b?ng GPS trên di?n tho?i, máy tính hay tích h?p máy ch?m công?
+Kho?ng cách GPS cho phép so v?i d?a di?m làm vi?c là bao nhiêu mét?
+Th? nào du?c tính là 1 ngày công?
+Có ca sáng/chi?u/dêm hay ch? 1 ngày công/ngày?
+Ngày ngh?/l? có quy t?c riêng không?
+Ngu?i lao d?ng có t? dang nh?p h? th?ng hay ch? nhân viên n?i b? nh?p d? li?u?
+Ai du?c xem toàn b? CCCD? Recruiter ch? xem ngu?i mình tuy?n hay xem t?t c??
+Ai du?c t?i CCCD xu?ng máy?
+Bao lâu ph?i xóa/?n CCCD sau khi ngu?i lao d?ng ngh??
+Có c?n xu?t CCCD hàng lo?t không?
+Kho?n thanh toán có c?n tr?ng thái ch? duy?t/da duy?t không?
+Kho?n t?m ?ng du?c tr? vào luong theo cách nào?
+Doanh thu t? m?i công ty du?c nh?p th? công hay l?y theo s? ngày công?
+Công th?c hoa h?ng có tru?ng h?p d?c bi?t ngoài don giá x ngày công không?
+Lead/Sales có du?c xem s? ti?n hay ch? s? lu?ng lao d?ng?
+Có c?n phân quy?n theo t?ng công ty/chi nhánh không?
+Có c?n g?i thông báo khi ngu?i lao d?ng không di làm không?
+Có c?n tích h?p Zalo/SMS/email v? sau không?
+Website ch? dùng n?i b? qua VPN/LAN hay ph?i truy c?p Internet?
+D? li?u s? luu trên server c?a công ty hay cloud?
+21. PHAN CHIA M?C D? UU TIEN
+M?c
+N?i dung
+P0 - B?t bu?c
+Dang nh?p/phân quy?n; ngu?i lao d?ng; công ty/d?a di?m; tuy?n d?ng; phân b?; ch?m công; thanh toán; t?m ?ng; báo cáo co b?n; b?o v? CCCD.
+P1 - Quan tr?ng
+Vendor; tài chính; hoa h?ng; audit log; xu?t báo cáo; dashboard nâng cao.
+P2 - Có th? làm sau
+Thông báo t? d?ng; tích h?p Zalo/SMS; app mobile riêng; tích h?p máy ch?m công; t? d?ng hóa nâng cao.
+22. GHI CHU CHO D?I PHAT TRI?N
+Tài li?u này mô t? yêu c?u t? góc nhìn khách hàng; Dev/BA c?n chuy?n thành thi?t k? UI, API, database và test case.
+Không t? y b? tru?ng d? li?u ho?c nghi?p v? quan tr?ng vì 'có th? làm b?ng Excel' mà chua xác nh?n v?i khách hàng.
+N?u có di?m chua ro, ph?i dua vào danh sách câu h?i c?n ch?t thay vì t? suy doán.
+Các d? li?u nh?y c?m ph?i du?c b?o v? ngay t? thi?t k?, không ch? d?n giai do?n cu?i.
+Các con s? trên dashboard ph?i truy du?c v? d? li?u chi ti?t d? khách hàng có th? d?i soát.
+Tài chính và hoa h?ng ph?i du?c tách quy?n ro ràng.
+L?ch s? làm vi?c c?a ngu?i lao d?ng không du?c m?t khi có thay d?i công ty/d?a di?m.
+Tru?c khi nghi?m thu c?n dùng d? li?u m?u g?n gi?ng th?c t? d? ki?m tra toàn b? lu?ng.
+23. K?T QU? MONG MU?N SAU KHI HOAN THANH
+Khách hàng có th? m? h? th?ng và tr? l?i nhanh các câu h?i qu?n ly quan tr?ng: Hôm nay có bao nhiêu ngu?i tuy?n? Bao nhiêu ngu?i th?c s? di làm? Ai dang làm ? công ty nào? Do Recruiter/Vendor nào tuy?n? Công ty nào dang thi?u ngu?i? M?i ngu?i da làm bao nhiêu ngày? Da thanh toán bao nhiêu? Dang t?m ?ng bao nhiêu? Doanh nghi?p thu/chi bao nhiêu? Hoa h?ng d? ki?n bao nhiêu? Và quan tr?ng nh?t là m?i d? li?u có th? ki?m tra l?i du?c ngu?n g?c.
+- H?T -
+==================================================
+FILE: .\Dac_ta_he_thong_quan_ly_cung_ung_lao_dong.docx
+==================================================
+TAI LI?U D?C T? H? TH?NGQU?N LY CUNG ?NG LAO D?NG
+Tài li?u yêu c?u g?i d?i Dev / Backend / Frontend / DevOps
+Phiên b?n: 1.0 | Ngày: 05/10/2026
+1. M?c tiêu và ph?m vi
+H? th?ng là website n?i b? ph?c v? công ty cung ?ng lao d?ng ph? thông cho nhi?u doanh nghi?p/khu công nghi?p. H? th?ng ph?i qu?n ly xuyên su?t t? nhu c?u tuy?n d?ng, ngu?n/Vendor, h? so NLD, phân công noi làm vi?c, di?m danh, s? công th?c t?, luong/?ng luong, thu chi và hoa h?ng d? ki?n.
+Qu?n ly nhân viên n?i b?: Giám d?c, Phó giám d?c, Lead/Kinh doanh, Tuy?n d?ng, K? toán.
+Qu?n ly NLD: h? so, CCCD, liên h?, quê quán, ngu?i tuy?n, ngu?n tuy?n, tr?ng thái.
+Qu?n ly khách hàng/doanh nghi?p ti?p nh?n NLD và các d?a di?m làm vi?c.
+Qu?n ly Vendor và h?n m?c/s? lu?ng NLD Vendor du?c c?p.
+Theo doi di?m danh theo ngày, gi? và v? trí GPS.
+Th?ng kê tuy?n d?ng theo ngày/tháng/nam và theo nhân viên, ngu?n, Vendor, công ty, lo?i hình chính th?c/th?i v?.
+Qu?n ly luong ngày, luong tu?n, ?ng luong cho lao d?ng th?i v?.
+Qu?n ly thu/chi và hoa h?ng d? ki?n v?i phân quy?n ch?t ch?.
+Luu audit log d?i v?i các thao tác nh?y c?m.
+Dóng gói và tri?n khai b?ng Docker/CI/CD; có backup và giám sát.
+2. Ki?n trúc t?ng th?
+Frontend: Next.js ho?c framework tuong duong; uu tiên TypeScript.
+Backend: Node.js + Express/NestJS; RESTful API.
+Database: PostgreSQL (khuy?n ngh?) ho?c MySQL n?u team da chu?n hóa.
+Reverse proxy: Nginx; HTTPS b?t bu?c.
+Container: Docker; Docker Compose cho môi tru?ng don server.
+CI/CD: GitHub Actions; build/test/image push/deploy.
+Container registry: GHCR ho?c registry doanh nghi?p.
+Private Object Storage: S3-compatible/MinIO/R2/AWS S3 tùy quy?t d?nh pháp ly và h? t?ng.
+Redis: tùy ch?n ? MVP; có th? dùng cho cache/rate limit/queue.
+Server: Ubuntu LTS; không public DB/Redis.
+3. Lu?ng nghi?p v? t?ng quát
+4. Phân quy?n h? th?ng
+Khuy?n ngh? RBAC + Permission. Không ki?m soát quy?n ch? ? frontend; backend ph?i ki?m tra quy?n cho m?i API.
+Role
+Ph?m vi
+Quy?n chính
+DIRECTOR
+Toàn h? th?ng
+Du?c xem/qu?n ly toàn b?, g?m tài chính và hoa h?ng
+VICE_DIRECTOR
+Toàn h? th?ng
+Tuong t? BGD theo chính sách công ty; du?c xem tài chính/hoa h?ng
+LEAD
+Qu?n ly v?n hành
+Tuy?n d?ng, NLD, di?m danh, th?ng kê; không xem tài chính/hoa h?ng
+SALES
+Kinh doanh
+Khách hàng, nhu c?u tuy?n, ti?n d?; không xem CCCD n?u không c?n
+RECRUITER
+Tuy?n d?ng
+T?o/c?p nh?t h? so NLD, tuy?n d?ng, theo doi tr?ng thái; CCCD theo permission
+ACCOUNTANT
+K? toán
+Luong, ?ng luong, thu/chi; không m?c d?nh du?c xem hoa h?ng
+4.1. Permission d? xu?t
+Permission
+Mô t?
+WORKER_VIEW
+Xem h? so NLD
+WORKER_CREATE
+T?o NLD
+WORKER_UPDATE
+S?a NLD
+WORKER_DELETE
+Xóa/khóa h? so theo policy
+CCCD_VIEW
+Xem ?nh CCCD
+CCCD_DOWNLOAD
+T?i ?nh CCCD
+RECRUITMENT_VIEW
+Xem tuy?n d?ng
+RECRUITMENT_CREATE
+T?o b?n ghi tuy?n d?ng
+ATTENDANCE_VIEW
+Xem di?m danh
+ATTENDANCE_CREATE
+Ghi/ch?m công
+PAYROLL_VIEW
+Xem luong
+PAYROLL_CREATE
+T?o b?ng/phi?u thanh toán
+ADVANCE_CREATE
+T?o ?ng luong
+FINANCE_VIEW
+Xem thu chi
+FINANCE_CREATE
+T?o giao d?ch thu chi
+COMMISSION_VIEW
+Xem hoa h?ng d? ki?n
+AUDIT_VIEW
+Xem audit log
+USER_MANAGE
+Qu?n ly tài kho?n/quy?n
+4.2. Ma tr?n quy?n m?c d?nh
+Module
+DIRECTOR
+VICE_DIRECTOR
+LEAD
+SALES
+RECRUITER
+ACCOUNTANT
+NLD
+CRUD
+CRUD
+CRU
+R
+CRUD
+R
+Tuy?n d?ng
+CRUD
+CRUD
+CRU
+CRU
+CRU
+R
+Di?m danh
+R
+R
+R
+R
+CR
+R
+Luong
+CRUD
+CRUD
+R
+-
+-
+CRUD
+?ng luong
+CRUD
+CRUD
+R
+-
+-
+CRUD
+Thu/Chi
+CRUD
+CRUD
+R
+-
+-
+CRUD
+Hoa h?ng
+R
+R
+-
+-
+-
+-
+CCCD
+R/D
+R/D
+-
+-
+theo policy
+-
+Audit
+R
+R
+R
+-
+-
+R
+5. D?c t? co s? d? li?u
+Các b?ng du?i dây là b? khung d? xu?t. Dev có th? b? sung created_at, updated_at, soft-delete, indexes và foreign keys theo chu?n d? án.
+5.1. B?ng users
+Field
+Type
+M?c dích
+id
+bigint PK
+ID nhân viên
+full_name
+varchar(255)
+H? tên
+phone
+varchar(20) UNIQUE
+S? di?n tho?i
+email
+varchar(255)
+Email
+username
+varchar(100) UNIQUE
+Tài kho?n
+password_hash
+varchar(255)
+M?t kh?u da hash
+role
+enum
+DIRECTOR/VICE_DIRECTOR/LEAD/SALES/RECRUITER/ACCOUNTANT
+status
+enum
+ACTIVE/INACTIVE/LOCKED
+created_at
+timestamp
+Th?i gian t?o
+updated_at
+timestamp
+Th?i gian c?p nh?t
+5.2. B?ng client_companies
+Field
+Type
+M?c dích
+id
+bigint PK
+ID công ty khách hàng
+company_code
+varchar(50) UNIQUE
+Ma công ty
+company_name
+varchar(255)
+Tên công ty
+tax_code
+varchar(50)
+Ma s? thu?
+address
+text
+D?a ch?
+contact_name
+varchar(255)
+Ngu?i liên h?
+contact_phone
+varchar(20)
+SDT liên h?
+status
+boolean
+Dang ho?t d?ng/không
+5.3. B?ng work_locations
+Field
+Type
+M?c dích
+id
+bigint PK
+ID d?a di?m
+company_id
+FK
+Công ty
+location_name
+varchar(255)
+Tên d?a di?m
+address
+text
+D?a ch?
+latitude
+decimal(10,7)
+Vi d?
+longitude
+decimal(10,7)
+Kinh d?
+attendance_radius_meter
+int
+Bán kính cho phép
+5.4. B?ng vendors
+Field
+Type
+M?c dích
+id
+bigint PK
+ID Vendor
+vendor_code
+varchar(50) UNIQUE
+Ma Vendor
+vendor_name
+varchar(255)
+Tên Vendor
+contact_name
+varchar(255)
+Ngu?i liên h?
+phone
+varchar(20)
+SDT
+email
+varchar(255)
+Email
+address
+text
+D?a ch?
+status
+boolean
+Ho?t d?ng
+5.5. B?ng recruitment_sources
+Field
+Type
+M?c dích
+id
+bigint PK
+ID ngu?n
+source_type
+enum
+INTERNAL/VENDOR/REFERRAL/OTHER
+source_name
+varchar(255)
+Ngu?n c? th?
+vendor_id
+FK nullable
+N?u ngu?n là Vendor
+description
+text
+Mô t?
+5.6. B?ng recruitment_requests
+Field
+Type
+M?c dích
+id
+bigint PK
+ID nhu c?u
+company_id
+FK
+Công ty c?n ngu?i
+work_location_id
+FK
+D?a di?m làm vi?c
+employment_type
+enum
+OFFICIAL/TEMPORARY
+required_quantity
+int
+S? lu?ng c?n
+start_date
+date
+Ngày b?t d?u
+end_date
+date
+Ngày k?t thúc n?u có
+created_by
+FK users
+Ngu?i t?o
+status
+enum
+PLANNED/ACTIVE/COMPLETED/CANCELLED
+5.7. B?ng recruitment_allocations
+Field
+Type
+M?c dích
+id
+bigint PK
+ID phân b?
+recruitment_request_id
+FK
+Nhu c?u tuy?n
+vendor_id
+FK nullable
+Vendor du?c c?p
+source_id
+FK nullable
+Ngu?n n?i b?/khác
+allocated_quantity
+int
+S? lu?ng du?c c?p
+actual_quantity
+int
+S? lu?ng th?c t?
+status
+enum
+Tr?ng thái phân b?
+5.8. B?ng workers
+Field
+Type
+M?c dích
+id
+bigint PK
+ID NLD
+worker_code
+varchar(50) UNIQUE
+Ma NLD
+full_name
+varchar(255)
+H? tên
+phone
+varchar(20)
+SDT
+date_of_birth
+date
+Ngày sinh
+gender
+varchar(20)
+Gi?i tính
+hometown
+varchar(255)
+Quê quán
+citizen_id
+varchar(20) UNIQUE
+S? d?nh danh/CCCD
+citizen_id_front_key
+text
+Object key ?nh tru?c - private
+citizen_id_back_key
+text
+Object key ?nh sau - private
+avatar_key
+text
+Object key ?nh d?i di?n
+status
+enum
+AVAILABLE/WORKING/RESIGNED/BLOCKED
+5.9. B?ng recruitments
+Field
+Type
+M?c dích
+id
+bigint PK
+ID l?ch s? tuy?n
+worker_id
+FK
+NLD
+recruiter_id
+FK users
+Ngu?i tuy?n
+source_id
+FK
+Ngu?n
+vendor_id
+FK nullable
+Vendor
+recruitment_request_id
+FK
+Nhu c?u
+allocation_id
+FK
+Phân b?
+recruitment_date
+date
+Ngày tuy?n
+5.10. B?ng employment_assignments
+Field
+Type
+M?c dích
+id
+bigint PK
+ID quá trình làm vi?c
+worker_id
+FK
+NLD
+company_id
+FK
+Công ty làm
+work_location_id
+FK
+V? trí làm
+recruitment_id
+FK
+Ngu?n tuy?n
+employment_type
+enum
+OFFICIAL/TEMPORARY
+start_date
+date
+Ngày vào
+end_date
+date
+Ngày ngh?
+status
+enum
+ACTIVE/RESIGNED/COMPLETED/TRANSFERRED
+daily_rate
+decimal
+Don giá/ngày
+hourly_rate
+decimal
+Don giá/gi?
+payment_frequency
+enum
+DAILY/WEEKLY/MONTHLY
+5.11. B?ng work_shifts
+Field
+Type
+M?c dích
+id
+bigint PK
+ID ca
+company_id
+FK
+Công ty
+work_location_id
+FK
+D?a di?m
+shift_name
+varchar(100)
+Tên ca
+start_time
+time
+B?t d?u
+end_time
+time
+K?t thúc
+break_minutes
+int
+Th?i gian ngh?
+5.12. B?ng attendances
+Field
+Type
+M?c dích
+id
+bigint PK
+ID ch?m công
+worker_id
+FK
+NLD
+employment_assignment_id
+FK
+Quá trình làm vi?c
+work_location_id
+FK
+D?a di?m
+shift_id
+FK
+Ca
+attendance_date
+date
+Ngày
+check_in_at
+timestamp
+Gi? vào
+check_out_at
+timestamp
+Gi? ra
+check_in_latitude/longitude
+decimal
+GPS vào
+check_out_latitude/longitude
+decimal
+GPS ra
+check_in_distance_meter
+decimal
+Kho?ng cách t?i di?m
+status
+enum
+PRESENT/ABSENT/LATE/LEAVE/HALF_DAY
+worked_hours
+decimal
+S? gi?
+worked_days
+decimal
+S? công
+5.13. B?ng worker_payments
+Field
+Type
+M?c dích
+id
+bigint PK
+ID thanh toán
+worker_id
+FK
+NLD
+employment_assignment_id
+FK
+Quá trình làm
+payment_frequency
+enum
+DAILY/WEEKLY/MONTHLY
+period_start/end
+date
+K? luong
+worked_days
+decimal
+Công th?c t?
+unit_price
+decimal
+Don giá
+gross_amount
+decimal
+T?ng luong
+deduction_amount
+decimal
+Kh?u tr?
+net_amount
+decimal
+Th?c nh?n
+payment_date
+date
+Ngày thanh toán
+status
+enum
+PENDING/PAID/CANCELLED
+created_by
+FK users
+Ngu?i nh?p
+approved_by
+FK users
+Ngu?i duy?t
+5.14. B?ng worker_payment_items
+Field
+Type
+M?c dích
+id
+bigint PK
+ID chi ti?t
+worker_payment_id
+FK
+Phi?u luong
+item_name
+varchar(255)
+Tên kho?n
+item_type
+varchar(50)
+Lo?i kho?n
+quantity
+decimal
+S? lu?ng
+unit_price
+decimal
+Don giá
+amount
+decimal
+Thành ti?n
+5.15. B?ng salary_advances
+Field
+Type
+M?c dích
+id
+bigint PK
+ID ?ng luong
+worker_id
+FK
+NLD
+employment_assignment_id
+FK
+Quá trình làm
+advance_date
+date
+Ngày ?ng
+amount
+decimal
+S? ti?n
+reason
+text
+Ly do
+status
+enum
+PENDING/PAID/CANCELLED
+created_by
+FK users
+Ngu?i t?o
+approved_by
+FK users
+Ngu?i duy?t
+5.16. B?ng expected_commissions
+Field
+Type
+M?c dích
+id
+bigint PK
+ID hoa h?ng
+worker_id
+FK
+NLD
+employment_assignment_id
+FK
+Quá trình làm
+company_id
+FK
+Công ty
+period_start/end
+date
+K? tính
+unit_price
+decimal
+Don giá hoa h?ng
+actual_worked_days
+decimal
+Công th?c t?
+expected_amount
+decimal
+Don giá x công
+5.17. B?ng financial_categories
+Field
+Type
+M?c dích
+id
+bigint PK
+ID danh m?c
+category_name
+varchar(100)
+Tên danh m?c
+transaction_type
+enum
+INCOME/EXPENSE
+description
+text
+Mô t?
+5.18. B?ng financial_transactions
+Field
+Type
+M?c dích
+id
+bigint PK
+ID giao d?ch
+transaction_code
+varchar(50) UNIQUE
+Ma giao d?ch
+transaction_type
+enum
+INCOME/EXPENSE
+transaction_date
+date
+Ngày
+category
+varchar(100)
+Danh m?c
+amount
+decimal
+S? ti?n
+description
+text
+N?i dung
+worker_id
+FK nullable
+NLD liên quan
+company_id
+FK nullable
+Công ty
+vendor_id
+FK nullable
+Vendor
+reference_type/id
+varchar/bigint
+Liên k?t ch?ng t?
+status
+enum
+DRAFT/CONFIRMED/CANCELLED
+created_by
+FK users
+Ngu?i t?o
+approved_by
+FK users
+Ngu?i duy?t
+5.19. B?ng audit_logs
+Field
+Type
+M?c dích
+id
+bigint PK
+ID log
+user_id
+FK
+Ngu?i thao tác
+action
+varchar(100)
+Hành d?ng
+table_name
+varchar(100)
+B?ng
+record_id
+bigint
+ID b?n ghi
+old_data
+json
+D? li?u cu - n?u c?n
+new_data
+json
+D? li?u m?i - n?u c?n
+ip_address
+varchar(50)
+IP
+created_at
+timestamp
+Th?i gian
+6. Quy t?c nghi?p v? b?t bu?c
+M?t NLD có th? có nhi?u employment_assignments theo l?ch s?; không ghi dè l?ch s? khi chuy?n công ty.
+S? công th?c t? ph?i l?y t? attendance; không luu m?t worked_days t?ng duy nh?t trong workers.
+M?t NLD ch? có m?t b?n ghi ch?m công/ngày trong cùng assignment, tr? khi nghi?p v? yêu c?u nhi?u ca.
+Di?m danh GPS ph?i luu th?i di?m, t?a d? và kho?ng cách t?i work_location khi s? d?ng GPS.
+Bán kính di?m danh ph?i c?u hình theo t?ng work_location.
+Tuy?n d?ng ph?i liên k?t du?c ngu?i tuy?n, ngu?n, Vendor (n?u có), nhu c?u và phân b?.
+actual_quantity c?a allocation ph?i tính/d?ng b? t? recruitment, tránh nh?p tay n?u có th?.
+Lo?i hình lao d?ng OFFICIAL/TEMPORARY ph?i du?c luu ? employment_assignment và nhu c?u tuy?n.
+?ng luong ph?i liên k?t NLD và assignment; cu?i k? ph?i có kh? nang d?i soát v?i payroll.
+Hoa h?ng d? ki?n = don giá x s? ngày di làm th?c t? theo k?. Không hi?n th? cho role không có COMMISSION_VIEW.
+Thu/chi ph?i có ngu?i t?o và tr?ng thái; các kho?n quan tr?ng nên có ngu?i duy?t.
+Không cho phép frontend t? quy?t d?nh quy?n xem d? li?u nh?y c?m.
+Xóa h? so/CCCD ph?i tuân th? chính sách luu tr? và có audit log; uu tiên soft-delete cho d? li?u nghi?p v?.
+7. Yêu c?u b?o m?t và b?o v? d? li?u CCCD
+?nh CCCD không du?c luu t?i public folder ho?c public bucket.
+Database ch? luu object key/reference, không luu URL public vinh vi?n.
+API xem/t?i CCCD ph?i authentication + authorization ? backend.
+Ch? c?p permission CCCD cho v? trí th?c s? c?n nghi?p v?.
+Khi hi?n th? s? CCCD trên UI nên mask m?t ph?n.
+T?i/xem CCCD ph?i ghi audit log; không log binary/base64 ?nh.
+Dùng HTTPS/TLS; storage nên b?t encryption at rest.
+File upload ph?i ki?m tra MIME, extension, kích thu?c, tên file; không tin extension t? client.
+Signed URL ph?i có th?i h?n ng?n và scope dúng object.
+Không commit secrets, access key, database password vào Git.
+Ph?i có chính sách retention/xóa d? li?u; dev không t? d?t th?i h?n pháp ly n?u chua du?c công ty/pháp ch? xác nh?n.
+N?u dùng cloud/storage bên th? ba ho?c luu/chuy?n d? li?u ngoài Vi?t Nam, ph?i du?c công ty/pháp ch? dánh giá tru?c production.
+Luu y: Tài li?u k? thu?t này không thay th? tu v?n pháp ly. Công ty c?n xác d?nh vai trò các bên, can c? x? ly, thông báo/quy?n c?a NLD, th?i h?n luu tr? và vi?c chia s? cho khách hàng/Vendor theo pháp lu?t hi?n hành tru?c khi dua h? th?ng production.
+8. Nhóm API d? xu?t
+Method / Endpoint
+M?c dích
+POST /auth/login
+Dang nh?p
+POST /auth/refresh
+Refresh token
+GET /users/me
+Thông tin user hi?n t?i
+GET /workers
+Danh sách NLD + filter
+POST /workers
+T?o NLD
+GET /workers/:id
+Chi ti?t NLD
+PATCH /workers/:id
+C?p nh?t NLD
+POST /workers/:id/cccd
+Upload CCCD
+GET /workers/:id/cccd
+L?y signed URL n?u có quy?n
+DELETE /workers/:id/cccd
+Xóa tài li?u theo policy
+GET /client-companies
+Danh sách công ty
+POST /client-companies
+T?o công ty
+GET /vendors
+Danh sách Vendor
+POST /recruitment-requests
+T?o nhu c?u tuy?n
+POST /recruitments
+Ghi nh?n tuy?n d?ng
+GET /recruitments/statistics
+Th?ng kê tuy?n d?ng
+POST /employment-assignments
+Phân công NLD
+GET /attendances
+Danh sách ch?m công
+POST /attendances/check-in
+Check-in
+POST /attendances/check-out
+Check-out
+GET /attendance/statistics
+Th?ng kê công
+POST /worker-payments
+T?o thanh toán
+POST /salary-advances
+T?o ?ng luong
+GET /finance/transactions
+Thu/chi
+POST /finance/transactions
+T?o thu/chi
+GET /commissions/expected
+Hoa h?ng d? ki?n - ch? ngu?i có quy?n
+GET /audit-logs
+Audit log - ch? ngu?i có quy?n
+9. Dashboard và báo cáo
+T?ng NLD: t?ng, dang làm, da ngh?, chua di làm.
+Tuy?n d?ng: theo ngày/tháng/nam; theo nhân viên tuy?n; theo ngu?n; theo Vendor; theo công ty; theo OFFICIAL/TEMPORARY.
+Conversion: tuy?n  da vào làm  dang làm  da ngh?.
+Công ty khách hàng: s? NLD dang làm t?i t?ng công ty/d?a di?m.
+Vendor: s? lu?ng du?c c?p, da tuy?n, dang làm, còn thi?u.
+Di?m danh: công theo ngày, tu?n, tháng; di mu?n/v?ng; GPS b?t thu?ng.
+Payroll: t?ng luong ngày/tu?n/tháng; da tr?/chua tr?; ?ng luong.
+Finance: t?ng thu, t?ng chi, s? du theo kho?ng th?i gian.
+Commission: ch? Director/Vice Director theo permission.
+M?i báo cáo có filter kho?ng th?i gian và export n?u công ty phê duy?t.
+10. DevOps và tri?n khai
+Tách môi tru?ng Development / Staging / Production.
+Dockerize frontend/backend; Docker Compose cho production don server.
+Nginx làm reverse proxy và HTTPS.
+PostgreSQL/DB không public Internet; Redis không public.
+GitHub Actions: lint  test  build  Docker image  push registry  deploy.
+Production secrets không n?m trong Git repository.
+Dùng health check cho backend và container restart policy.
+Backup database d?nh k?; backup ph?i luu khác noi v?i server chính.
+D?nh k? test restore backup.
+Theo doi CPU/RAM/Disk/DB/API error; có c?nh báo.
+SSH b?ng key; h?n ch? password login; firewall ch? m? port c?n thi?t.
+Có rollback image version n?u deploy l?i.
+git push  -> GitHub Actions  -> npm ci / lint / test  -> docker build  -> security checks  -> push GHCR  -> SSH/deploy ho?c pull image  -> docker compose up -d  -> health check  -> rollback n?u fail
+11. Ki?m th? và tiêu chí nghi?m thu
+H?ng m?c
+Tiêu chí d?t
+RBAC
+Recruiter không g?i du?c API finance/commission; Accountant không g?i commission n?u không c?p quy?n.
+CCCD
+Public URL không truy c?p du?c; user không có permission không l?y du?c signed URL.
+Attendance
+Check-in ngoài radius b? t? ch?i ho?c dánh d?u b?t thu?ng theo policy.
+Recruitment
+Th?ng kê ngày/tháng/nam kh?p d? li?u chi ti?t.
+Vendor
+Không cho actual_quantity vu?t allocated_quantity n?u nghi?p v? không cho phép.
+Employment
+Chuy?n công ty t?o assignment m?i và gi? l?ch s? assignment cu.
+Payroll
+Luong du?c d?i soát t? attendance; ?ng luong du?c tr? dúng theo policy.
+Finance
+Ch? role du?c phép xem/t?o/duy?t dúng theo ma tr?n quy?n.
+Audit
+Xem/download CCCD, s?a luong, s?a thu chi d?u có audit log.
+Backup
+Restore du?c database backup trên môi tru?ng test.
+Deployment
+Deploy m?i có health check và rollback du?c.
+12. C?u trúc repository d? xu?t
+project/├── apps/│   ├── web/                 # Next.js│   └── api/                 # Node.js / Express / NestJS├── packages/│   └── shared/              # types / validation n?u dùng monorepo├── infra/│   ├── nginx/│   ├── docker/│   └── compose/├── .github/│   └── workflows/│       ├── ci.yml│       └── deploy-production.yml├── docs/│   ├── architecture.md│   ├── api.md│   └── database.md└── README.md
+13. Deliverables Dev ph?i bàn giao
+Source code frontend + backend.
+Database schema/migrations + seed d? li?u demo.
+OpenAPI/Swagger ho?c tài li?u API.
+Dockerfile và docker-compose.
+Nginx configuration.
+CI/CD workflow.
+Environment variable template (.env.example, không ch?a secret).
+RBAC/Permission matrix du?c implement ? backend.
+Audit log.
+Backup/restore script và hu?ng d?n.
+README tri?n khai t? server tr?ng.
+Tài li?u c?u hình storage/private bucket.
+Tài li?u rollback production.
+Checklist b?o m?t tru?c production.
+14. Các quy?t d?nh c?n ch?t tru?c khi Dev code
+Database chính: PostgreSQL hay MySQL.
+Server: VPS/cloud hay server v?t ly n?i b?.
+Website ch? LAN/VPN hay public Internet.
+Nhà cung c?p Object Storage và v? trí luu d? li?u.
+Nh?ng role nào du?c xem ?nh CCCD.
+Nh?ng role nào du?c download CCCD.
+Ai du?c xem hoa h?ng d? ki?n.
+Ai du?c xem/t?o/duy?t thu chi.
+Cách tính m?t công: ca, n?a công, tang ca, di mu?n.
+Cách tính luong ngày/tu?n và cách d?i tr? ?ng luong.
+Th?i h?n luu d? li?u NLD/CCCD theo chính sách công ty/pháp ch?.
+Có c?n tích h?p máy ch?m công/QR/biometric hay ch? GPS mobile/web.
+Có c?n xu?t Excel/PDF hay không.
+Có c?n multi-branch/multi-organization trong tuong lai hay không.
+15. Quan h? d? li?u c?t loi
+ClientCompany  ├── WorkLocation  └── RecruitmentRequest         └── RecruitmentAllocation                └── VendorWorker  └── Recruitment         └── EmploymentAssignment                ├── Attendance                ├── WorkerPayment                ├── SalaryAdvance                └── ExpectedCommissionFinancialTransaction  ├── Worker (optional)  ├── ClientCompany (optional)  └── Vendor (optional)User  └── AuditLog
+16. Ghi chú cho d?i Dev
+Dây là baseline specification. Khi implement, Dev c?n gi? nguyên các nguyên t?c v? traceability: m?i s? li?u tài chính và công ph?i truy ngu?c du?c v? NLD, assignment, attendance và ch?ng t?. Không t?o các tru?ng t?ng h?p d? gây sai l?ch n?u có th? tính t? d? li?u ngu?n; n?u c?n denormalization d? t?i uu, ph?i có co ch? d?ng b? và xác d?nh ro ngu?n d? li?u g?c.

@@ -3241,67 +3241,189 @@ body {
   font-size: 11px;
 }
 
-/* Mobile Screen 2 (Cây chỉ tiêu) Components */
-.mobile-overview-card {
+/* Mobile Screen 2 (Cây chỉ tiêu - Modern SaaS Edition) */
+.mobile-saas-hero-card {
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid #e2e8f0;
-  padding: 14px;
+  padding: 16px;
   margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
 }
 
-.mobile-overview-top {
+.mobile-saas-hero-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #0284c7, #0052cc, #7c3aed);
+}
+
+.mobile-saas-hero-top {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 10px;
+  gap: 16px;
+  margin-bottom: 14px;
 }
 
-.mobile-overview-title {
-  font-size: 11.5px;
+.mobile-saas-hero-info {
+  flex: 1;
+}
+
+.mobile-saas-kpi-sub {
+  font-size: 10.5px;
+  font-weight: 700;
   color: #64748b;
-  font-weight: 600;
+  letter-spacing: 0.5px;
+  display: block;
 }
 
-.mobile-overview-val {
-  font-size: 17px;
+.mobile-saas-kpi-num {
+  font-size: 22px;
   font-weight: 800;
   color: #0f172a;
+  line-height: 1.15;
   margin: 2px 0;
 }
 
-.mobile-overview-sub {
+.mobile-saas-status-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+}
+
+.mobile-saas-status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #475569;
+}
+
+.mobile-saas-status-item .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mobile-saas-status-item.success .dot { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.mobile-saas-status-item.warning .dot { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+.mobile-saas-status-item.danger .dot { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+
+/* Filter Chips Strip */
+.mobile-chip-filter-strip {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.mobile-chip {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-full);
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.mobile-chip.active {
+  background: #0052cc;
+  color: #ffffff;
+  border-color: #0052cc;
+  box-shadow: 0 2px 4px rgba(0, 82, 204, 0.25);
+}
+
+/* Modern Tree Card */
+.mobile-tree-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.mobile-tree-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.06);
+}
+
+.mobile-tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mobile-tree-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-tree-toggle-arrow {
   font-size: 11px;
   color: #64748b;
+  width: 14px;
+  display: inline-block;
+  text-align: center;
+  transition: transform 0.2s;
 }
 
-.mobile-tag-pills-row {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.mobile-tag-pill {
-  font-size: 10.5px;
+.mobile-tree-title {
+  font-size: 13.5px;
   font-weight: 700;
-  padding: 3px 8px;
+  color: #0f172a;
+}
+
+.mobile-tree-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.mobile-pos-assignee-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.assignee-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #475569;
+  font-weight: 500;
+}
+
+/* SaaS Personal Target Card */
+.mobile-saas-personal-card {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
   border-radius: 12px;
-}
-
-.mobile-tag-pill.success {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.mobile-tag-pill.warning {
-  background: #fef3c7;
-  color: #b45309;
-}
-
-.mobile-tag-pill.danger {
-  background: #fee2e2;
-  color: #b91c1c;
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 4px rgba(2, 132, 199, 0.06);
 }
 
 .mobile-section-heading {
@@ -3313,50 +3435,8 @@ body {
   margin: 14px 0 8px;
 }
 
-.mobile-accordion-card {
-  background: #ffffff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  overflow: hidden;
-  margin-bottom: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-}
-
-.mobile-acc-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.mobile-acc-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mobile-acc-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.mobile-acc-sub {
-  font-size: 11px;
-  color: #64748b;
-  margin-top: 1px;
-}
-
-.mobile-acc-pct {
-  font-size: 13px;
-  font-weight: 800;
-  color: #0052cc;
-}
-
 .mobile-acc-body {
-  padding: 0 14px 12px;
+  padding: 4px 14px 12px;
   border-top: 1px solid #f1f5f9;
 }
 

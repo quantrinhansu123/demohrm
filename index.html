@@ -1785,140 +1785,289 @@
         </nav>
       </div>
 
-      <!-- MOBILE SCREEN 2: CÂY CHỈ TIÊU (ẢNH 2) -->
+      <!-- MOBILE SCREEN 2: CÂY CHỈ TIÊU (ẢNH 2 - MODERN SAAS EDITION) -->
       <div class="mobile-app-wrapper" id="mobileTargetsView" style="display: none;">
+        <!-- Header with Cycle Picker -->
         <header class="mobile-top-bar">
           <div class="mobile-brand-wrap">
-            <button class="mobile-back-btn" onclick="switchMobileNavTab('orders')">
+            <button class="mobile-back-btn" onclick="switchMobileNavTab('orders')" title="Quay lại Đơn hàng">
               <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
             </button>
             <div class="mobile-bar-titles">
-              <h2>Tháng 10</h2>
-              <p>Ngày 5 / 31 · 4 đơn hàng · 7 vị trí</p>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <h2>Tháng 10/2026</h2>
+                <span class="status-pill success" style="font-size: 10px; padding: 1px 6px;">Đang chạy</span>
+              </div>
+              <p>Ngày 5/31 · 4 nhà máy · 7 vị trí tuyển dụng</p>
             </div>
           </div>
-          <button class="mobile-btn-pill white-btn" onclick="openModal('modalCheckIn')">Check-in</button>
+          <button class="mobile-btn-pill white-btn" onclick="openModal('modalAssignTarget')">+ Giao chỉ tiêu</button>
         </header>
 
         <div class="mobile-body-content">
-          <div class="mobile-overview-card">
-            <div class="mobile-overview-top">
-              <div class="mobile-donut-gauge" style="width: 64px; height: 64px;">
+          <!-- Executive SaaS Hero Metric Card -->
+          <div class="mobile-saas-hero-card">
+            <div class="mobile-saas-hero-top">
+              <div class="mobile-donut-gauge" style="width: 72px; height: 72px;">
                 <svg viewBox="0 0 42 42" style="transform: rotate(-90deg); width: 100%; height: 100%;">
-                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4"/>
-                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#0052cc" stroke-width="4" pathLength="100" stroke-dasharray="48 52" stroke-dashoffset="0"/>
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="#e2e8f0" stroke-width="4.2"/>
+                  <circle cx="21" cy="21" r="15.9155" fill="none" stroke="url(#blueGaugeGrad)" stroke-width="4.2" pathLength="100" stroke-dasharray="48.3 51.7" stroke-dashoffset="0" stroke-linecap="round"/>
+                  <defs>
+                    <linearGradient id="blueGaugeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#0284c7"/>
+                      <stop offset="100%" stop-color="#0052cc"/>
+                    </linearGradient>
+                  </defs>
                 </svg>
-                <div class="donut-center-label"><span style="font-size: 13px; font-weight: 700;">48%</span></div>
+                <div class="donut-center-label">
+                  <span style="font-size: 14px; font-weight: 800; color: #0052cc;">48.3%</span>
+                </div>
               </div>
-              <div>
-                <div class="mobile-overview-title">Tổng chỉ tiêu cung ứng</div>
-                <div class="mobile-overview-val">58 / 120 người</div>
-                <div class="mobile-overview-sub">Phụ trách: Trần Thu Hà</div>
+              <div class="mobile-saas-hero-info">
+                <span class="mobile-saas-kpi-sub">TỔNG CHỈ TIÊU CUNG ỨNG</span>
+                <div class="mobile-saas-kpi-num">58 <span style="font-size: 14px; font-weight: 600; color: var(--text-muted);">/ 120 NLĐ</span></div>
+                <div style="font-size: 11.5px; color: #475569; display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                  <span class="avatar-xs teal" style="width: 16px; height: 16px; font-size: 8px;">TH</span>
+                  <span>Lead điều phối: <strong>Trần Thu Hà</strong></span>
+                </div>
               </div>
             </div>
-            <div class="mobile-tag-pills-row">
-              <span class="mobile-tag-pill success">2 đúng tiến độ</span>
-              <span class="mobile-tag-pill warning">1 chậm</span>
-              <span class="mobile-tag-pill danger">1 rủi ro</span>
+
+            <!-- Health Status Indicators -->
+            <div class="mobile-saas-status-strip">
+              <div class="mobile-saas-status-item success">
+                <span class="dot"></span>
+                <span><strong>2</strong> Đúng tiến độ</span>
+              </div>
+              <div class="mobile-saas-status-item warning">
+                <span class="dot"></span>
+                <span><strong>1</strong> Chậm nhẹ</span>
+              </div>
+              <div class="mobile-saas-status-item danger">
+                <span class="dot"></span>
+                <span><strong>1</strong> Có rủi ro</span>
+              </div>
             </div>
           </div>
 
-          <div class="mobile-section-heading">Cây chỉ tiêu</div>
-          <div class="mobile-accordion-card">
-            <div class="mobile-acc-header" onclick="toggleMobAcc('m-wesum')">
-              <div class="mobile-acc-left">
-                <span class="toggle-arrow" id="m-arrow-wesum">▼</span>
-                <div><div class="mobile-acc-title">WESUM > Lắp ráp T10</div><div class="mobile-acc-sub">26/50 người · Trần Thu Hà</div></div>
+          <!-- Fast Filter Chips -->
+          <div class="mobile-chip-filter-strip">
+            <button class="mobile-chip active" onclick="filterMobileTree('all', this)">Tất cả (4)</button>
+            <button class="mobile-chip" onclick="filterMobileTree('vinh-phuc', this)">Vĩnh Phúc (3)</button>
+            <button class="mobile-chip" onclick="filterMobileTree('ha-noi', this)">Hà Nội (1)</button>
+          </div>
+
+          <!-- Section Heading -->
+          <div class="mobile-section-heading" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Cây Phân rã Chỉ tiêu (Tree)</span>
+            <span style="font-size: 11px; font-weight: 500; text-transform: none; color: var(--primary-blue); cursor: pointer;" onclick="toggleAllMobTrees()">Mở rộng tất cả</span>
+          </div>
+
+          <!-- FACTORY 1: WESUM -->
+          <div class="mobile-tree-card" data-area="vinh-phuc" id="mTreeCardWesum">
+            <div class="mobile-tree-header" onclick="toggleMobAcc('m-wesum')">
+              <div class="mobile-tree-header-left">
+                <span class="mobile-tree-toggle-arrow" id="m-arrow-wesum">▼</span>
+                <div class="badge-avatar blue" style="width: 26px; height: 26px; font-size: 11px;">W</div>
+                <div>
+                  <div class="mobile-tree-title">WESUM &gt; Lắp ráp T10</div>
+                  <div class="mobile-tree-sub">26/50 NLĐ · Phụ trách: Trần Thu Hà</div>
+                </div>
               </div>
-              <span class="mobile-acc-pct">52%</span>
+              <div style="text-align: right;">
+                <span class="status-pill success" style="font-size: 10px;">52.0%</span>
+              </div>
             </div>
-            <div class="progress-track" style="margin: 0 14px 10px;"><div class="progress-bar-fill green" style="width: 52%;"></div></div>
+            <div class="progress-track" style="margin: 0 14px 10px; height: 5px;">
+              <div class="progress-bar-fill green" style="width: 52%;"></div>
+            </div>
             <div class="mobile-acc-body" id="m-body-wesum">
+              <!-- Sub Position 1 -->
               <div class="mobile-sub-pos">
-                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">Công nhân lắp ráp: 30 người</span><span style="font-weight: 700;">60%</span></div>
-                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 60%"></div></div>
-                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs teal" style="width: 18px; height: 18px; font-size: 8.5px;">TH</span><span>Trần Thu Hà</span></div>
+                <div class="mobile-pos-meta">
+                  <span class="title">1. Công nhân lắp ráp</span>
+                  <span class="ratio"><strong>18/30</strong> NLĐ · 60%</span>
+                </div>
+                <div class="progress-track" style="margin: 4px 0 6px; height: 4.5px;">
+                  <div class="progress-bar-fill blue" style="width: 60%"></div>
+                </div>
+                <div class="mobile-pos-assignee-row">
+                  <div class="assignee-tag"><span class="avatar-xs teal" style="width: 17px; height: 17px; font-size: 8px;">TH</span><span>Trần Thu Hà</span></div>
+                  <span class="badge-pill-gray" style="font-size: 10px; background: #f1f5f9; color: #475569;">Còn 12 NLĐ</span>
+                </div>
               </div>
+
+              <!-- Sub Position 2 -->
               <div class="mobile-sub-pos">
-                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">QC ngoại quan: 12 người</span><span style="font-weight: 700;">50%</span></div>
-                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 50%"></div></div>
-                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs blue" style="width: 18px; height: 18px; font-size: 8.5px;">DJ</span><span>DJC (Vendor)</span></div>
+                <div class="mobile-pos-meta">
+                  <span class="title">2. QC ngoại quan</span>
+                  <span class="ratio"><strong>6/12</strong> NLĐ · 50%</span>
+                </div>
+                <div class="progress-track" style="margin: 4px 0 6px; height: 4.5px;">
+                  <div class="progress-bar-fill blue" style="width: 50%"></div>
+                </div>
+                <div class="mobile-pos-assignee-row">
+                  <div class="assignee-tag"><span class="avatar-xs blue" style="width: 17px; height: 17px; font-size: 8px;">DJ</span><span>Vendor DJC Hải Dương</span></div>
+                  <span class="badge-pill-gray" style="font-size: 10px; background: #f1f5f9; color: #475569;">Còn 6 NLĐ</span>
+                </div>
               </div>
+
+              <!-- Sub Position 3 -->
               <div class="mobile-sub-pos">
-                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">Nhân viên kho: 8 người</span><span style="font-weight: 700;">25%</span></div>
-                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 25%"></div></div>
-                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs teal" style="width: 18px; height: 18px; font-size: 8.5px;">TH</span><span>Trần Thu Hà</span></div>
+                <div class="mobile-pos-meta">
+                  <span class="title">3. Nhân viên kho</span>
+                  <span class="ratio"><strong>2/8</strong> NLĐ · 25%</span>
+                </div>
+                <div class="progress-track" style="margin: 4px 0 6px; height: 4.5px;">
+                  <div class="progress-bar-fill blue" style="width: 25%"></div>
+                </div>
+                <div class="mobile-pos-assignee-row">
+                  <div class="assignee-tag"><span class="avatar-xs teal" style="width: 17px; height: 17px; font-size: 8px;">TH</span><span>Trần Thu Hà</span></div>
+                  <span class="badge-pill-danger" style="font-size: 10px;">Cần thêm 6 NLĐ</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="mobile-accordion-card" style="margin-top: 8px;">
-            <div class="mobile-acc-header" onclick="toggleMobAcc('m-ojtek')">
-              <div class="mobile-acc-left">
-                <span class="toggle-arrow" id="m-arrow-ojtek">▶</span>
-                <div><div class="mobile-acc-title">OJTEK > QC & vận hành T10</div><div class="mobile-acc-sub">14/30 người · Vũ Văn Cường</div></div>
+          <!-- FACTORY 2: OJTEK -->
+          <div class="mobile-tree-card" data-area="vinh-phuc" id="mTreeCardOjtek">
+            <div class="mobile-tree-header" onclick="toggleMobAcc('m-ojtek')">
+              <div class="mobile-tree-header-left">
+                <span class="mobile-tree-toggle-arrow" id="m-arrow-ojtek">▶</span>
+                <div class="badge-avatar indigo" style="width: 26px; height: 26px; font-size: 11px;">O</div>
+                <div>
+                  <div class="mobile-tree-title">OJTEK &gt; QC &amp; Vận hành</div>
+                  <div class="mobile-tree-sub">14/30 NLĐ · Phụ trách: Vũ Văn Cường</div>
+                </div>
               </div>
-              <span class="mobile-acc-pct">47%</span>
+              <div style="text-align: right;">
+                <span class="status-pill warning" style="font-size: 10px;">46.7%</span>
+              </div>
             </div>
-            <div class="progress-track" style="margin: 0 14px 10px;"><div class="progress-bar-fill orange" style="width: 47%;"></div></div>
+            <div class="progress-track" style="margin: 0 14px 10px; height: 5px;">
+              <div class="progress-bar-fill orange" style="width: 46.7%;"></div>
+            </div>
             <div class="mobile-acc-body" id="m-body-ojtek" style="display: none;">
               <div class="mobile-sub-pos">
-                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">QC ngoại quan: 20 người</span><span style="font-weight: 700;">50%</span></div>
-                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 50%"></div></div>
-                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs blue" style="width: 18px; height: 18px; font-size: 8.5px;">VC</span><span>Vũ Văn Cường</span></div>
+                <div class="mobile-pos-meta">
+                  <span class="title">1. QC ngoại quan</span>
+                  <span class="ratio"><strong>10/20</strong> NLĐ · 50%</span>
+                </div>
+                <div class="progress-track" style="margin: 4px 0 6px; height: 4.5px;">
+                  <div class="progress-bar-fill blue" style="width: 50%"></div>
+                </div>
+                <div class="mobile-pos-assignee-row">
+                  <div class="assignee-tag"><span class="avatar-xs blue" style="width: 17px; height: 17px; font-size: 8px;">VC</span><span>Vũ Văn Cường</span></div>
+                  <span class="badge-pill-gray" style="font-size: 10px; background: #f1f5f9; color: #475569;">Còn 10 NLĐ</span>
+                </div>
               </div>
+
               <div class="mobile-sub-pos">
-                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">Vận hành máy: 10 người</span><span style="font-weight: 700;">40%</span></div>
-                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 40%"></div></div>
-                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs indigo" style="width: 18px; height: 18px; font-size: 8.5px;">DA</span><span>DAMO (Vendor)</span></div>
+                <div class="mobile-pos-meta">
+                  <span class="title">2. Vận hành máy</span>
+                  <span class="ratio"><strong>4/10</strong> NLĐ · 40%</span>
+                </div>
+                <div class="progress-track" style="margin: 4px 0 6px; height: 4.5px;">
+                  <div class="progress-bar-fill blue" style="width: 40%"></div>
+                </div>
+                <div class="mobile-pos-assignee-row">
+                  <div class="assignee-tag"><span class="avatar-xs indigo" style="width: 17px; height: 17px; font-size: 8px;">DA</span><span>DAMO (Vendor)</span></div>
+                  <span class="badge-pill-danger" style="font-size: 10px;">Cần thêm 6 NLĐ</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="mobile-accordion-card" style="margin-top: 8px;">
-            <div class="mobile-acc-header" onclick="toggleMobAcc('m-sungjee')">
-              <div class="mobile-acc-left">
-                <span class="toggle-arrow" id="m-arrow-sungjee">▶</span>
-                <div><div class="mobile-acc-title">SUNGJEE > Đóng gói T10</div><div class="mobile-acc-sub">12/25 người · Đỗ Minh Thắng</div></div>
+          <!-- FACTORY 3: SUNGJEE -->
+          <div class="mobile-tree-card" data-area="vinh-phuc" id="mTreeCardSungjee">
+            <div class="mobile-tree-header" onclick="toggleMobAcc('m-sungjee')">
+              <div class="mobile-tree-header-left">
+                <span class="mobile-tree-toggle-arrow" id="m-arrow-sungjee">▶</span>
+                <div class="badge-avatar cyan" style="width: 26px; height: 26px; font-size: 11px;">S</div>
+                <div>
+                  <div class="mobile-tree-title">SUNGJEE &gt; Đóng gói T10</div>
+                  <div class="mobile-tree-sub">12/25 NLĐ · Phụ trách: Đỗ Minh Thắng</div>
+                </div>
               </div>
-              <span class="mobile-acc-pct">48%</span>
+              <div style="text-align: right;">
+                <span class="status-pill success" style="font-size: 10px;">48.0%</span>
+              </div>
             </div>
-            <div class="progress-track" style="margin: 0 14px 10px;"><div class="progress-bar-fill green" style="width: 48%;"></div></div>
+            <div class="progress-track" style="margin: 0 14px 10px; height: 5px;">
+              <div class="progress-bar-fill green" style="width: 48%;"></div>
+            </div>
             <div class="mobile-acc-body" id="m-body-sungjee" style="display: none;">
               <div class="mobile-sub-pos">
-                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">Công nhân đóng gói: 25 người</span><span style="font-weight: 700;">48%</span></div>
-                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill blue" style="width: 48%"></div></div>
-                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs green" style="width: 18px; height: 18px; font-size: 8.5px;">ĐT</span><span>Đỗ Minh Thắng</span></div>
+                <div class="mobile-pos-meta">
+                  <span class="title">1. Công nhân đóng gói</span>
+                  <span class="ratio"><strong>12/25</strong> NLĐ · 48%</span>
+                </div>
+                <div class="progress-track" style="margin: 4px 0 6px; height: 4.5px;">
+                  <div class="progress-bar-fill blue" style="width: 48%"></div>
+                </div>
+                <div class="mobile-pos-assignee-row">
+                  <div class="assignee-tag"><span class="avatar-xs green" style="width: 17px; height: 17px; font-size: 8px;">ĐT</span><span>Đỗ Minh Thắng</span></div>
+                  <span class="badge-pill-gray" style="font-size: 10px; background: #f1f5f9; color: #475569;">Còn 13 NLĐ</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="mobile-accordion-card" style="margin-top: 8px;">
-            <div class="mobile-acc-header" onclick="toggleMobAcc('m-amo')">
-              <div class="mobile-acc-left">
-                <span class="toggle-arrow" id="m-arrow-amo">▶</span>
-                <div><div class="mobile-acc-title">AMO > Sản xuất T10</div><div class="mobile-acc-sub">6/15 người · Vũ Văn Cường</div></div>
+          <!-- FACTORY 4: AMO -->
+          <div class="mobile-tree-card" data-area="ha-noi" id="mTreeCardAmo">
+            <div class="mobile-tree-header" onclick="toggleMobAcc('m-amo')">
+              <div class="mobile-tree-header-left">
+                <span class="mobile-tree-toggle-arrow" id="m-arrow-amo">▶</span>
+                <div class="badge-avatar pink" style="width: 26px; height: 26px; font-size: 11px;">A</div>
+                <div>
+                  <div class="mobile-tree-title">AMO &gt; Sản xuất T10</div>
+                  <div class="mobile-tree-sub">6/15 NLĐ · Phụ trách: Nguyễn Tiến Đạt</div>
+                </div>
               </div>
-              <span class="mobile-acc-pct">40%</span>
+              <div style="text-align: right;">
+                <span class="status-pill danger" style="font-size: 10px;">40.0%</span>
+              </div>
             </div>
-            <div class="progress-track" style="margin: 0 14px 10px;"><div class="progress-bar-fill red" style="width: 40%;"></div></div>
+            <div class="progress-track" style="margin: 0 14px 10px; height: 5px;">
+              <div class="progress-bar-fill red" style="width: 40%;"></div>
+            </div>
             <div class="mobile-acc-body" id="m-body-amo" style="display: none;">
               <div class="mobile-sub-pos">
-                <div class="mobile-pos-meta" style="margin-bottom: 4px;"><span class="title">Công nhân sản xuất: 15 người</span><span style="font-weight: 700;">40%</span></div>
-                <div class="progress-track" style="margin-bottom: 6px;"><div class="progress-bar-fill red" style="width: 40%"></div></div>
-                <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);"><span class="avatar-xs blue" style="width: 18px; height: 18px; font-size: 8.5px;">VC</span><span>Vũ Văn Cường</span></div>
+                <div class="mobile-pos-meta">
+                  <span class="title">1. Công nhân sản xuất</span>
+                  <span class="ratio"><strong>6/15</strong> NLĐ · 40%</span>
+                </div>
+                <div class="progress-track" style="margin: 4px 0 6px; height: 4.5px;">
+                  <div class="progress-bar-fill red" style="width: 40%"></div>
+                </div>
+                <div class="mobile-pos-assignee-row">
+                  <div class="assignee-tag"><span class="avatar-xs green" style="width: 17px; height: 17px; font-size: 8px;">NĐ</span><span>Nguyễn Tiến Đạt (HN)</span></div>
+                  <span class="badge-pill-danger" style="font-size: 10px;">Cần thêm 9 NLĐ</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="mobile-section-heading" style="margin-top: 14px;">Chỉ tiêu cá nhân của tôi</div>
-          <div class="mobile-overview-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-weight: 600; font-size: 13.5px;">Lắp ráp + Kho (WESUM)</span>
-              <span style="font-weight: 700; font-size: 14.5px;">20 / 38</span>
+          <!-- Section: Personal Target Quota -->
+          <div class="mobile-section-heading" style="margin-top: 16px;">Chỉ tiêu cá nhân của tôi</div>
+          <div class="mobile-saas-personal-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+              <div>
+                <strong style="font-size: 14px; color: #0f172a;">Lắp ráp + Kho (WESUM)</strong>
+                <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">Giao cho: Trần Thu Hà (Lead Tuyển dụng VP)</div>
+              </div>
+              <div style="text-align: right;">
+                <span style="font-size: 16px; font-weight: 800; color: #0052cc;">20 / 38</span>
+                <div style="font-size: 10.5px; color: #059669; font-weight: 700;">52.6% hoàn thành</div>
+              </div>
             </div>
-            <div class="progress-track" style="margin-bottom: 8px;"><div class="progress-bar-fill green" style="width: 52.6%;"></div></div>
-            <div style="font-size: 11.5px; color: var(--text-muted);">Còn 26 ngày · cần thêm 18 người</div>
+            <div class="progress-track" style="margin: 8px 0; height: 6px;">
+              <div class="progress-bar-fill green" style="width: 52.6%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 11.5px; color: #64748b;">
+              <span>⏱ Còn 26 ngày (Hạn 31/10)</span>
+              <span style="font-weight: 600; color: #dc2626;">Cần thêm 18 NLĐ (~0.7 người/ngày)</span>
+            </div>
           </div>
         </div>
 

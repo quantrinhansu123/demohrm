@@ -2396,6 +2396,34 @@ window.openMobOrderDetail = function(factoryCode) {
   }
 };
 
+// Filter mobile tree cards by area
+window.filterMobileTree = function(area, el) {
+  document.querySelectorAll('.mobile-chip-filter-strip .mobile-chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  document.querySelectorAll('.mobile-tree-card').forEach(card => {
+    if (area === 'all' || card.getAttribute('data-area') === area) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+};
+
+// Toggle all mobile tree accordions
+let allMobTreesExpanded = false;
+window.toggleAllMobTrees = function() {
+  allMobTreesExpanded = !allMobTreesExpanded;
+  ['wesum', 'ojtek', 'sungjee', 'amo'].forEach(f => {
+    const body = document.getElementById(`m-body-${f}`);
+    const arrow = document.getElementById(`m-arrow-${f}`);
+    if (body) {
+      body.style.display = allMobTreesExpanded ? 'block' : 'none';
+      if (arrow) arrow.textContent = allMobTreesExpanded ? '▼' : '▶';
+    }
+  });
+};
+
 // Render Mobile Worker Cards (Screen 3)
 window.renderMobileWorkers = function() {
   const container = document.getElementById('mobileWorkerListContainer');

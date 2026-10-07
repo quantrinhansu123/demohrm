@@ -11,11 +11,13 @@ import {
   createLiveWorker,
   deleteLiveWorker,
   dupFieldLabel,
+  fetchDuplicateAlerts,
   fetchLiveWorkers,
+  reviewDuplicateAlert,
   toWorker,
   updateLiveWorker,
 } from "@/lib/live";
-import type { DuplicateHit } from "@/lib/live";
+import type { DuplicateHit, LiveDuplicateAlert } from "@/lib/live";
 import { maskCitizenId, workerStatusTone } from "@/lib/format";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { Avatar } from "@/components/ui/avatar";
@@ -44,6 +46,9 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   const [error, setError] = useState("");
   const [openCreate, setOpenCreate] = useState(false);
   const [editing, setEditing] = useState<Worker | null>(null);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [alerts, setAlerts] = useState<LiveDuplicateAlert[]>([]);
+  const [alertError, setAlertError] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => setQDebounced(q), 300);
@@ -95,9 +100,20 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
         title="Hồ sơ Người lao động"
         sub="Danh sách phân trang từ máy chủ"
         actions={
-          <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setOpenCreate(true)}>
-            + Thêm người lao động
-          </Button>
+          <>
+            <Button size="sm" variant="outline" onClick={() => void (async () => {
+              setAlertsOpen(true);
+              setAlertError("");
+              try {
+                setAlerts(await fetchDuplicateAlerts());
+              } catch (e) {
+                setAlertError(e instanceof ApiError ? e.message : "Không tải được cảnh báo trùng.");
+              }
+            })()}>Cảnh báo trùng</Button>
+            <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setOpenCreate(true)}>
+              + Thêm người lao động
+            </Button>
+          </>
         }
       />
       <div className="page-body">
@@ -153,6 +169,23 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
           </div>
         </QueryState>
       </div>
+      <Modal open={alertsOpen} onClose={() => setAlertsOpen(false)} title="Cảnh báo hồ sơ trùng" wide>
+        {alertError && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{alertError}</p>}
+        <div className="flex flex-col gap-2">
+          {alerts.map((a) => (
+            <div key={a.id} className="rounded-xl border border-slate-100 p-3 text-[13px]">
+              <div className="font-semibold text-slate-800">{a.worker_name ?? a.worker_code ?? `Hồ sơ #${a.id}`} {a.matched_name || a.matched_code ? `· trùng ${a.matched_name ?? a.matched_code}` : ""}</div>
+              <div className="text-slate-500">{dupFieldLabel(a.field ?? "")} {a.level ? `· ${a.level}` : ""} {a.matched_value ? `· ${a.matched_value}` : ""}</div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="text-slate-500">Hiện tại: {a.status ?? "—"}</span>
+                <button type="button" className="font-semibold text-[#0052cc]" onClick={() => void reviewDuplicateAlert(a.id, { status: "confirmed", review_note: "Xác nhận trùng" }).then(() => setAlerts((list) => list.map((x) => x.id === a.id ? { ...x, status: "confirmed" } : x))).catch((e: unknown) => setAlertError(e instanceof ApiError ? e.message : "Không lưu được kết luận."))}>Xác nhận</button>
+                <button type="button" className="font-semibold text-slate-600" onClick={() => void reviewDuplicateAlert(a.id, { status: "dismissed", review_note: "Không trùng" }).then(() => setAlerts((list) => list.map((x) => x.id === a.id ? { ...x, status: "dismissed" } : x))).catch((e: unknown) => setAlertError(e instanceof ApiError ? e.message : "Không lưu được kết luận."))}>Bỏ qua</button>
+              </div>
+            </div>
+          ))}
+          {alerts.length === 0 && !alertError && <p className="py-6 text-center text-slate-400">Không có cảnh báo.</p>}
+        </div>
+      </Modal>
       <CreateWorkerModal open={openCreate} onClose={() => setOpenCreate(false)} onCreated={() => void reload()} />
       {editing && <EditWorkerModal worker={editing} onClose={() => setEditing(null)} onSaved={() => void reload()} />}
     </section>

@@ -214,6 +214,7 @@ export interface OrderPosition {
 }
 
 export interface OrderSummary {
+  id: number;
   title: string;
   period: string;
   manager: string;

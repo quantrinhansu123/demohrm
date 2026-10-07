@@ -7,9 +7,11 @@ import { ApiError } from "@/lib/api";
 import {
   addLivePlacement,
   closeLivePlacement,
+  deleteLivePlacement,
   createLiveAdvance,
   fetchLiveAssignments,
   fetchLivePayroll,
+  setPlacementStage,
   toWorkAssignment,
 } from "@/lib/live";
 import type { LiveAssignmentRow, LivePayrollRow } from "@/lib/live";
@@ -18,6 +20,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { StatusPill, statusToneForWorker } from "@/components/ui/badge";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { HandoverInvite } from "@/components/workers/HandoverInvite";
+import { WorkerDocuments } from "@/components/workers/WorkerDocuments";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Worker } from "@/types/hrm";
@@ -191,6 +194,7 @@ export function WorkerDetailModal({
               Chế độ xem bảo mật: vai trò hiện tại bị giới hạn quyền CCCD_VIEW, số định danh đã che mờ.
             </div>
           )}
+          {access.canViewCccd && <WorkerDocuments workerId={worker.id} />}
         </div>
       )}
 
@@ -234,6 +238,26 @@ export function WorkerDetailModal({
                   {full?.handover_status && full.handover_status !== "received" && (
                     <StatusPill tone="warning">Bàn giao: {full.handover_status}</StatusPill>
                   )}
+                  {full && (
+                    <select
+                      className="rounded-lg border border-slate-200 px-2 py-1 text-[12px]"
+                      value={full.stage}
+                      onChange={(e) => void (async () => {
+                        setError("");
+                        try {
+                          await setPlacementStage(full.placement_id, e.target.value);
+                          await reloadDots();
+                        } catch (err) {
+                          setError(err instanceof ApiError ? err.message : "Đổi bước thất bại.");
+                        }
+                      })()}
+                    >
+                      <option value="applied">Mới ứng tuyển</option>
+                      <option value="interview">Hẹn phỏng vấn</option>
+                      <option value="waiting_start">Chờ đi làm</option>
+                      <option value="working">Đang làm</option>
+                    </select>
+                  )}
                   {a.endDate === null ? (
                     <span className="ml-auto flex items-center gap-2">
                       <StatusPill tone="success">Đang làm</StatusPill>
@@ -244,6 +268,22 @@ export function WorkerDetailModal({
                         onClick={() => void closeDot(Number(a.id), a.startDate)}
                       >
                         Kết thúc đợt
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[12px] font-semibold text-rose-600 hover:underline"
+                        onClick={() => void (async () => {
+                          if (!window.confirm("Xóa đợt làm việc này?")) return;
+                          setError("");
+                          try {
+                            await deleteLivePlacement(Number(a.id));
+                            await reloadDots();
+                          } catch (err) {
+                            setError(err instanceof ApiError ? err.message : "Xóa đợt thất bại.");
+                          }
+                        })()}
+                      >
+                        Xóa đợt
                       </button>
                     </span>
                   ) : (

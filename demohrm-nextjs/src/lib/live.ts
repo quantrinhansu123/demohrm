@@ -91,6 +91,7 @@ export function toOrderSummary(row: LiveOrderRow, positions: LivePositionRow[]):
       total: p.target_qty,
     }));
   return {
+    id: row.order_id,
     code: row.code,
     title: `${row.company} – ${row.name}`,
     period: `${fmtDate(row.start_date)} – ${fmtDate(row.end_date)}`,
@@ -530,6 +531,26 @@ export function fetchLiveVendorQuotas(): Promise<LiveVendorQuota[]> {
   return apiGet("/vendor-quotas");
 }
 
+export function createLiveVendor(body: Record<string, unknown>): Promise<LiveVendor> {
+  return apiPost("/vendors", body);
+}
+
+export function patchLiveVendor(id: number, body: Record<string, unknown>): Promise<LiveVendor> {
+  return apiPatch(`/vendors/${id}`, body);
+}
+
+export function deleteLiveVendor(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/vendors/${id}`);
+}
+
+export function patchLiveVendorQuota(id: number, body: Record<string, unknown>): Promise<unknown> {
+  return apiPatch(`/vendor-quotas/${id}`, body);
+}
+
+export function deleteLiveVendorQuota(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/vendor-quotas/${id}`);
+}
+
 export interface LiveSite {
   id: number;
   company_id: number;
@@ -569,4 +590,227 @@ export function fetchLiveDailyReport(date: string): Promise<LiveDailyReport[]> {
 
 export function closeLivePeriod(code: string): Promise<unknown> {
   return apiPost(`/periods/${encodeURIComponent(code)}/close`, {});
+}
+
+export function createLiveOrder(body: Record<string, unknown>): Promise<{ id: number; code: string; name: string }> {
+  return apiPost("/orders", body);
+}
+
+export function deleteLiveOrder(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/orders/${id}`);
+}
+
+export function patchLiveOrder(id: number, body: Record<string, unknown>): Promise<unknown> {
+  return apiPatch(`/orders/${id}`, body);
+}
+
+export function createLiveFinance(body: Record<string, unknown>): Promise<unknown> {
+  return apiPost("/finance/transactions", body);
+}
+
+export function patchLiveFinance(id: number, body: Record<string, unknown>): Promise<unknown> {
+  return apiPatch(`/finance/transactions/${id}`, body);
+}
+
+export function deleteLiveFinance(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/finance/transactions/${id}`);
+}
+
+export function fetchFinanceCategories(): Promise<Array<{ id: number; name: string }>> {
+  return apiGet("/finance/categories");
+}
+
+export interface LiveAdvance {
+  id: number;
+  code: string;
+  worker_id: number;
+  period_id: number;
+  amount: number | string;
+  reason: string | null;
+  status: string;
+  worker: { code: string; full_name: string } | { code: string; full_name: string }[] | null;
+}
+
+export function fetchLiveAdvances(periodId?: number, status?: string): Promise<LiveAdvance[]> {
+  const p = new URLSearchParams();
+  if (periodId) p.set("period", String(periodId));
+  if (status) p.set("status", status);
+  const qs = p.toString();
+  return apiGet(`/advances${qs ? `?${qs}` : ""}`);
+}
+
+export function approveLiveAdvance(id: number, status: "approved" | "paid" | "rejected"): Promise<unknown> {
+  return apiPatch(`/advances/${id}/approve`, { status });
+}
+
+export function checkOutLive(id: number, body: { check_out_lat?: number; check_out_lng?: number }): Promise<unknown> {
+  return apiPost(`/attendances/${id}/check-out`, body);
+}
+
+export function patchLiveAttendance(id: number, body: { work_units?: number; status?: string }): Promise<unknown> {
+  return apiPatch(`/attendances/${id}`, body);
+}
+
+export function deleteLiveAttendance(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/attendances/${id}`);
+}
+
+export function generateLivePayroll(period: string): Promise<unknown> {
+  return apiPost(`/payroll/${encodeURIComponent(period)}/generate`, {});
+}
+
+export interface LiveSalaryEntry {
+  id: number;
+  code: string | null;
+  worker_id: number;
+  period_id: number;
+  entry_type: string | null;
+  work_days: number | string | null;
+  daily_rate: number | string | null;
+  amount: number | string | null;
+  content: string | null;
+  entry_date: string | null;
+  voided_at: string | null;
+}
+
+export function fetchLiveSalaryEntries(periodId: number): Promise<LiveSalaryEntry[]> {
+  return apiGet(`/salary-entries?period=${periodId}`);
+}
+
+export function createLiveSalaryEntry(body: Record<string, unknown>): Promise<unknown> {
+  return apiPost("/salary-entries", body);
+}
+
+export function patchLiveSalaryEntry(id: number, body: Record<string, unknown>): Promise<unknown> {
+  return apiPatch(`/salary-entries/${id}`, body);
+}
+
+export interface LivePositionOption {
+  id: number;
+  order_id: number;
+  title: string;
+  sort_order: number | null;
+}
+
+export function fetchPositionOptions(): Promise<LivePositionOption[]> {
+  return apiGet("/positions/lookup");
+}
+
+export function createLiveWageRate(positionId: number, body: Record<string, unknown>): Promise<unknown> {
+  return apiPost(`/positions/${positionId}/wage-rates`, body);
+}
+
+export function createLiveVendorQuota(body: Record<string, unknown>): Promise<unknown> {
+  return apiPost("/vendor-quotas", body);
+}
+
+export function createLiveReconciliation(body: Record<string, unknown>): Promise<unknown> {
+  return apiPost("/vendor-reconciliations", body);
+}
+
+export interface LiveQuotaAssignment {
+  id: number;
+  period_id: number;
+  team_id: number;
+  staff_id: number;
+  target_qty: number;
+  due_date: string | null;
+  label: string | null;
+}
+
+export function fetchLiveQuotaAssignments(periodId: number, teamId: number): Promise<LiveQuotaAssignment[]> {
+  return apiGet(`/quota-assignments?period=${periodId}&team=${teamId}`);
+}
+
+export function createLiveQuotaAssignment(body: Record<string, unknown>): Promise<unknown> {
+  return apiPost("/quota-assignments", body);
+}
+
+export function patchLiveQuotaAssignment(id: number, body: Record<string, unknown>): Promise<unknown> {
+  return apiPatch(`/quota-assignments/${id}`, body);
+}
+
+export function deleteLiveQuotaAssignment(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/quota-assignments/${id}`);
+}
+
+export function createLiveCompany(body: Record<string, unknown>): Promise<LiveCompany> {
+  return apiPost("/companies", body);
+}
+
+export function patchLiveCompany(id: number, body: Record<string, unknown>): Promise<LiveCompany> {
+  return apiPatch(`/companies/${id}`, body);
+}
+
+export function deleteLiveCompany(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/companies/${id}`);
+}
+
+export function createLiveSite(companyId: number, body: Record<string, unknown>): Promise<LiveSite> {
+  return apiPost(`/companies/${companyId}/sites`, body);
+}
+
+export function patchLiveSite(id: number, body: Record<string, unknown>): Promise<LiveSite> {
+  return apiPatch(`/sites/${id}`, body);
+}
+
+export function deleteLiveSite(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/sites/${id}`);
+}
+
+export function deleteLivePlacement(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/placements/${id}`);
+}
+
+export function createDailyNote(body: { report_date: string; order_id: number; note: string }): Promise<unknown> {
+  return apiPost("/reports/daily/notes", body);
+}
+
+export function updateDailyNote(body: { report_date: string; order_id: number; note: string }): Promise<unknown> {
+  return apiPatch("/reports/daily/notes", body);
+}
+
+export function deleteDailyNote(date: string, orderId: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/reports/daily/notes?date=${encodeURIComponent(date)}&order=${orderId}`);
+}
+
+export interface LiveDuplicateAlert {
+  id: number;
+  status: string | null;
+  field?: string | null;
+  level?: string | null;
+  matched_value?: string | null;
+  review_note?: string | null;
+  worker_name?: string | null;
+  matched_name?: string | null;
+  worker_code?: string | null;
+  matched_code?: string | null;
+}
+
+export function fetchDuplicateAlerts(): Promise<LiveDuplicateAlert[]> {
+  return apiGet("/duplicate-alerts");
+}
+
+export function reviewDuplicateAlert(id: number, body: { status: string; review_note?: string }): Promise<unknown> {
+  return apiPatch(`/duplicate-alerts/${id}`, body);
+}
+
+export function changeLivePin(oldPin: string, newPin: string): Promise<unknown> {
+  return apiPost("/auth/change-pin", { old_pin: oldPin, new_pin: newPin });
+}
+
+export function setPlacementStage(id: number, stage: string): Promise<unknown> {
+  return apiPatch(`/placements/${id}/stage`, { stage });
+}
+
+export function handoverAction(id: number, action: "hand-over" | "receive" | "refuse", body: Record<string, unknown>): Promise<unknown> {
+  return apiPatch(`/handovers/${id}/${action}`, body);
+}
+
+export function requestDocumentUpload(workerId: number, body: { mime: string; filename: string }): Promise<{ path: string; token: string; signedUrl: string }> {
+  return apiPost(`/workers/${workerId}/documents/upload-url`, body);
+}
+
+export function saveWorkerDocument(workerId: number, body: { doc_type: string; storage_path: string; mime: string }): Promise<unknown> {
+  return apiPost(`/workers/${workerId}/documents`, body);
 }

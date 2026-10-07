@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
-import { checkInLive, fetchLiveAttendances, fetchLiveWorkers } from "@/lib/live";
+import { checkInLive, checkOutLive, deleteLiveAttendance, fetchLiveAttendances, fetchLiveWorkers, patchLiveAttendance } from "@/lib/live";
 import type { LiveAttendance } from "@/lib/live";
 import { initialsOf } from "@/lib/format";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
@@ -35,6 +35,9 @@ export function AttendanceView() {
   const [options, setOptions] = useState<Array<{ id: number; label: string }>>([]);
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<LiveAttendance | null>(null);
+  const [units, setUnits] = useState("");
+  const [status, setStatus] = useState("valid");
 
   const load = useCallback(async (day: string) => {
     setLoading(true);
@@ -52,6 +55,25 @@ export function AttendanceView() {
   useEffect(() => {
     void load(date);
   }, [date, load]);
+
+  const locate = () => new Promise<GeolocationPosition>((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Trình duyệt không có GPS."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, () => reject(new Error("Cần quyền vị trí.")), { enableHighAccuracy: true, timeout: 8000 });
+  });
+
+  const checkOut = async (id: number) => {
+    setError("");
+    try {
+      const pos = await locate();
+      await checkOutLive(id, { check_out_lat: pos.coords.latitude, check_out_lng: pos.coords.longitude });
+      await load(date);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Check-out thất bại.");
+    }
+  };
 
   const openForm = async () => {
     setOpen(true);
@@ -71,13 +93,7 @@ export function AttendanceView() {
     setBusy(true);
     setFormError("");
     try {
-      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-        if (!navigator.geolocation) {
-          reject(new Error("Trình duyệt không có GPS."));
-          return;
-        }
-        navigator.geolocation.getCurrentPosition(resolve, () => reject(new Error("Cần quyền vị trí để check-in.")), { enableHighAccuracy: true, timeout: 8000 });
-      });
+      const pos = await locate();
       await checkInLive({
         worker_id: Number(workerId),
         check_in_lat: pos.coords.latitude,
@@ -106,7 +122,7 @@ export function AttendanceView() {
       />
       <QueryState loading={loading} error={error}>
         <div className="page-body">
-          <DataTable headers={["Họ tên", "Địa điểm", "Ca", "Giờ vào", "Giờ ra", "GPS", "Công", "Trạng thái"]}>
+          <DataTable headers={["Họ tên", "Địa điểm", "Ca", "Giờ vào", "Giờ ra", "GPS", "Công", "Trạng thái", ""]}>
             {rows.map((a) => (
               <tr key={a.id}>
                 <td>
@@ -118,13 +134,31 @@ export function AttendanceView() {
                 <td>{a.site?.name ?? "—"}</td>
                 <td>{a.shift?.name ?? "—"}</td>
                 <td><strong className="text-emerald-600">{clock(a.check_in_at)}</strong></td>
-                <td>{clock(a.check_out_at)}</td>
+                <td>
+                  {a.check_out_at ? clock(a.check_out_at) : (
+                    <button type="button" className="text-[12px] font-semibold text-[#0052cc] hover:underline" onClick={() => void checkOut(a.id)}>Ra ca</button>
+                  )}
+                </td>
                 <td><code>{a.check_in_lat ?? "—"}, {a.check_in_lng ?? "—"} ({a.check_in_distance_m ?? "—"}m)</code></td>
                 <td>{a.work_units ?? "—"}</td>
                 <td><StatusPill tone={tone(a.status)}>{a.status}</StatusPill></td>
+                <td>
+                  <span className="flex gap-1">
+                    <Button variant="outline" size="xs" onClick={() => { setEditing(a); setUnits(a.work_units == null ? "" : String(a.work_units)); setStatus(a.status); setFormError(""); }}>Sửa</Button>
+                    <Button variant="destructive" size="xs" onClick={() => void (async () => {
+                      if (!window.confirm("Xóa dòng chấm công này?")) return;
+                      try {
+                        await deleteLiveAttendance(a.id);
+                        await load(date);
+                      } catch (e) {
+                        window.alert(e instanceof ApiError ? e.message : "Xóa chấm công thất bại.");
+                      }
+                    })()}>Xóa</Button>
+                  </span>
+                </td>
               </tr>
             ))}
-            {rows.length === 0 && <EmptyRow colSpan={8} text="Không có bản ghi chấm công" />}
+            {rows.length === 0 && <EmptyRow colSpan={9} text="Không có bản ghi chấm công" />}
           </DataTable>
         </div>
       </QueryState>
@@ -145,6 +179,38 @@ export function AttendanceView() {
             {options.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
           </select>
         </Field>
+      </Modal>
+      <Modal
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        title="Sửa chấm công"
+        footer={<><Button variant="outline" onClick={() => setEditing(null)}>Hủy</Button><Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void (async () => {
+          if (!editing) return;
+          setBusy(true);
+          setFormError("");
+          try {
+            await patchLiveAttendance(editing.id, { work_units: units === "" ? undefined : Number(units), status });
+            setEditing(null);
+            await load(date);
+          } catch (e) {
+            setFormError(e instanceof ApiError ? e.message : "Sửa chấm công thất bại.");
+          } finally {
+            setBusy(false);
+          }
+        })()}>{busy ? "Đang lưu..." : "Lưu"}</Button></>}
+      >
+        {formError && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{formError}</p>}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Công"><input className={inputClass} inputMode="decimal" value={units} onChange={(e) => setUnits(e.target.value)} /></Field>
+          <Field label="Trạng thái">
+            <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="valid">Hợp lệ</option>
+              <option value="late">Đi muộn</option>
+              <option value="gps_warning">Cảnh báo GPS</option>
+              <option value="invalid">Không hợp lệ</option>
+            </select>
+          </Field>
+        </div>
       </Modal>
     </section>
   );

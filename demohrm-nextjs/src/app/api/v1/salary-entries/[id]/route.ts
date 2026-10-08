@@ -31,20 +31,30 @@ export async function PATCH(
     if (!id) {
       return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
     }
-    const body = pick(await readBody(req), [
+    const rawBody = (await readBody(req)) as Record<string, unknown>;
+    const body = pick(rawBody, [
       "work_days",
       "daily_rate",
       "amount",
       "content",
+      "entry_type",
+      "placement_id",
+      "entry_date",
       "voided_at",
       "void_reason",
     ]);
-    if (auth.staffId) body["updated_by"] = Number(auth.staffId);
+    if (rawBody.reason && !body.void_reason) {
+      body.void_reason = String(rawBody.reason);
+    }
+    if (auth.staffId) {
+      body["updated_by"] = Number(auth.staffId);
+      if (body.voided_at) body["voided_by"] = Number(auth.staffId);
+    }
     const { data, error } = await getSupabase()
       .from("salary_entries")
       .update(body)
       .eq("id", id)
-      .select("id,code,amount,voided_at")
+      .select("id,code,amount,voided_at,void_reason")
       .single();
     if (error) throw error;
     return json(data);

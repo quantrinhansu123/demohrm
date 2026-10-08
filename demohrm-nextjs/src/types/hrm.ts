@@ -39,6 +39,10 @@ export interface WorkAssignment {
   startDate: string;
   endDate: string | null;
   recruiter: string;
+  companyContact?: string;
+  companyContactPhone?: string;
+  supervisorName?: string;
+  supervisorPhone?: string;
 }
 
 export interface Worker {
@@ -58,6 +62,15 @@ export interface Worker {
   advance: number;
   avatarColor: string;
   initials: string;
+  creator?: string;
+  creatorId?: number | null;
+  createdAt?: string;
+  updatedBy?: string;
+  updatedAt?: string;
+  recruiterId?: number | null;
+  supervisorName?: string;
+  supervisorPhone?: string;
+  handoverStatus?: string | null;
   assignments?: WorkAssignment[];
 }
 
@@ -207,10 +220,18 @@ export interface Cycle {
 }
 
 export interface OrderPosition {
+  id?: number;
   idx: string;
   name: string;
   done: number;
   total: number;
+  jobDescription?: string;
+  shift?: string;
+  dayRate?: number;
+  rateAmount?: number;
+  wageUnit?: string;
+  rateFrom?: string;
+  rateTo?: string;
 }
 
 export interface OrderSummary {
@@ -220,6 +241,12 @@ export interface OrderSummary {
   manager: string;
   target: number;
   working: number;
+  arranged?: number;
+  missing?: number;
+  companyName?: string;
+  workSite?: string;
+  siteAddress?: string;
+  ownerPhone?: string;
   positions: number;
   vendors: number;
   code: string;

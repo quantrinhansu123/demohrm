@@ -11,8 +11,9 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { DataTable, EmptyRow } from "@/components/ui/data-table";
 import { StatusPill } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Field, Modal, inputClass } from "@/components/ui/modal";
+import { Field, Modal, getInputClass, inputClass } from "@/components/ui/modal";
 import { QueryState } from "@/components/ui/query-state";
+import { FinanceTxSchema, formatZodErrors } from "@/lib/validation";
 
 function todayVN(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
@@ -28,6 +29,7 @@ export function FinanceView() {
   const [formError, setFormError] = useState("");
   const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({ type: "expense", categoryId: "", companyId: "", amount: "", description: "", date: todayVN() });
 
   const load = useCallback(async () => {
@@ -49,6 +51,7 @@ export function FinanceView() {
 
   const openForm = async (row?: LiveFinanceTx) => {
     setFormError("");
+    setFieldErrors({});
     setEditingId(row?.id ?? null);
     setOpen(true);
     try {
@@ -70,10 +73,15 @@ export function FinanceView() {
   };
 
   const save = async () => {
-    const amount = Number(form.amount);
-    if (!form.categoryId || !(amount > 0)) return;
-    setBusy(true);
     setFormError("");
+    const parsed = FinanceTxSchema.safeParse(form);
+    if (!parsed.success) {
+      setFieldErrors(formatZodErrors(parsed.error));
+      return;
+    }
+    setFieldErrors({});
+
+    setBusy(true);
     try {
       const payload = {
         txn_date: form.date,
@@ -81,7 +89,7 @@ export function FinanceView() {
         category_id: Number(form.categoryId),
         company_id: form.companyId ? Number(form.companyId) : null,
         description: form.description.trim() || null,
-        amount,
+        amount: Number(form.amount),
       };
       if (editingId) {
         await patchLiveFinance(editingId, payload);
@@ -159,13 +167,44 @@ export function FinanceView() {
               <option value="expense">Chi</option>
             </select>
           </Field>
-          <Field label="Danh mục">
-            <select className={inputClass} value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}>
+          <Field label="Danh mục *" error={fieldErrors.categoryId}>
+            <select
+              className={getInputClass(fieldErrors.categoryId)}
+              value={form.categoryId}
+              onChange={(e) => {
+                const val = e.target.value;
+                setForm({ ...form, categoryId: val });
+                if (fieldErrors.categoryId) setFieldErrors((p) => { const n = { ...p }; delete n.categoryId; return n; });
+              }}
+            >
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
-          <Field label="Ngày"><input type="date" className={inputClass} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
-          <Field label="Số tiền *"><input className={inputClass} inputMode="numeric" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></Field>
+          <Field label="Ngày *" error={fieldErrors.date}>
+            <input
+              type="date"
+              className={getInputClass(fieldErrors.date)}
+              value={form.date}
+              onChange={(e) => {
+                const val = e.target.value;
+                setForm({ ...form, date: val });
+                if (fieldErrors.date) setFieldErrors((p) => { const n = { ...p }; delete n.date; return n; });
+              }}
+            />
+          </Field>
+          <Field label="Số tiền *" error={fieldErrors.amount}>
+            <input
+              className={getInputClass(fieldErrors.amount)}
+              inputMode="numeric"
+              placeholder="VD: 5000000"
+              value={form.amount}
+              onChange={(e) => {
+                const val = e.target.value;
+                setForm({ ...form, amount: val });
+                if (fieldErrors.amount) setFieldErrors((p) => { const n = { ...p }; delete n.amount; return n; });
+              }}
+            />
+          </Field>
           <Field label="Công ty">
             <select className={inputClass} value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })}>
               <option value="">—</option>

@@ -62,14 +62,35 @@ export function Modal({
   );
 }
 
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({
+  label,
+  error,
+  children,
+  className,
+}: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <label className="block">
+    <label className={cn("block", className)}>
       <span className="mb-1 block text-[12.5px] font-medium text-slate-600">{label}</span>
       {children}
+      {error && <p className="mt-1 text-[11.5px] font-medium text-rose-600">{error}</p>}
     </label>
   );
 }
 
 export const inputClass =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13.5px] text-slate-900 outline-none focus:border-[#0052cc] focus:ring-2 focus:ring-[#0052cc]/20";
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13.5px] text-slate-900 outline-none transition-colors focus:border-[#0052cc] focus:ring-2 focus:ring-[#0052cc]/20";
+
+export function getInputClass(error?: string | boolean, extraClass?: string): string {
+  return cn(
+    "w-full rounded-lg bg-white px-3 py-2 text-[13.5px] text-slate-900 outline-none transition-colors",
+    error
+      ? "border border-rose-500 focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20"
+      : "border border-slate-200 focus:border-[#0052cc] focus:ring-2 focus:ring-[#0052cc]/20",
+    extraClass,
+  );
+}

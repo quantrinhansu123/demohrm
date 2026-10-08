@@ -4,7 +4,7 @@ import { getAuth } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json } from "@/lib/server/http";
 
-// GET /api/v1/orders/:id/workers — Danh sach NLD cua don
+// GET /api/v1/orders/:id/workers — Danh sách NLĐ của đơn
 export async function GET(
   req: Request,
   ctx: { params: Promise<Record<string, string>> },
@@ -12,20 +12,18 @@ export async function GET(
   try {
     getAuth(req);
     const p = await ctx.params;
-    const { data: order, error: e0 } = await getSupabase()
-      .from("orders")
-      .select("code")
-      .eq("id", Number(p["id"]))
-      .single();
-    if (e0) throw e0;
+    const orderId = Number(p["id"]);
+    if (!orderId) {
+      return json({ error: "invalid", message: "Id đơn hàng không hợp lệ." }, 400);
+    }
     const { data, error } = await getSupabase()
       .from("v_order_workers")
       .select("*")
-      .eq("order_code", (order as { code: string }).code)
+      .eq("order_id", orderId)
       .order("position")
       .order("worker_code");
     if (error) throw error;
-    return json(data);
+    return json(data ?? []);
   } catch (e) {
     return apiError(e);
   }

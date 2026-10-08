@@ -53,7 +53,7 @@ function Shell() {
         </div>
         {catalogError && <p className="bg-rose-50 px-6 py-2 text-[12.5px] text-rose-700">{catalogError}</p>}
         <main className="min-h-0 flex-1">
-          {currentModule === "orders" && <OrdersView />}
+          {currentModule === "orders" && <OrdersView onViewDetail={setViewing} />}
           {currentModule === "dashboard" && <DashboardView />}
           {currentModule === "workers" && <WorkersView onViewDetail={setViewing} />}
           {currentModule === "companies" && <CompaniesView />}

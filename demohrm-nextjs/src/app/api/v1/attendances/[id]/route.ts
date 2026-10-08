@@ -6,6 +6,12 @@ import { apiError, json, readBody } from "@/lib/server/http";
 
 const FIELDS = ["work_units", "status"] as const;
 
+const STATUS_MAP: Record<string, string> = {
+  invalid: "rejected",
+  gps_warning: "out_of_range",
+  present: "valid",
+};
+
 function pick(body: unknown, keys: readonly string[]): Record<string, unknown> {
   if (!body || typeof body !== "object") return {};
   const src = body as Record<string, unknown>;
@@ -27,7 +33,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<Record<string, 
     getAuth(req);
     const id = positiveInt((await ctx.params)["id"]);
     if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
-    const { data, error } = await getSupabase().from("attendances").update(pick(await readBody(req), FIELDS)).eq("id", id).select("id,work_units,status").single();
+    const patch = pick(await readBody(req), FIELDS);
+    if (typeof patch.status === "string" && STATUS_MAP[patch.status]) {
+      patch.status = STATUS_MAP[patch.status];
+    }
+    const { data, error } = await getSupabase().from("attendances").update(patch).eq("id", id).select("id,work_units,status").single();
     if (error) throw error;
     return json(data);
   } catch (e) {

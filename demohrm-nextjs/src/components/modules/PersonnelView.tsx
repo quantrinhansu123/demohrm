@@ -14,6 +14,7 @@ import { DataTable, EmptyRow } from "@/components/ui/data-table";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { QueryState } from "@/components/ui/query-state";
+import { AttendanceView } from "@/components/modules/AttendanceView";
 
 const AVATAR_TONES = ["avatar-blue", "avatar-teal", "avatar-indigo", "avatar-emerald", "avatar-amber", "avatar-rose"];
 
@@ -47,6 +48,7 @@ export function PersonnelView() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
+  const [pane, setPane] = useState<"people" | "attendance">("people");
   const [editing, setEditing] = useState<LivePersonnel | null>(null);
   const [viewing, setViewing] = useState<LivePersonnel | null>(null);
 
@@ -99,21 +101,28 @@ export function PersonnelView() {
     <section className="flex h-full flex-col">
       <ModuleHeader
         title="Nhân sự"
-        sub={`${rows.length} người · dữ liệu lấy từ bảng staff`}
+        sub={pane === "attendance" ? "Chấm công trên điện thoại" : `${rows.length} người · dữ liệu lấy từ bảng staff`}
         actions={
           <>
-            <input
+            <div className="flex rounded-lg bg-slate-100 p-0.5 text-[13px] font-semibold">
+              <button type="button" onClick={() => setPane("people")} className={pane === "people" ? "rounded-md bg-white px-3 py-1 text-[#0052cc] shadow-sm" : "px-3 py-1 text-slate-500"}>Danh sách</button>
+              <button type="button" onClick={() => setPane("attendance")} className={pane === "attendance" ? "rounded-md bg-white px-3 py-1 text-[#0052cc] shadow-sm" : "px-3 py-1 text-slate-500"}>Chấm công</button>
+            </div>
+            {pane === "people" && <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Tìm tên, mã, SĐT..."
               className="rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] outline-none focus:border-[#0052cc]"
-            />
-            <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setCreating(true)}>
-              + Thêm
-            </Button>
+            />}
+            {pane === "people" && (
+              <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setCreating(true)}>
+                + Thêm
+              </Button>
+            )}
           </>
         }
       />
+      {pane === "attendance" ? <AttendanceView embedded /> : (
       <QueryState loading={loading} error={error}>
         <div className="page-body">
           <div className="grid gap-4 md:grid-cols-3">
@@ -144,6 +153,7 @@ export function PersonnelView() {
           )}
         </div>
       </QueryState>
+      )}
       <AddPersonnelModal
         open={creating}
         onClose={() => setCreating(false)}

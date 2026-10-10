@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Menu } from "lucide-react";
 import { AppProvider, useApp } from "@/lib/store";
 import { SessionProvider, useSession } from "@/lib/session";
 import { roleLabel } from "@/lib/access";
@@ -33,17 +34,29 @@ function Shell() {
   const { currentModule, catalogError } = useApp();
   const { staff, logout } = useSession();
   const [viewing, setViewing] = useState<Worker | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [currentModule]);
   if (!staff) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f4f6fa]">
-      <Sidebar />
+    <div className="flex h-dvh overflow-hidden bg-[#f4f6fa]">
+      {menuOpen && <button type="button" aria-label="Đóng menu" className="fixed inset-0 z-30 bg-slate-900/40 md:hidden" onClick={() => setMenuOpen(false)} />}
+      <div className={menuOpen ? "fixed inset-y-0 left-0 z-40 flex md:static md:z-auto" : "hidden md:flex"}>
+        <Sidebar />
+      </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center justify-between gap-3 border-b bg-white px-6 py-2.5">
-          <ApiStatus />
+        <div className="flex items-center justify-between gap-3 border-b bg-white px-3 py-2.5 md:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <button type="button" className="rounded-lg p-1.5 text-slate-600 md:hidden" aria-label="Mở menu" onClick={() => setMenuOpen(true)}>
+              <Menu className="h-5 w-5" />
+            </button>
+            <ApiStatus />
+          </div>
           <div className="flex items-center gap-2.5">
             <Avatar tone="avatar-blue" size="sm">{staff.full_name.trim().slice(-1).toUpperCase()}</Avatar>
-            <div className="leading-tight">
+            <div className="hidden leading-tight sm:block">
               <div className="text-[13px] font-bold text-slate-900">{staff.full_name}</div>
               <div className="text-[11.5px] text-slate-500">{roleLabel(staff.role)} · {staff.code}</div>
             </div>

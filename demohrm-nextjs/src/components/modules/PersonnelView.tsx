@@ -11,7 +11,6 @@ import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/badge";
-import { DataTable, EmptyRow } from "@/components/ui/data-table";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { QueryState } from "@/components/ui/query-state";
@@ -65,6 +64,7 @@ export function PersonnelView() {
   const [pane, setPane] = useState<"people" | "attendance">("people");
   const [editing, setEditing] = useState<LivePersonnel | null>(null);
   const [viewing, setViewing] = useState<LivePersonnel | null>(null);
+  const [dropDepartment, setDropDepartment] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -94,6 +94,40 @@ export function PersonnelView() {
   }, [query, rows]);
 
   const active = rows.filter((r) => r.status === "active").length;
+  const columns = useMemo(() => {
+    const groups = new Map<string, LivePersonnel[]>(DEPARTMENTS.map((item) => [item.label, []]));
+    const unmatched: LivePersonnel[] = [];
+    for (const person of filtered) {
+      const department = departmentOf(person);
+      const bucket = department ? groups.get(department) : undefined;
+      if (bucket) bucket.push(person);
+      else unmatched.push(person);
+    }
+    const board: { label: string; people: LivePersonnel[] }[] = DEPARTMENTS.map((item) => ({ label: item.label, people: groups.get(item.label) ?? [] }));
+    if (unmatched.length > 0) board.push({ label: "Chưa phân phòng", people: unmatched });
+    if (!query.trim()) return board;
+    return board.filter((column) => column.people.length > 0);
+  }, [filtered, query]);
+
+  const movePerson = async (person: LivePersonnel, department: string) => {
+    if (!DEPARTMENTS.some((item) => item.label === department) || departmentOf(person) === department) return;
+    try {
+      const updated = await updateLivePersonnel(person.id, {
+        full_name: person.full_name,
+        department,
+        position: positionOf(person) || null,
+        phone: person.phone,
+        email: person.email,
+        date_of_birth: person.date_of_birth,
+        hired_on: person.hired_on,
+        status: person.status === "inactive" ? "inactive" : "active",
+      });
+      setRows((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+      if (viewing?.id === updated.id) setViewing(updated);
+    } catch (e) {
+      window.alert(e instanceof ApiError ? e.message : "Không chuyển được phòng ban.");
+    }
+  };
 
   const handleDelete = async (person: LivePersonnel) => {
     if (!window.confirm(`Xóa ${person.full_name} (${person.code}) khỏi danh sách nhân sự?`)) return;
@@ -114,7 +148,7 @@ export function PersonnelView() {
         actions={
           <>
             <div className="flex rounded-lg bg-slate-100 p-0.5 text-[13px] font-semibold">
-              <button type="button" onClick={() => setPane("people")} className={pane === "people" ? "rounded-md bg-white px-3 py-1 text-[#0052cc] shadow-sm" : "px-3 py-1 text-slate-500"}>Danh sách</button>
+              <button type="button" onClick={() => setPane("people")} className={pane === "people" ? "rounded-md bg-white px-3 py-1 text-[#0052cc] shadow-sm" : "px-3 py-1 text-slate-500"}>Kanban</button>
               <button type="button" onClick={() => setPane("attendance")} className={pane === "attendance" ? "rounded-md bg-white px-3 py-1 text-[#0052cc] shadow-sm" : "px-3 py-1 text-slate-500"}>Chấm công</button>
             </div>
             {pane === "people" && <input
@@ -139,13 +173,40 @@ export function PersonnelView() {
             <KpiCard title="ĐANG HOẠT ĐỘNG" value={<>{active}</>} sub={`${rows.length - active} tài khoản ngừng`} />
             <KpiCard title="PHÒNG BAN" value={<>{new Set(rows.map((r) => departmentOf(r)).filter(Boolean)).size}</>} sub="Theo người đang có trong danh sách" />
           </div>
-          <div className="mt-4">
-            <DataTable headers={["Nhân sự", "Mã", "Phòng ban", "Vị trí", "Ngày sinh", "Ngày vào làm", "Điện thoại", "Email", "Thao tác"]}>
-              {filtered.map((person) => (
-                <PersonnelRow key={person.id} person={person} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
-              ))}
-              {filtered.length === 0 && <EmptyRow colSpan={9} text="Chưa có nhân sự" />}
-            </DataTable>
+          <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+            {columns.map((column) => (
+              <section
+                key={column.label}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setDropDepartment(column.label);
+                }}
+                onDragLeave={(event) => {
+                  if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+                  setDropDepartment((current) => (current === column.label ? null : current));
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setDropDepartment(null);
+                  const id = Number(event.dataTransfer.getData("text/plain"));
+                  const person = rows.find((row) => row.id === id);
+                  if (person) void movePerson(person, column.label);
+                }}
+                className={`flex w-72 shrink-0 flex-col rounded-xl border bg-[#eef2f7] ${dropDepartment === column.label ? "border-[#0052cc]" : "border-transparent"}`}
+              >
+                <header className="flex items-center justify-between px-3 py-2.5">
+                  <h2 className="text-[13px] font-bold text-slate-800">{column.label}</h2>
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[12px] font-semibold text-slate-500">{column.people.length}</span>
+                </header>
+                <div className="flex min-h-36 flex-col gap-2 px-2 pb-2">
+                  {column.people.map((person) => (
+                    <PersonnelCard key={person.id} person={person} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
+                  ))}
+                  {column.people.length === 0 && <p className="px-1 py-6 text-center text-[12px] text-slate-400">Chưa có người</p>}
+                </div>
+              </section>
+            ))}
+            {columns.length === 0 && <p className="py-10 text-[13px] text-slate-400">Không có nhân sự khớp từ khóa.</p>}
           </div>
         </div>
       </QueryState>
@@ -177,7 +238,7 @@ export function PersonnelView() {
   );
 }
 
-function PersonnelRow({
+function PersonnelCard({
   person,
   onView,
   onEdit,
@@ -208,45 +269,50 @@ function PersonnelRow({
     setOpen((value) => !value);
   };
 
+  const position = positionOf(person);
   return (
-    <tr>
-      <td>
-        <div className="flex items-center gap-2">
-          <Avatar tone={AVATAR_TONES[person.id % AVATAR_TONES.length]} size="sm">
-            {person.initials || initialsOf(person.full_name)}
-          </Avatar>
-          <strong>{person.full_name}</strong>
+    <article
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.setData("text/plain", String(person.id));
+        event.dataTransfer.effectAllowed = "move";
+      }}
+      className="cursor-grab rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm active:cursor-grabbing"
+    >
+      <div className="flex items-start gap-2">
+        <Avatar tone={AVATAR_TONES[person.id % AVATAR_TONES.length]} size="sm">
+          {person.initials || initialsOf(person.full_name)}
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[13px] font-bold text-slate-900">{person.full_name}</div>
+          <div className="text-[12px] text-slate-500">{person.code}{position ? ` · ${position}` : ""}</div>
         </div>
-      </td>
-      <td><code>{person.code}</code></td>
-      <td>{departmentOf(person) ?? "—"}</td>
-      <td>{positionOf(person) || "—"}</td>
-      <td>{showDate(person.date_of_birth)}</td>
-      <td>{showDate(person.hired_on)}</td>
-      <td>{person.phone || "—"}</td>
-      <td>{person.email || "—"}</td>
-      <td>
-        <div className="relative">
-          <button
-            ref={buttonRef}
-            type="button"
-            onClick={toggle}
-            className="rounded-lg border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
-            aria-label="Thao tác nhân sự"
-            aria-expanded={open}
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
-          {open && (
-            <div ref={menuRef} className="fixed z-50 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg" style={{ top: menuPos.top, left: menuPos.left }}>
-              <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onView(person); }}>Xem</button>
-              <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(person); }}>Sửa</button>
-              <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(person); }}>Xóa</button>
-            </div>
-          )}
+        <button
+          ref={buttonRef}
+          type="button"
+          draggable={false}
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={toggle}
+          className="rounded-lg border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
+          aria-label="Thao tác nhân sự"
+          aria-expanded={open}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="mt-2 space-y-0.5 text-[12px] text-slate-600">
+        <div>{person.phone || "Chưa có điện thoại"}</div>
+        <div>Sinh {showDate(person.date_of_birth)} · Vào làm {showDate(person.hired_on)}</div>
+      </div>
+      {person.status !== "active" && <div className="mt-2"><StatusPill tone="neutral">{statusLabel(person.status)}</StatusPill></div>}
+      {open && (
+        <div ref={menuRef} className="fixed z-50 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg" style={{ top: menuPos.top, left: menuPos.left }}>
+          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onView(person); }}>Xem</button>
+          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(person); }}>Sửa</button>
+          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(person); }}>Xóa</button>
         </div>
-      </td>
-    </tr>
+      )}
+    </article>
   );
 }
 

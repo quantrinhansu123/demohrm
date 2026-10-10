@@ -450,6 +450,28 @@ export function fetchLiveCompanies(): Promise<LiveCompany[]> {
   return apiGet<LiveCompany[]>("/companies");
 }
 
+export interface CompanyWrite {
+  code: string;
+  short_name: string;
+  name: string;
+  hotline?: string | null;
+  contact_name?: string | null;
+  contact_phone?: string | null;
+  bill_rate_per_day?: number | null;
+}
+
+export function createLiveCompany(body: CompanyWrite): Promise<LiveCompany> {
+  return apiPost("/companies", body);
+}
+
+export function updateLiveCompany(id: number, body: CompanyWrite): Promise<LiveCompany> {
+  return apiPatch(`/companies/${id}`, body);
+}
+
+export function deleteLiveCompany(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/companies/${id}`);
+}
+
 export function fetchLivePeriods(): Promise<LivePeriod[]> {
   return apiGet<LivePeriod[]>("/periods");
 }
@@ -486,7 +508,7 @@ export function fetchLiveAttendances(date?: string): Promise<Page<LiveAttendance
   return apiGet(`/attendances?${p.toString()}`);
 }
 
-export function checkInLive(body: { worker_id: number; check_in_lat?: number; check_in_lng?: number }): Promise<LiveAttendance> {
+export function checkInLive(body: { staff_id?: number; worker_id?: number; check_in_lat?: number; check_in_lng?: number }): Promise<LiveAttendance> {
   return apiPost("/attendances/check-in", body);
 }
 

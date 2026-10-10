@@ -23,6 +23,7 @@ interface AppState {
   staff: LiveStaff[];
   catalogError: string;
   catalogLoading: boolean;
+  reloadCatalog: () => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -96,8 +97,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       staff,
       catalogError,
       catalogLoading,
+      reloadCatalog: loadCatalog,
     }),
-    [currentModule, currentTeam, currentFactory, periodCode, periods, companies, teams, staff, catalogError, catalogLoading]
+    [currentModule, currentTeam, currentFactory, periodCode, periods, companies, teams, staff, catalogError, catalogLoading, loadCatalog]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

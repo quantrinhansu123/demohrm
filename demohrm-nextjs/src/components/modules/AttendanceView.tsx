@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import NextImage from "next/image";
 import { MapPin } from "lucide-react";
 import { ApiError } from "@/lib/api";
-import { checkInLive, checkOutLive, fetchLiveAttendances, fetchLivePersonnel, fetchLiveWorkers } from "@/lib/live";
+import { checkInLive, checkOutLive, fetchLiveAttendances, fetchLivePersonnel } from "@/lib/live";
 import type { LiveAttendance } from "@/lib/live";
 import { initialsOf } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
@@ -122,7 +122,6 @@ export function AttendanceView({ embedded = false }: { embedded?: boolean }) {
   const [error, setError] = useState("");
   const [open, setOpen] = useState<"in" | "out" | null>(null);
   const [people, setPeople] = useState<Array<{ id: number; name: string; code: string }>>([]);
-  const [workers, setWorkers] = useState<Array<{ id: number; name: string }>>([]);
   const [personId, setPersonId] = useState("");
   const [photo, setPhoto] = useState("");
   const [formError, setFormError] = useState("");
@@ -161,20 +160,13 @@ export function AttendanceView({ embedded = false }: { embedded?: boolean }) {
     setPhoto("");
     setFormError("");
     try {
-      const [staff, workerPage] = await Promise.all([
-        fetchLivePersonnel(),
-        fetchLiveWorkers({ statusEn: "working", limit: 200 }),
-      ]);
-      const active = staff.filter((person) => person.status === "active").map((person) => ({
+      const staff = await fetchLivePersonnel();
+      const list = staff.filter((person) => person.status === "active").map((person) => ({
         id: person.id,
         name: person.full_name,
         code: person.code,
       }));
-      const working = workerPage.rows.map((worker) => ({ id: worker.id, name: worker.full_name }));
-      const linked = active.filter((person) => working.some((worker) => sameName(worker.name, person.name)));
-      const list = linked.length > 0 ? linked : active;
       setPeople(list);
-      setWorkers(working);
       setPersonId(list[0] ? String(list[0].id) : "");
       if (list.length === 0) setFormError("Chưa có nhân sự đang làm.");
     } catch (e) {
@@ -187,11 +179,6 @@ export function AttendanceView({ embedded = false }: { embedded?: boolean }) {
     if (!person) return;
     if (!photo) {
       setFormError("Chụp ảnh trước khi chấm công.");
-      return;
-    }
-    const worker = workers.find((item) => sameName(item.name, person.name));
-    if (!worker) {
-      setFormError("Nhân sự này chưa có hồ sơ người lao động đang làm.");
       return;
     }
     setBusy(true);
@@ -209,7 +196,7 @@ export function AttendanceView({ embedded = false }: { embedded?: boolean }) {
         await savePhoto(saved.id, blob);
       } else {
         const saved = await checkInLive({
-          worker_id: worker.id,
+          staff_id: person.id,
           check_in_lat: pos.coords.latitude,
           check_in_lng: pos.coords.longitude,
         });

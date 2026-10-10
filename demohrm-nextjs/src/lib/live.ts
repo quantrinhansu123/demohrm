@@ -442,6 +442,21 @@ export interface LiveStaff {
   title?: string | null;
 }
 
+export interface LivePersonnel extends LiveStaff {
+  initials: string | null;
+  email: string | null;
+  phone: string | null;
+  status: string;
+}
+
+export interface PersonnelWrite {
+  full_name: string;
+  department: string;
+  phone?: string | null;
+  email?: string | null;
+  status: string;
+}
+
 export interface LiveCompany {
   id: number;
   code: string;
@@ -476,6 +491,22 @@ export interface LiveTeam {
 
 export function fetchLiveStaff(): Promise<LiveStaff[]> {
   return apiGet<LiveStaff[]>("/staff");
+}
+
+export function fetchLivePersonnel(): Promise<LivePersonnel[]> {
+  return apiGet<LivePersonnel[]>("/staff?directory=1");
+}
+
+export function createLivePersonnel(body: { department: string; names: string[]; phone?: string }): Promise<LivePersonnel[]> {
+  return apiPost<LivePersonnel[]>("/staff", body);
+}
+
+export function updateLivePersonnel(id: number, body: PersonnelWrite): Promise<LivePersonnel> {
+  return apiPatch<LivePersonnel>(`/staff/${id}`, body);
+}
+
+export function deleteLivePersonnel(id: number): Promise<{ ok: boolean }> {
+  return apiDelete<{ ok: boolean }>(`/staff/${id}`);
 }
 
 export function fetchLiveCompanies(): Promise<LiveCompany[]> {

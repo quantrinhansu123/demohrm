@@ -29,6 +29,7 @@ const LABELS: Record<string, string> = {
   recruiter: "Tuyển dụng",
   team_lead: "Trưởng nhóm",
   coordinator: "Điều phối",
+  admin: "Hành chính nhân sự",
 };
 
 export function roleLabel(role: string): string {

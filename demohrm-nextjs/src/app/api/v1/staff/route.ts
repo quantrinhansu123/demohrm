@@ -1,20 +1,84 @@
 export const runtime = "nodejs";
 
-import { getAuth } from "@/lib/server/authctx";
+import { departmentSpec } from "@/lib/departments";
+import { initialsOf } from "@/lib/format";
+import { getAuth, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
-import { apiError, json } from "@/lib/server/http";
+import { apiError, json, readBody } from "@/lib/server/http";
 
-// GET /api/v1/staff — Danh sach nhan su dang hoat dong
+const DIRECTORY_COLUMNS = "id,code,full_name,initials,email,phone,role,title,status";
+const CATALOG_COLUMNS = "id,code,full_name,role,title,status";
+
+// GET /api/v1/staff — Danh muc nhan su dang hoat dong.
+// GET /api/v1/staff?directory=1 — Bang Nhan su, lay tu bang staff (tai khoan nguoi dung).
 export async function GET(req: Request): Promise<Response> {
   try {
     getAuth(req);
-    const { data, error } = await getSupabase()
+    const directory = new URL(req.url).searchParams.get("directory") === "1";
+    let query = getSupabase()
       .from("staff")
-      .select("id,code,full_name,role,title,status")
-      .eq("status", "active")
+      .select(directory ? DIRECTORY_COLUMNS : CATALOG_COLUMNS)
       .order("full_name");
+    if (!directory) query = query.eq("status", "active");
+    const { data, error } = await query;
     if (error) throw error;
     return json(data);
+  } catch (e) {
+    return apiError(e);
+  }
+}
+
+function nextStaffNumber(codes: string[]): number {
+  let max = 0;
+  for (const code of codes) {
+    const n = Number(/^NV-(\d+)$/.exec(code)?.[1] ?? 0);
+    if (n > max) max = n;
+  }
+  return max;
+}
+
+// POST /api/v1/staff — Them ten nhan vien vao mot phong ban.
+export async function POST(req: Request): Promise<Response> {
+  try {
+    const ctx = getAuth(req);
+    const body = await readBody(req);
+    const department = typeof body["department"] === "string" ? body["department"].trim() : "";
+    const spec = departmentSpec(department);
+    if (!spec) return json({ error: "bad_request", message: "Chọn phòng ban." }, 400);
+    const rawNames = Array.isArray(body["names"]) ? body["names"] : [];
+    const names = rawNames
+      .map((name) => (typeof name === "string" ? name.trim().replace(/\s+/g, " ") : ""))
+      .filter(Boolean);
+    if (names.length === 0) return json({ error: "bad_request", message: "Nhập ít nhất một họ tên." }, 400);
+    if (names.length > 50) return json({ error: "bad_request", message: "Mỗi lần thêm tối đa 50 người." }, 400);
+    if (names.some((name) => name.length > 80)) {
+      return json({ error: "bad_request", message: "Họ tên tối đa 80 ký tự." }, 400);
+    }
+    const phone = names.length === 1 && typeof body["phone"] === "string" ? body["phone"].trim() : "";
+    const { data: existing, error: listError } = await getSupabase().from("staff").select("code");
+    if (listError) throw listError;
+    let seq = nextStaffNumber(((existing ?? []) as Array<{ code: string }>).map((row) => row.code));
+    const rows = names.map((name) => {
+      seq += 1;
+      return {
+        code: `NV-${String(seq).padStart(3, "0")}`,
+        full_name: name,
+        initials: initialsOf(name),
+        phone: phone || null,
+        role: spec.role,
+        title: spec.label,
+        status: "active",
+      };
+    });
+    const { data, error } = await getSupabase().from("staff").insert(rows).select(DIRECTORY_COLUMNS);
+    if (error) throw error;
+    await writeAudit(ctx, {
+      action: "INSERT",
+      table: "staff",
+      recordId: names.length,
+      detail: `Them ${names.length} nhan su vao ${spec.label}`,
+    });
+    return json(data, 201);
   } catch (e) {
     return apiError(e);
   }

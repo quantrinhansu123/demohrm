@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   MapPin,
   ShieldCheck,
+  UserRound,
   Users,
   Wallet,
 } from "lucide-react";
@@ -24,6 +25,10 @@ export function OrdersIcon(props: LucideProps) {
 
 export function WorkersIcon(props: LucideProps) {
   return <Users {...props} />;
+}
+
+export function PersonnelIcon(props: LucideProps) {
+  return <UserRound {...props} />;
 }
 
 export function CompaniesIcon(props: LucideProps) {

@@ -9,6 +9,7 @@ export type ModuleId =
   | "dashboard"
   | "orders"
   | "workers"
+  | "personnel"
   | "companies"
   | "vendors"
   | "attendance"

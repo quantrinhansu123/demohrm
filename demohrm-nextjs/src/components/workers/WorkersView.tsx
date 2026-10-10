@@ -213,6 +213,10 @@ function CreateWorkerModal({
 
   const save = async () => {
     if (!form.code.trim() || !form.name.trim() || !form.phone.trim() || !form.citizenId.trim()) return;
+    if (!manager.trim()) {
+      setError("Chọn người quản lý.");
+      return;
+    }
     const recruiter = staff.find((s) => s.full_name === form.recruiter);
     const companyRow = companies.find((c) => c.short_name === form.company);
     if (!recruiter || !companyRow) {
@@ -263,6 +267,7 @@ function CreateWorkerModal({
         current_company_id: companyRow.id,
         status: "candidate",
       });
+      rememberManager(createdRow.code, manager.trim());
       setCreated({ id: createdRow.id, code: createdRow.code });
       setStep("close");
       onCreated();
@@ -344,7 +349,7 @@ function CreateWorkerModal({
       ) : (
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 rounded-lg bg-sky-50 px-3 py-2 text-[13px] text-sky-800">
-          Giai đoạn: <strong>Đang tư vấn</strong>. Lưu thông tin trước. Người quản lý đón chọn khi chốt.
+          Giai đoạn: <strong>Đang tư vấn</strong>. Lưu thông tin trước, rồi chốt khi đã chọn người đón.
         </div>
         <Field label="Mã NLĐ *"><input className={inputClass} value={form.code} onChange={(e) => set("code", e.target.value)} /></Field>
         <Field label="Họ và tên *"><input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
@@ -365,6 +370,12 @@ function CreateWorkerModal({
         </Field>
         <Field label="Người tuyển">
           <select className={inputClass} value={form.recruiter} onChange={(e) => set("recruiter", e.target.value)}>
+            {staff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
+          </select>
+        </Field>
+        <Field label="Người quản lý *">
+          <select className={inputClass} value={manager} onChange={(e) => setManager(e.target.value)}>
+            <option value="">— Chọn người quản lý —</option>
             {staff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
           </select>
         </Field>

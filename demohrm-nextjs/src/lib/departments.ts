@@ -2,6 +2,7 @@ export const DEPARTMENTS = [
   { label: "Giám đốc", role: "director" },
   { label: "Phó giám đốc", role: "deputy_director" },
   { label: "Trưởng phòng", role: "team_lead" },
+  { label: "Quản lý", role: "team_lead" },
   { label: "Nhân viên kinh doanh", role: "recruiter" },
   { label: "Kế toán", role: "accountant" },
   { label: "Hành chính nhân sự", role: "admin" },

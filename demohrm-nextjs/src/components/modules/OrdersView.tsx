@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Copy, MoreHorizontal, Pencil, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Copy, MoreHorizontal, Plus } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { fetchLiveOrders, fetchLivePositions, fetchLiveSites, toOrderSummary } from "@/lib/live";
 import type { LiveSite } from "@/lib/live";
@@ -12,7 +12,7 @@ import { LinkedVideo, playableVideo } from "@/components/modules/LinkedVideo";
 import { StatusPill } from "@/components/ui/badge";
 import { Field, Modal } from "@/components/ui/modal";
 import { QueryState } from "@/components/ui/query-state";
-import { ApiError, apiPatch, apiPost } from "@/lib/api";
+import { ApiError, apiDelete, apiPatch, apiPost } from "@/lib/api";
 
 const legendTone: Record<string, string> = {
   green: "bg-emerald-500",
@@ -173,6 +173,21 @@ export function OrdersView() {
     [query, orders]
   );
 
+  const deleteOrder = async (order: OrderSummary) => {
+    if (!order.orderId) return;
+    if (!window.confirm(`Xóa đơn ${order.code}?`)) return;
+    try {
+      await apiDelete(`/orders/${order.orderId}`);
+      const next = { ...drafts };
+      delete next[order.code];
+      setDrafts(next);
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+      loadOrders();
+    } catch (e) {
+      window.alert(e instanceof ApiError ? e.message : "Không xóa được đơn hàng.");
+    }
+  };
+
   const openOrder = (order: OrderSummary, tab: "desc" | "workers" = "desc") => {
     setSelectedTab(tab);
     setSelected(order);
@@ -184,6 +199,7 @@ export function OrdersView() {
         order={selected}
         initialTab={selectedTab}
         videoUrl={drafts[selected.code]?.videoLink ?? ""}
+        images={drafts[selected.code]?.images ?? []}
         onBack={() => setSelected(null)}
       />
     );
@@ -222,6 +238,7 @@ export function OrdersView() {
               draft={drafts[o.code]}
               onOpen={openOrder}
               onEdit={() => setEditing(o)}
+              onDelete={() => void deleteOrder(o)}
             />
           ))}
           {visible.length === 0 && <p className="py-10 text-center text-slate-400">Không có đơn hàng trong kỳ này.</p>}
@@ -259,13 +276,17 @@ function OrderDemandCard({
   draft,
   onOpen,
   onEdit,
+  onDelete,
 }: {
   order: OrderSummary;
   draft?: OrderDraft;
   onOpen: (order: OrderSummary, tab?: "desc" | "workers") => void;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [fileVideo, setFileVideo] = useState("");
   const images = draft?.images ?? [];
   const title = draft?.title || order.title;
@@ -296,6 +317,16 @@ function OrderDemandCard({
       if (created) URL.revokeObjectURL(created);
     };
   }, [order.code, draft?.videoStamp]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [menuOpen]);
+
   const shareText = [
     title,
     draft?.summary,
@@ -333,18 +364,23 @@ function OrderDemandCard({
               <StatusPill tone="neutral">Thời vụ</StatusPill>
               {preview && <span className="text-[12px] font-semibold text-rose-600">3 thông tin chưa khớp</span>}
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            <div className="relative shrink-0" ref={menuRef}>
               <button
                 type="button"
-                onClick={onEdit}
-                className="inline-flex items-center gap-1 rounded-lg border border-[#2563eb] bg-white px-2.5 py-1 text-[12.5px] font-semibold text-[#1d4ed8] hover:bg-blue-50"
+                onClick={() => setMenuOpen((open) => !open)}
+                className="rounded-lg border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
+                aria-label="Thao tác đơn hàng"
+                aria-expanded={menuOpen}
               >
-                <Pencil className="h-3.5 w-3.5" />
-                Sửa
-              </button>
-              <button type="button" className="rounded-lg border border-slate-200 p-1 text-slate-500 hover:bg-slate-50" aria-label="Thêm thao tác">
                 <MoreHorizontal className="h-4 w-4" />
               </button>
+              {menuOpen && (
+                <div className="absolute right-0 z-20 mt-1 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onOpen(order, "desc"); }}>Xem</button>
+                  <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onEdit(); }}>Sửa</button>
+                  <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setMenuOpen(false); onDelete(); }}>Xóa</button>
+                </div>
+              )}
             </div>
           </div>
           <h2 className="mt-1.5 text-[16px] font-bold leading-tight text-slate-900">{title}</h2>

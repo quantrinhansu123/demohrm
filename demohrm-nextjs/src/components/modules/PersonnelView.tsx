@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MoreHorizontal } from "lucide-react";
 import { ApiError } from "@/lib/api";
-import { DEPARTMENTS, departmentOf } from "@/lib/departments";
+import { DEPARTMENTS, departmentOf, positionOf } from "@/lib/departments";
 import { initialsOf } from "@/lib/format";
 import { createLivePersonnel, deleteLivePersonnel, fetchLivePersonnel, updateLivePersonnel } from "@/lib/live";
 import type { LivePersonnel, PersonnelWrite } from "@/lib/live";
@@ -34,6 +35,7 @@ function showDate(value: string | null | undefined): string {
 interface PersonnelForm {
   full_name: string;
   department: string;
+  position: string;
   phone: string;
   email: string;
   date_of_birth: string;
@@ -45,6 +47,7 @@ function formFromPerson(person: LivePersonnel): PersonnelForm {
   return {
     full_name: person.full_name,
     department: departmentOf(person) ?? DEPARTMENTS[0].label,
+    position: positionOf(person),
     phone: person.phone ?? "",
     email: person.email ?? "",
     date_of_birth: person.date_of_birth?.slice(0, 10) ?? "",
@@ -84,7 +87,7 @@ export function PersonnelView() {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((r) =>
-      [r.full_name, r.code, r.email, r.phone, departmentOf(r), r.date_of_birth, r.hired_on]
+      [r.full_name, r.code, r.email, r.phone, departmentOf(r), positionOf(r), r.date_of_birth, r.hired_on]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     );
@@ -137,7 +140,7 @@ export function PersonnelView() {
             <KpiCard title="PHÒNG BAN" value={<>{new Set(rows.map((r) => departmentOf(r)).filter(Boolean)).size}</>} sub="Theo người đang có trong danh sách" />
           </div>
           <div className="mt-4">
-            <DataTable headers={["Nhân sự", "Mã", "Phòng ban", "Ngày sinh", "Ngày vào làm", "Điện thoại", "Email", "Trạng thái", "Thao tác"]}>
+            <DataTable headers={["Nhân sự", "Mã", "Phòng ban", "Vị trí", "Ngày sinh", "Ngày vào làm", "Điện thoại", "Email", "Thao tác"]}>
               {filtered.map((person) => (
                 <PersonnelRow key={person.id} person={person} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
               ))}
@@ -185,6 +188,26 @@ function PersonnelRow({
   onEdit: (person: LivePersonnel) => void;
   onDelete: (person: LivePersonnel) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node) && !buttonRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const toggle = () => {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) setMenuPos({ top: rect.bottom + 4, left: rect.right - 112 });
+    setOpen((value) => !value);
+  };
+
   return (
     <tr>
       <td>
@@ -197,20 +220,30 @@ function PersonnelRow({
       </td>
       <td><code>{person.code}</code></td>
       <td>{departmentOf(person) ?? "—"}</td>
+      <td>{positionOf(person) || "—"}</td>
       <td>{showDate(person.date_of_birth)}</td>
       <td>{showDate(person.hired_on)}</td>
       <td>{person.phone || "—"}</td>
       <td>{person.email || "—"}</td>
       <td>
-        <StatusPill tone={person.status === "active" ? "success" : person.status === "inactive" ? "danger" : "neutral"}>
-          {statusLabel(person.status)}
-        </StatusPill>
-      </td>
-      <td>
-        <div className="flex gap-1">
-          <Button variant="outline" size="xs" onClick={() => onView(person)}>Xem</Button>
-          <Button variant="outline" size="xs" onClick={() => onEdit(person)}>Sửa</Button>
-          <Button variant="destructive" size="xs" onClick={() => onDelete(person)}>Xóa</Button>
+        <div className="relative">
+          <button
+            ref={buttonRef}
+            type="button"
+            onClick={toggle}
+            className="rounded-lg border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
+            aria-label="Thao tác nhân sự"
+            aria-expanded={open}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+          {open && (
+            <div ref={menuRef} className="fixed z-50 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg" style={{ top: menuPos.top, left: menuPos.left }}>
+              <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onView(person); }}>Xem</button>
+              <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(person); }}>Sửa</button>
+              <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(person); }}>Xóa</button>
+            </div>
+          )}
         </div>
       </td>
     </tr>
@@ -220,6 +253,7 @@ function PersonnelRow({
 function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
   const [fullName, setFullName] = useState("");
   const [department, setDepartment] = useState<string>(DEPARTMENTS[0].label);
+  const [position, setPosition] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
@@ -238,12 +272,14 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
       await createLivePersonnel({
         full_name: fullName.trim(),
         department,
+        position: position.trim() || undefined,
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
         date_of_birth: dateOfBirth || null,
         hired_on: hiredOn || null,
       });
       setFullName("");
+      setPosition("");
       setPhone("");
       setEmail("");
       setDateOfBirth("");
@@ -282,6 +318,9 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
               <option key={d.label} value={d.label}>{d.label}</option>
             ))}
           </select>
+        </Field>
+        <Field label="Vị trí">
+          <input value={position} onChange={(e) => setPosition(e.target.value)} className={inputClass} placeholder="Ví dụ: Nhân viên tuyển dụng" />
         </Field>
         <Field label="Ngày sinh">
           <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputClass} />
@@ -327,6 +366,7 @@ function EditPersonnelModal({
     const body: PersonnelWrite = {
       full_name: form.full_name.trim(),
       department: form.department,
+      position: form.position.trim() || null,
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
       date_of_birth: form.date_of_birth || null,
@@ -369,6 +409,9 @@ function EditPersonnelModal({
               <option key={d.label} value={d.label}>{d.label}</option>
             ))}
           </select>
+        </Field>
+        <Field label="Vị trí">
+          <input value={form.position} onChange={(e) => setForm((prev) => ({ ...prev, position: e.target.value }))} className={inputClass} placeholder="Ví dụ: Nhân viên tuyển dụng" />
         </Field>
         <Field label="Điện thoại">
           <input value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} className={inputClass} />
@@ -424,6 +467,7 @@ function PersonnelDetailModal({
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13.5px]">
           <Detail label="Mã" value={person.code} />
           <Detail label="Phòng ban" value={departmentOf(person) ?? "Chưa xếp"} />
+          <Detail label="Vị trí" value={positionOf(person) || "—"} />
           <Detail label="Ngày sinh" value={showDate(person.date_of_birth)} />
           <Detail label="Ngày vào làm" value={showDate(person.hired_on)} />
           <Detail label="Điện thoại" value={person.phone || "—"} />

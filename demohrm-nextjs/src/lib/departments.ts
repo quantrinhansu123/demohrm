@@ -27,7 +27,23 @@ export function departmentSpec(label: string): (typeof DEPARTMENTS)[number] | nu
 
 export function departmentOf(person: { title?: string | null; role: string }): DepartmentLabel | null {
   const title = person.title?.trim() ?? "";
-  const exact = DEPARTMENTS.find((d) => d.label === title);
+  const head = title.split(" · ")[0] ?? "";
+  const exact = DEPARTMENTS.find((d) => d.label === head || d.label === title);
   if (exact) return exact.label;
   return ROLE_DEPARTMENT[person.role] ?? null;
+}
+
+export function positionOf(person: { title?: string | null; role: string }): string {
+  const title = person.title?.trim() ?? "";
+  const department = departmentOf(person);
+  if (department && title.startsWith(`${department} · `)) return title.slice(department.length + 3);
+  if (!title || (department && title === department)) return "";
+  if (DEPARTMENTS.some((d) => d.label === title)) return "";
+  return title;
+}
+
+export function staffTitle(department: string, position: string): string {
+  const job = position.trim().replace(/\s+/g, " ").split(" · ").join(" - ");
+  if (!job || job === department) return department;
+  return `${department} · ${job}`;
 }

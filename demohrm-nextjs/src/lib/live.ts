@@ -415,12 +415,13 @@ export interface PersonnelWrite {
   department: string;
   phone?: string | null;
   email?: string | null;
+  position?: string | null;
   date_of_birth?: string | null;
   hired_on?: string | null;
   status: string;
 }
 
-export function createLivePersonnel(body: { department: string; full_name: string; phone?: string; email?: string; date_of_birth?: string | null; hired_on?: string | null }): Promise<LivePersonnel[]> {
+export function createLivePersonnel(body: { department: string; full_name: string; position?: string; phone?: string; email?: string; date_of_birth?: string | null; hired_on?: string | null }): Promise<LivePersonnel[]> {
   return apiPost<LivePersonnel[]>("/staff", body);
 }
 

@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 
-import { departmentSpec } from "@/lib/departments";
+import { departmentSpec, staffTitle } from "@/lib/departments";
 import { initialsOf } from "@/lib/format";
 import { getAuth, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
@@ -62,6 +62,8 @@ export async function POST(req: Request): Promise<Response> {
     const department = typeof body["department"] === "string" ? body["department"].trim() : "";
     const spec = departmentSpec(department);
     if (!spec) return json({ error: "bad_request", message: "Chọn phòng ban." }, 400);
+    const position = typeof body["position"] === "string" ? body["position"].trim().replace(/\s+/g, " ") : "";
+    if (position.length > 80) return json({ error: "bad_request", message: "Vị trí tối đa 80 ký tự." }, 400);
     const fullName = typeof body["full_name"] === "string" ? body["full_name"].trim().replace(/\s+/g, " ") : "";
     if (!fullName) return json({ error: "bad_request", message: "Nhập họ tên." }, 400);
     if (fullName.length > 80) return json({ error: "bad_request", message: "Họ tên tối đa 80 ký tự." }, 400);
@@ -84,7 +86,7 @@ export async function POST(req: Request): Promise<Response> {
       date_of_birth: dateOfBirth,
       hired_on: hiredOn,
       role: spec.role,
-      title: spec.label,
+      title: staffTitle(spec.label, position),
       status: "active",
     };
     const { data, error } = await getSupabase()

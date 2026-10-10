@@ -1,14 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  AlertTriangle,
-  Check,
-  Circle,
-  Copy,
-  ImagePlus,
-  MapPin,
-} from "lucide-react";
+import { Check, Circle, Copy } from "lucide-react";
 import { LinkedVideo, playableVideo } from "@/components/modules/LinkedVideo";
 import type { OrderSummary } from "@/types/hrm";
 
@@ -38,18 +31,18 @@ const SHIFTS: { name: string; time: string; pay: string; allowance: string; tone
   { name: "Ca ngày đêm", time: "Xoay ca", pay: "600.000", allowance: "20.000", tone: "bg-violet-50 border-violet-100" },
 ];
 
-const THUMBS = ["Dây chuyền", "Đóng gói", "Kho linh kiện", "Cổng nhà máy"];
-
 export function JobDescriptionView({
   order,
   onBack,
   initialTab = "desc",
   videoUrl = "",
+  images = [],
 }: {
   order: OrderSummary;
   onBack: () => void;
   initialTab?: "desc" | "workers";
   videoUrl?: string;
+  images?: string[];
 }) {
   const [tab, setTab] = useState<"desc" | "workers">(initialTab);
   const [copied, setCopied] = useState(false);
@@ -146,45 +139,6 @@ export function JobDescriptionView({
         ) : (
           <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
             <div className="flex flex-col gap-4">
-              {blockers.length > 0 && (
-                <div className="flex gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-[13px] text-orange-900">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
-                  <div>
-                    <div className="font-semibold">{blockers.length} thông tin chưa đủ — cần bổ sung trước khi đăng tin</div>
-                    <div className="mt-0.5 text-orange-800/90">{blockers.map((b) => b.label).join(" · ")}</div>
-                  </div>
-                </div>
-              )}
-
-              <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 className="text-[14px] font-bold text-slate-900">Hình ảnh & video nơi làm việc</h2>
-                  <span className="text-[12px] text-slate-400">1 video · {THUMBS.length} ảnh</span>
-                </div>
-                <div className="relative h-[280px] overflow-hidden rounded-xl bg-slate-900">
-                  {playableVideo(videoUrl) ? (
-                    <LinkedVideo src={videoUrl} label="Video nơi làm việc" className="absolute inset-0 h-full w-full" />
-                  ) : (
-                    <FactoryScene />
-                  )}
-                </div>
-                <div className="mt-3 grid grid-cols-4 gap-2">
-                  {THUMBS.map((name, i) => (
-                    <div
-                      key={name}
-                      className={`overflow-hidden rounded-lg border ${i === 0 ? "border-[#2563eb] ring-2 ring-blue-200" : "border-slate-200"}`}
-                    >
-                      <FactoryScene compact hue={i} />
-                      <div className="truncate bg-white px-2 py-1 text-[11px] text-slate-500">{name}</div>
-                    </div>
-                  ))}
-                </div>
-                <button type="button" className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-rose-600">
-                  <ImagePlus className="h-4 w-4" />
-                  Thêm ảnh / video nơi làm việc
-                </button>
-              </article>
-
               <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                 <h2 className="mb-3 text-[14px] font-bold text-slate-900">Thông tin nhanh</h2>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -226,39 +180,29 @@ export function JobDescriptionView({
                 </p>
               </article>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <InfoCard
-                  title="Công việc & môi trường"
-                  items={[
-                    "Sản xuất dây điện, đấu nối, đóng gói",
-                    "Phân loại linh kiện, dán tem",
-                    "Làm theo ca 8–12 tiếng, nghỉ giữa ca",
-                    "Nhà máy mát, có bảo hộ và chỗ ngồi",
-                  ]}
-                />
-                <InfoCard
-                  title="Yêu cầu & hồ sơ"
-                  items={[
-                    "Nam/nữ 18–45 tuổi, sức khỏe tốt",
-                    "Không yêu cầu kinh nghiệm",
-                    "CMND/CCCD còn hạn",
-                    "Chấp nhận người mới — chưa có sổ",
-                  ]}
-                />
-                <InfoCard
-                  title="Phúc lợi"
-                  items={["Ăn ca — chưa có", "Chỗ ở / xe đưa đón — chưa có", "Bảo hiểm, khám sức khỏe — chưa có"]}
-                  muted
-                />
-                <InfoCard
-                  title="Địa điểm & nhận việc"
-                  items={[
-                    `${site || company} · KCN Bình Xuân`,
-                    "Điểm tập trung, giờ có mặt — chưa có",
-                    "Người nhận việc tại cổng — chưa có",
-                  ]}
-                />
-              </div>
+              <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-[14px] font-bold text-slate-900">Hình ảnh & video nơi làm việc</h2>
+                  <span className="text-[12px] text-slate-400">{playableVideo(videoUrl) ? "1 video" : "Chưa có video"}{images.length > 0 ? ` · ${images.length} ảnh` : ""}</span>
+                </div>
+                <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-slate-900">
+                  {playableVideo(videoUrl) ? (
+                    <LinkedVideo src={videoUrl} label="Video nơi làm việc" className="absolute inset-0 h-full w-full" />
+                  ) : (
+                    <div className="grid h-full place-items-center text-[13px] text-slate-400">Chưa có video</div>
+                  )}
+                </div>
+                {images.length > 0 && (
+                  <div className={`mt-3 grid gap-2 ${images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+                    {images.map((src, i) => (
+                      <div key={`${i}-${src.slice(0, 16)}`} className="overflow-hidden rounded-lg border border-slate-200">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={src} alt="" className="aspect-video w-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </article>
             </div>
 
             <aside className="flex flex-col gap-4 xl:sticky xl:top-0">
@@ -349,24 +293,6 @@ export function JobDescriptionView({
   );
 }
 
-function InfoCard({ title, items, muted }: { title: string; items: string[]; muted?: boolean }) {
-  return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-2 flex items-center gap-1.5 text-[14px] font-bold text-slate-900">
-        {title === "Địa điểm & nhận việc" && <MapPin className="h-4 w-4 text-[#2563eb]" />}
-        {title}
-      </h2>
-      <ul className="flex flex-col gap-1.5">
-        {items.map((item) => (
-          <li key={item} className={`text-[13px] leading-snug ${muted || item.includes("chưa có") ? "text-slate-400" : "text-slate-700"}`}>
-            · {item}
-          </li>
-        ))}
-      </ul>
-    </article>
-  );
-}
-
 function WorkersPane({ order }: { order: OrderSummary }) {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -383,28 +309,5 @@ function WorkersPane({ order }: { order: OrderSummary }) {
         ))}
       </div>
     </article>
-  );
-}
-
-function FactoryScene({ compact, hue = 0 }: { compact?: boolean; hue?: number }) {
-  const sky = ["#7dd3fc", "#93c5fd", "#67e8f9", "#a5b4fc"][hue % 4];
-  return (
-    <svg viewBox="0 0 640 280" className={compact ? "h-16 w-full" : "h-[280px] w-full"} aria-hidden>
-      <rect width="640" height="280" fill="#0f172a" />
-      <rect y="150" width="640" height="130" fill="#1e293b" />
-      <rect x="40" y="70" width="150" height="160" fill="#334155" />
-      <rect x="210" y="40" width="200" height="190" fill="#1e3a5f" />
-      <rect x="430" y="90" width="160" height="140" fill="#334155" />
-      <rect x="230" y="60" width="160" height="18" fill={sky} opacity="0.85" />
-      <rect x="250" y="100" width="36" height="90" fill="#38bdf8" opacity="0.35" />
-      <rect x="300" y="100" width="36" height="90" fill="#38bdf8" opacity="0.25" />
-      <rect x="350" y="100" width="36" height="90" fill="#38bdf8" opacity="0.35" />
-      <rect x="80" y="100" width="28" height="40" fill="#fbbf24" opacity="0.7" />
-      <rect x="120" y="100" width="28" height="40" fill="#fbbf24" opacity="0.45" />
-      <rect y="230" width="640" height="50" fill="#0b1220" />
-      <circle cx="120" cy="248" r="16" fill="#475569" />
-      <circle cx="210" cy="248" r="16" fill="#475569" />
-      <rect x="150" y="236" width="40" height="12" fill="#94a3b8" />
-    </svg>
   );
 }

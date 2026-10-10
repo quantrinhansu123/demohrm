@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 
-import { departmentSpec } from "@/lib/departments";
+import { departmentSpec, staffTitle } from "@/lib/departments";
 import { initialsOf } from "@/lib/format";
 import { getAuth, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
@@ -36,6 +36,7 @@ export async function PATCH(
     const department = typeof body["department"] === "string" ? body["department"].trim() : "";
     const spec = departmentSpec(department);
     if (!spec) return json({ error: "bad_request", message: "Chọn phòng ban." }, 400);
+    const position = cleanText(body["position"], 80);
     const status = body["status"] === "inactive" ? "inactive" : "active";
     const email = cleanText(body["email"], 120);
     if (email && !email.includes("@")) return json({ error: "bad_request", message: "Email không hợp lệ." }, 400);
@@ -53,7 +54,7 @@ export async function PATCH(
         email: email || null,
         date_of_birth: dateOfBirth,
         hired_on: hiredOn,
-        title: spec.label,
+        title: staffTitle(spec.label, position),
         role: spec.role,
         status,
       })

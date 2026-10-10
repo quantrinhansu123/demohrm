@@ -9,7 +9,7 @@ export function maskCitizenId(cccd: string, hasPermission: boolean): string {
 
 export function workerStatusTone(status: string): "success" | "warning" | "info" | "danger" {
   if (status === "Chờ đi làm") return "warning";
-  if (status === "Tạm nghỉ") return "info";
+  if (status === "Tạm nghỉ" || status === "Đang tư vấn" || status === "Ứng viên") return "info";
   if (status === "Nghỉ việc" || status === "Không đi làm") return "danger";
   return "success";
 }

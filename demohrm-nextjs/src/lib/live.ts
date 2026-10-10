@@ -91,6 +91,7 @@ export function toOrderSummary(row: LiveOrderRow, positions: LivePositionRow[]):
       total: p.target_qty,
     }));
   return {
+    orderId: row.order_id,
     code: row.code,
     title: `${row.company} – ${row.name}`,
     period: `${fmtDate(row.start_date)} – ${fmtDate(row.end_date)}`,
@@ -144,7 +145,7 @@ const EN_STATUS: Record<string, WorkerStatus> = {
   on_leave: "Tạm nghỉ",
   resigned: "Nghỉ việc",
   no_show: "Không đi làm",
-  candidate: "Ứng viên",
+  candidate: "Đang tư vấn",
 };
 
 export const VI_STATUS: Record<string, string> = {
@@ -153,6 +154,7 @@ export const VI_STATUS: Record<string, string> = {
   "Tạm nghỉ": "on_leave",
   "Nghỉ việc": "resigned",
   "Không đi làm": "no_show",
+  "Đang tư vấn": "candidate",
   "Ứng viên": "candidate",
 };
 
@@ -172,7 +174,9 @@ export function toWorker(row: LiveWorkerRow): Worker {
     company: row.company ?? "—",
     position: row.current_position ?? "—",
     type: EN_TYPE[row.employment_type] ?? "Thời vụ",
-    recruiter: row.recruited_by ?? "",
+    recruiter: row.recruited_by ?? row.recruiter_name ?? "",
+    introducer: "",
+    manager: row.supervisor_name ?? "",
     status: EN_STATUS[row.status] ?? "Đang làm",
     dailyRate: 0,
     workedDays: 0,
@@ -357,6 +361,13 @@ export interface LiveStaff {
   title?: string | null;
 }
 
+export interface LivePersonnel extends LiveStaff {
+  initials: string | null;
+  email: string | null;
+  phone: string | null;
+  status: string;
+}
+
 export interface LiveCompany {
   id: number;
   code: string;
@@ -391,6 +402,30 @@ export interface LiveTeam {
 
 export function fetchLiveStaff(): Promise<LiveStaff[]> {
   return apiGet<LiveStaff[]>("/staff");
+}
+
+export function fetchLivePersonnel(): Promise<LivePersonnel[]> {
+  return apiGet<LivePersonnel[]>("/staff?directory=1");
+}
+
+export interface PersonnelWrite {
+  full_name: string;
+  department: string;
+  phone?: string | null;
+  email?: string | null;
+  status: string;
+}
+
+export function createLivePersonnel(body: { department: string; names: string[]; phone?: string }): Promise<LivePersonnel[]> {
+  return apiPost<LivePersonnel[]>("/staff", body);
+}
+
+export function updateLivePersonnel(id: number, body: PersonnelWrite): Promise<LivePersonnel> {
+  return apiPatch<LivePersonnel>(`/staff/${id}`, body);
+}
+
+export function deleteLivePersonnel(id: number): Promise<{ ok: boolean }> {
+  return apiDelete<{ ok: boolean }>(`/staff/${id}`);
 }
 
 export function fetchLiveCompanies(): Promise<LiveCompany[]> {
@@ -524,6 +559,30 @@ export interface LiveVendorQuota {
 
 export function fetchLiveVendors(): Promise<LiveVendor[]> {
   return apiGet("/vendors");
+}
+
+export interface VendorWriteBody {
+  code: string;
+  name: string;
+  short_name: string | null;
+  type: string | null;
+  representative: string | null;
+  phone: string | null;
+  contract_active: boolean;
+  fee_per_worker_day: number | null;
+  status: string;
+}
+
+export function createLiveVendor(body: VendorWriteBody): Promise<LiveVendor> {
+  return apiPost("/vendors", body);
+}
+
+export function updateLiveVendor(id: number, body: VendorWriteBody): Promise<LiveVendor> {
+  return apiPatch(`/vendors/${id}`, body);
+}
+
+export function deleteLiveVendor(id: number): Promise<unknown> {
+  return apiDelete(`/vendors/${id}`);
 }
 
 export function fetchLiveVendorQuotas(): Promise<LiveVendorQuota[]> {

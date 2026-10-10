@@ -9,6 +9,7 @@ export type ModuleId =
   | "dashboard"
   | "orders"
   | "workers"
+  | "personnel"
   | "companies"
   | "vendors"
   | "attendance"
@@ -27,6 +28,7 @@ export type WorkerStatus =
   | "Tạm nghỉ"
   | "Nghỉ việc"
   | "Không đi làm"
+  | "Đang tư vấn"
   | "Ứng viên";
 
 export type WorkerType = "Thời vụ" | "Chính thức";
@@ -52,6 +54,8 @@ export interface Worker {
   position: string;
   type: WorkerType;
   recruiter: string;
+  introducer: string;
+  manager: string;
   status: WorkerStatus;
   dailyRate: number;
   workedDays: number;
@@ -214,6 +218,7 @@ export interface OrderPosition {
 }
 
 export interface OrderSummary {
+  orderId?: number;
   title: string;
   period: string;
   manager: string;

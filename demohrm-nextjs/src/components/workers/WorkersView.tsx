@@ -26,7 +26,7 @@ import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { QueryState } from "@/components/ui/query-state";
 import type { Worker } from "@/types/hrm";
 
-const STATUSES = ["Đang làm", "Chờ đi làm", "Tạm nghỉ", "Nghỉ việc", "Không đi làm", "Ứng viên"];
+const STATUSES = ["Đang làm", "Chờ đi làm", "Tạm nghỉ", "Nghỉ việc", "Không đi làm", "Đang tư vấn"];
 const PAGE = 50;
 
 export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => void }) {
@@ -44,6 +44,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   const [error, setError] = useState("");
   const [openCreate, setOpenCreate] = useState(false);
   const [editing, setEditing] = useState<Worker | null>(null);
+  const [closing, setClosing] = useState<Worker | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setQDebounced(q), 300);
@@ -138,6 +139,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                 <td>
                   <div className="flex gap-1">
                     <Button variant="outline" size="xs" onClick={() => onViewDetail(w)}>Xem</Button>
+                    {w.status === "Đang tư vấn" && <Button variant="outline" size="xs" onClick={() => setClosing(w)}>Chốt</Button>}
                     <Button variant="outline" size="xs" onClick={() => setEditing(w)}>Sửa</Button>
                     <Button variant="destructive" size="xs" onClick={() => void handleDelete(w)}>Xóa</Button>
                   </div>
@@ -155,8 +157,20 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
       </div>
       <CreateWorkerModal open={openCreate} onClose={() => setOpenCreate(false)} onCreated={() => void reload()} />
       {editing && <EditWorkerModal worker={editing} onClose={() => setEditing(null)} onSaved={() => void reload()} />}
+      {closing && <CloseWorkerModal worker={closing} onClose={() => setClosing(null)} onSaved={() => void reload()} />}
     </section>
   );
+}
+
+function rememberManager(code: string, manager: string) {
+  const key = `tw-worker-profile:${code}`;
+  let prev: Record<string, unknown> = {};
+  try {
+    prev = JSON.parse(localStorage.getItem(key) || "{}") as Record<string, unknown>;
+  } catch {
+    prev = {};
+  }
+  localStorage.setItem(key, JSON.stringify({ ...prev, manager }));
 }
 
 function CreateWorkerModal({
@@ -170,11 +184,27 @@ function CreateWorkerModal({
   const defaultCompany = companies[0]?.short_name ?? "";
   const defaultRecruiter = staff[0]?.full_name ?? "";
   const [form, setForm] = useState({ code: "", name: "", phone: "", citizenId: "", dob: "", hometown: "", company: defaultCompany, type: "Thời vụ" as Worker["type"], recruiter: defaultRecruiter });
+  const [step, setStep] = useState<"consult" | "close">("consult");
+  const [created, setCreated] = useState<{ id: number; code: string } | null>(null);
+  const [manager, setManager] = useState("");
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const [dupHits, setDupHits] = useState<DuplicateHit[] | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setStep("consult");
+      setCreated(null);
+      setManager("");
+      setError("");
+      setDupHits(null);
+      setConfirmed(false);
+      setForm({ code: "", name: "", phone: "", citizenId: "", dob: "", hometown: "", company: defaultCompany, type: "Thời vụ", recruiter: defaultRecruiter });
+    }
+  }
   const set = (k: keyof typeof form, v: string) => {
     setForm((p) => ({ ...p, [k]: v }));
     setDupHits(null);
@@ -221,7 +251,7 @@ function CreateWorkerModal({
     setSaving(true);
     setError("");
     try {
-      await createLiveWorker({
+      const createdRow = await createLiveWorker({
         code: form.code.trim(),
         full_name: form.name.trim(),
         phone: form.phone.trim(),
@@ -233,10 +263,38 @@ function CreateWorkerModal({
         current_company_id: companyRow.id,
         status: "candidate",
       });
+      setCreated({ id: createdRow.id, code: createdRow.code });
+      setStep("close");
+      onCreated();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Lưu thất bại.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const closeDeal = async () => {
+    if (!created) return;
+    if (!manager.trim()) {
+      setError("Chọn người quản lý đón để chốt.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await updateLiveWorker(created.id, {
+        full_name: form.name.trim(),
+        phone: form.phone.trim(),
+        hometown: form.hometown.trim() || null,
+        current_position: "",
+        employment_type: VI_TYPE[form.type] ?? "seasonal",
+        status: "waiting_start",
+      });
+      rememberManager(created.code, manager);
       onCreated();
       onClose();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Lưu thất bại.");
+      setError(e instanceof ApiError ? e.message : "Chốt thất bại.");
     } finally {
       setSaving(false);
     }
@@ -246,14 +304,23 @@ function CreateWorkerModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Tạo hồ sơ người lao động"
+      title={step === "consult" ? "Tạo hồ sơ người lao động" : "Chốt hồ sơ"}
       footer={
-        <>
-          <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>
-            {checking ? "Đang kiểm trùng..." : saving ? "Đang lưu..." : dupHits && dupHits.length > 0 ? "Vẫn lưu" : "Lưu hồ sơ"}
-          </Button>
-        </>
+        step === "consult" ? (
+          <>
+            <Button variant="outline" onClick={onClose}>Hủy</Button>
+            <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>
+              {checking ? "Đang kiểm trùng..." : saving ? "Đang lưu..." : dupHits && dupHits.length > 0 ? "Vẫn lưu" : "Lưu hồ sơ"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="outline" onClick={onClose}>Để sau</Button>
+            <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void closeDeal()}>
+              {saving ? "Đang chốt..." : "Chốt"}
+            </Button>
+          </>
+        )
       }
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
@@ -262,7 +329,23 @@ function CreateWorkerModal({
           Nghi trùng. Bấm “Vẫn lưu” nếu đây là người khác.
         </div>
       )}
+      {step === "close" ? (
+        <div className="grid gap-3">
+          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
+            Đã lưu hồ sơ <strong>{form.name}</strong> ở giai đoạn Đang tư vấn. Chọn người quản lý đón để chốt.
+          </p>
+          <Field label="Người quản lý đón">
+            <select className={inputClass} value={manager} onChange={(e) => setManager(e.target.value)}>
+              <option value="">— Chọn người đón tại nhà máy —</option>
+              {staff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
+            </select>
+          </Field>
+        </div>
+      ) : (
       <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2 rounded-lg bg-sky-50 px-3 py-2 text-[13px] text-sky-800">
+          Giai đoạn: <strong>Đang tư vấn</strong>. Lưu thông tin trước. Người quản lý đón chọn khi chốt.
+        </div>
         <Field label="Mã NLĐ *"><input className={inputClass} value={form.code} onChange={(e) => set("code", e.target.value)} /></Field>
         <Field label="Họ và tên *"><input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
         <Field label="Số điện thoại *"><input className={inputClass} value={form.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
@@ -286,6 +369,69 @@ function CreateWorkerModal({
           </select>
         </Field>
       </div>
+      )}
+    </Modal>
+  );
+}
+
+function CloseWorkerModal({
+  worker, onClose, onSaved,
+}: {
+  worker: Worker;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { staff } = useApp();
+  const [manager, setManager] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const save = async () => {
+    if (!manager.trim()) {
+      setError("Chọn người quản lý đón để chốt.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      await updateLiveWorker(worker.id, {
+        full_name: worker.name,
+        phone: worker.phone,
+        hometown: worker.hometown || null,
+        current_position: worker.position === "—" ? "" : worker.position,
+        employment_type: VI_TYPE[worker.type] ?? "seasonal",
+        status: "waiting_start",
+      });
+      rememberManager(worker.code, manager);
+      onSaved();
+      onClose();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Chốt thất bại.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Chốt hồ sơ ${worker.code}`}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>Hủy</Button>
+          <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>{saving ? "Đang chốt..." : "Chốt"}</Button>
+        </>
+      }
+    >
+      {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
+      <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> đang tư vấn. Chọn người quản lý đón tại nhà máy để chốt.</p>
+      <Field label="Người quản lý đón">
+        <select className={inputClass} value={manager} onChange={(e) => setManager(e.target.value)}>
+          <option value="">— Chọn người đón tại nhà máy —</option>
+          {staff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
+        </select>
+      </Field>
     </Modal>
   );
 }

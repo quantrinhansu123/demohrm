@@ -2,8 +2,10 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { apiGet } from "@/lib/api";
 import type { LiveCompany, LivePeriod, LiveStaff, LiveTeam } from "@/lib/live";
+import { moduleFromPath, pathForModule } from "@/lib/routes";
 import type { ModuleId } from "@/types/hrm";
 
 interface AppState {
@@ -26,7 +28,19 @@ interface AppState {
 const AppContext = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [currentModule, setCurrentModule] = useState<ModuleId>("orders");
+  const pathname = usePathname();
+  const router = useRouter();
+  const [currentModule, setModuleState] = useState<ModuleId>(() => moduleFromPath(pathname));
+
+  useEffect(() => {
+    setModuleState(moduleFromPath(pathname));
+  }, [pathname]);
+
+  const setCurrentModule = useCallback((module: ModuleId) => {
+    setModuleState(module);
+    const href = pathForModule(module);
+    if (pathname !== href) router.push(href);
+  }, [pathname, router]);
   const [currentTeam, setCurrentTeam] = useState("");
   const [currentFactory, setCurrentFactory] = useState("");
   const [periodCode, setPeriodCode] = useState("");

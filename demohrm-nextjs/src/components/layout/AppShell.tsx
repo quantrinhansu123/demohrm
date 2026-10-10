@@ -16,6 +16,7 @@ import type { Worker } from "@/types/hrm";
 const OrdersView = dynamic(() => import("@/components/modules/OrdersView").then((m) => m.OrdersView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const DashboardView = dynamic(() => import("@/components/modules/DashboardView").then((m) => m.DashboardView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const WorkersView = dynamic(() => import("@/components/workers/WorkersView").then((m) => m.WorkersView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
+const PersonnelView = dynamic(() => import("@/components/modules/PersonnelView").then((m) => m.PersonnelView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const CompaniesView = dynamic(() => import("@/components/modules/CompaniesView").then((m) => m.CompaniesView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const VendorsView = dynamic(() => import("@/components/modules/VendorsView").then((m) => m.VendorsView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const AttendanceView = dynamic(() => import("@/components/modules/AttendanceView").then((m) => m.AttendanceView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
@@ -54,6 +55,7 @@ function Shell() {
           {currentModule === "orders" && <OrdersView />}
           {currentModule === "dashboard" && <DashboardView />}
           {currentModule === "workers" && <WorkersView onViewDetail={setViewing} />}
+          {currentModule === "personnel" && <PersonnelView />}
           {currentModule === "companies" && <CompaniesView />}
           {currentModule === "vendors" && <VendorsView />}
           {currentModule === "attendance" && <AttendanceView />}

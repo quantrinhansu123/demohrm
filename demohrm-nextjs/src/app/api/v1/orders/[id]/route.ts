@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { getAuth } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
+import { removeOrderMedia } from "@/lib/server/order-media";
 import { apiError, json, readBody } from "@/lib/server/http";
 
 // GET /api/v1/orders/:id — Chi tiet don
@@ -68,6 +69,7 @@ export async function DELETE(
     getAuth(req);
     const id = Number((await ctx.params)["id"]);
     if (!Number.isInteger(id) || id <= 0) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
+    await removeOrderMedia(id);
     const positions = await getSupabase().from("order_positions").delete().eq("order_id", id);
     if (positions.error) {
       if (positions.error.code === "23503") {

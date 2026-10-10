@@ -25,6 +25,9 @@ export interface LiveOrderRow {
   total_profiles: number;
   position_count: number;
   vendor_count: number;
+  card_note?: string | null;
+  video_url?: string | null;
+  image_urls?: string[];
 }
 
 export interface LivePositionRow {
@@ -50,7 +53,14 @@ export interface LivePeriodDashboard {
 }
 
 export function fetchLiveOrders(period: string): Promise<LiveOrderRow[]> {
-  return apiGet<LiveOrderRow[]>(`/orders?period=${encodeURIComponent(period)}`);
+  return apiGet<LiveOrderRow[]>(`/orders?period=${encodeURIComponent(period)}`, { timeoutMs: 60000 });
+}
+
+export function saveLiveOrderMedia(
+  orderId: number,
+  body: { video_url?: string; images?: string[] },
+): Promise<{ video_url: string; images: string[] }> {
+  return apiPost(`/orders/${orderId}/media`, body, { timeoutMs: 60000 });
 }
 
 export function fetchLivePositions(): Promise<LivePositionRow[]> {
@@ -113,6 +123,9 @@ export function toOrderSummary(row: LiveOrderRow, positions: LivePositionRow[]):
       { label: "Mới ứng tuyển", value: row.applied_qty, tone: "grey" },
     ],
     totalProfiles: row.total_profiles,
+    cardNote: row.card_note ?? null,
+    videoUrl: row.video_url ?? "",
+    imageUrls: row.image_urls ?? [],
   };
 }
 
@@ -475,6 +488,10 @@ export function fetchLiveAttendances(date?: string): Promise<Page<LiveAttendance
 
 export function checkInLive(body: { worker_id: number; check_in_lat?: number; check_in_lng?: number }): Promise<LiveAttendance> {
   return apiPost("/attendances/check-in", body);
+}
+
+export function checkOutLive(id: number, body: { check_out_lat?: number; check_out_lng?: number } = {}): Promise<LiveAttendance> {
+  return apiPost(`/attendances/${id}/check-out`, body);
 }
 
 export interface LiveFinanceTx {

@@ -50,11 +50,12 @@ export async function POST(req: Request): Promise<Response> {
       .maybeSingle();
     if (e0) throw e0;
     const placement = open as { id: number; work_site_id: number | null; shift_id: number | null } | null;
-    if (placement) {
-      row["placement_id"] = placement.id;
-      if (placement.work_site_id) row["work_site_id"] = placement.work_site_id;
-      if (placement.shift_id) row["shift_id"] = placement.shift_id;
+    if (!placement) {
+      return json({ error: "bad_request", message: "Người này chưa có đợt làm việc đang mở, chưa chấm công được." }, 400);
     }
+    row["placement_id"] = placement.id;
+    if (placement.work_site_id) row["work_site_id"] = placement.work_site_id;
+    if (placement.shift_id) row["shift_id"] = placement.shift_id;
     const { data, error } = await getSupabase().from("attendances").insert(row).select(LIST).single();
     if (error) throw error;
     return json(data, 201);

@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { getAuth } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
+import { attachOrderMedia } from "@/lib/server/order-media";
 import { apiError, json, readBody, searchParams } from "@/lib/server/http";
 
 const ORDER_FIELDS = [
@@ -56,7 +57,8 @@ export async function GET(req: Request): Promise<Response> {
     if (period) q.eq("period_code", period);
     const { data, error } = await q;
     if (error) throw error;
-    return json(data);
+    const rows = (data ?? []) as Array<{ order_id: number }>;
+    return json(await attachOrderMedia(rows));
   } catch (e) {
     return apiError(e);
   }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Copy, MoreHorizontal, Plus } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { fetchLiveOrders, fetchLivePositions, fetchLiveSites, toOrderSummary } from "@/lib/live";
+import { fetchLiveOrders, fetchLivePositions, fetchLiveSites, saveLiveOrderMedia, toOrderSummary } from "@/lib/live";
 import type { LiveSite } from "@/lib/live";
 import type { OrderSummary } from "@/types/hrm";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
@@ -13,6 +13,7 @@ import { StatusPill } from "@/components/ui/badge";
 import { Field, Modal } from "@/components/ui/modal";
 import { QueryState } from "@/components/ui/query-state";
 import { ApiError, apiDelete, apiPatch, apiPost } from "@/lib/api";
+import { encodeOrderNote, readOrderCard } from "@/lib/order-card";
 
 const legendTone: Record<string, string> = {
   green: "bg-emerald-500",
@@ -112,6 +113,21 @@ function fileToImageDataUrl(file: File): Promise<string> {
   });
 }
 
+function mergeDraft(order: OrderSummary, local?: OrderDraft): OrderDraft {
+  const card = readOrderCard(order.cardNote);
+  const base = local ?? defaultDraft(order);
+  return {
+    ...base,
+    title: base.title || order.title,
+    summary: card.summary || base.summary,
+    manager: card.manager || base.manager || order.manager,
+    target: base.target || order.target,
+    videoLink: order.videoUrl || card.videoLink || base.videoLink,
+    wages: card.wages.length >= WAGE_SLOTS.length ? card.wages : base.wages,
+    images: (order.imageUrls?.length ? order.imageUrls : card.images.length > 0 ? card.images : (base.images ?? [])),
+  };
+}
+
 function loadDrafts(): Record<string, OrderDraft> {
   if (typeof window === "undefined") return {};
   try {
@@ -133,6 +149,7 @@ export function OrdersView() {
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const syncedCards = useRef(new Set<string>());
   const periodName = periods.find((p) => p.code === periodCode)?.name ?? periodCode;
   const [prevPeriod, setPrevPeriod] = useState(periodCode);
   if (prevPeriod !== periodCode) {
@@ -152,7 +169,19 @@ export function OrdersView() {
     Promise.all([fetchLiveOrders(periodCode), fetchLivePositions()])
       .then(([rows, positions]) => {
         if (!alive) return;
-        setOrders(rows.map((r) => toOrderSummary(r, positions)));
+        const summaries = rows.map((r) => toOrderSummary(r, positions));
+        setOrders(summaries);
+        setDrafts((prev) => {
+          const local = Object.keys(prev).length > 0 ? prev : loadDrafts();
+          const next = { ...local };
+          for (const order of summaries) next[order.code] = mergeDraft(order, local[order.code]);
+          try {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+          } catch {
+            // Ảnh lớn có thể vượt hạn mức trình duyệt; bản trên máy chủ vẫn được giữ.
+          }
+          return next;
+        });
         setError("");
       })
       .catch((e: unknown) => {
@@ -167,6 +196,43 @@ export function OrdersView() {
   }, [periodCode]);
 
   useEffect(() => loadOrders(), [loadOrders]);
+
+  useEffect(() => {
+    for (const order of orders) {
+      if (!order.orderId || syncedCards.current.has(order.code)) continue;
+      const local = drafts[order.code];
+      if (!local) continue;
+      const dataImages = local.images.filter((src) => src.startsWith("data:"));
+      const needsVideo = Boolean(local.videoLink) && local.videoLink !== (order.videoUrl ?? "");
+      if (dataImages.length === 0 && !needsVideo) continue;
+      syncedCards.current.add(order.code);
+      const body: { video_url?: string; images?: string[] } = {};
+      if (needsVideo) body.video_url = local.videoLink;
+      if (dataImages.length > 0) body.images = local.images;
+      void saveLiveOrderMedia(order.orderId, body)
+        .then((saved) => {
+          setOrders((rows) => rows.map((row) => (
+            row.code === order.code ? { ...row, videoUrl: saved.video_url, imageUrls: saved.images } : row
+          )));
+          setDrafts((prev) => {
+            const current = prev[order.code];
+            if (!current) return prev;
+            return {
+              ...prev,
+              [order.code]: {
+                ...current,
+                videoLink: needsVideo ? saved.video_url : current.videoLink,
+                images: dataImages.length > 0 ? saved.images : current.images,
+              },
+            };
+          });
+        })
+        .catch((e: unknown) => {
+          if (!(e instanceof ApiError) || e.status !== 400) syncedCards.current.delete(order.code);
+          setError(e instanceof ApiError ? e.message : "Không lưu được ảnh hoặc link video lên Supabase.");
+        });
+    }
+  }, [orders, drafts]);
 
   const visible = useMemo(
     () => orders.filter((o) => o.title.toLowerCase().includes(query.toLowerCase().trim()) || o.code.toLowerCase().includes(query.toLowerCase().trim())),
@@ -616,8 +682,9 @@ function CreateOrderModal({
     setSaving(true);
     setError("");
     const code = newOrderCode();
+    const managerName = staff.find((person) => String(person.id) === ownerId)?.full_name ?? "";
     try {
-      await apiPost("/orders", {
+      const created = await apiPost<{ id: number }>("/orders", {
         code,
         company_id: Number(companyId),
         period_id: period.id,
@@ -630,7 +697,13 @@ function CreateOrderModal({
         target_qty: qty,
         status: "running",
         health: "on_track",
-        note: note.trim() || null,
+        note: encodeOrderNote({
+          summary: note.trim(),
+          videoLink: "",
+          wages: WAGE_SLOTS.map((slot) => slot.pay),
+          images: [],
+          manager: managerName,
+        }),
         positions: [{
           title: name.trim(),
           target_qty: qty,
@@ -638,16 +711,37 @@ function CreateOrderModal({
           wage_unit: "day",
         }],
       });
+      let savedVideo = videoLink.trim();
+      let savedImages = images;
+      try {
+        if (savedVideo || savedImages.length > 0) {
+          const media = await saveLiveOrderMedia(created.id, { video_url: savedVideo, images: savedImages });
+          savedVideo = media.video_url;
+          savedImages = media.images;
+        }
+      } catch (mediaError) {
+        const company = companies.find((item) => String(item.id) === companyId);
+        onCreated(code, {
+          title: company ? `${company.short_name} – ${name.trim()}` : name.trim(),
+          summary: note.trim(),
+          manager: managerName,
+          target: qty,
+          videoLink: savedVideo,
+          wages: WAGE_SLOTS.map((slot) => slot.pay),
+          images: savedImages,
+        });
+        setError(mediaError instanceof ApiError ? mediaError.message : "Đơn đã tạo, nhưng chưa lưu được ảnh hoặc link video.");
+        return;
+      }
       const company = companies.find((item) => String(item.id) === companyId);
-      const manager = staff.find((person) => String(person.id) === ownerId)?.full_name ?? "";
       onCreated(code, {
         title: company ? `${company.short_name} – ${name.trim()}` : name.trim(),
         summary: note.trim(),
-        manager,
+        manager: managerName,
         target: qty,
-        videoLink: videoLink.trim(),
+        videoLink: savedVideo,
         wages: WAGE_SLOTS.map((slot) => slot.pay),
-        images,
+        images: savedImages,
       });
       onClose();
     } catch (e) {
@@ -803,8 +897,20 @@ function OrderEditModal({
         await apiPatch(`/orders/${order.orderId}`, {
           name: name || form.title,
           target_qty: saved.target,
-          note: form.summary,
+          note: encodeOrderNote({
+            summary: form.summary,
+            videoLink: "",
+            wages: form.wages,
+            images: [],
+            manager: form.manager,
+          }),
         });
+        const media = await saveLiveOrderMedia(order.orderId, {
+          video_url: form.videoLink.trim(),
+          images: saved.images,
+        });
+        saved.videoLink = media.video_url;
+        saved.images = media.images;
       }
     } catch (e: unknown) {
       onSave(order, saved);

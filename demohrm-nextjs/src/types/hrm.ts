@@ -232,6 +232,9 @@ export interface OrderSummary {
   items: OrderPosition[];
   funnel: { label: string; value: number; tone: "green" | "blue" | "orange" | "grey" }[];
   totalProfiles: number;
+  cardNote?: string | null;
+  videoUrl?: string;
+  imageUrls?: string[];
 }
 
 export interface CompanyRow {

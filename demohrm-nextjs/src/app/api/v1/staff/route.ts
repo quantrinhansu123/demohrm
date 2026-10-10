@@ -37,7 +37,7 @@ function nextStaffNumber(codes: string[]): number {
   return max;
 }
 
-// POST /api/v1/staff — Them ten nhan vien vao mot phong ban.
+// POST /api/v1/staff — Them mot nhan su.
 export async function POST(req: Request): Promise<Response> {
   try {
     const ctx = getAuth(req);
@@ -45,40 +45,34 @@ export async function POST(req: Request): Promise<Response> {
     const department = typeof body["department"] === "string" ? body["department"].trim() : "";
     const spec = departmentSpec(department);
     if (!spec) return json({ error: "bad_request", message: "Chọn phòng ban." }, 400);
-    const rawNames = Array.isArray(body["names"]) ? body["names"] : [];
-    const names = rawNames
-      .map((name) => (typeof name === "string" ? name.trim().replace(/\s+/g, " ") : ""))
-      .filter(Boolean);
-    if (names.length === 0) return json({ error: "bad_request", message: "Nhập ít nhất một họ tên." }, 400);
-    if (names.length > 50) return json({ error: "bad_request", message: "Mỗi lần thêm tối đa 50 người." }, 400);
-    if (names.some((name) => name.length > 80)) {
-      return json({ error: "bad_request", message: "Họ tên tối đa 80 ký tự." }, 400);
-    }
-    const phone = names.length === 1 && typeof body["phone"] === "string" ? body["phone"].trim() : "";
+    const fullName = typeof body["full_name"] === "string" ? body["full_name"].trim().replace(/\s+/g, " ") : "";
+    if (!fullName) return json({ error: "bad_request", message: "Nhập họ tên." }, 400);
+    if (fullName.length > 80) return json({ error: "bad_request", message: "Họ tên tối đa 80 ký tự." }, 400);
+    const phone = typeof body["phone"] === "string" ? body["phone"].trim() : "";
+    const email = typeof body["email"] === "string" ? body["email"].trim() : "";
     const { data: existing, error: listError } = await getSupabase().from("staff").select("code");
     if (listError) throw listError;
-    let seq = nextStaffNumber(((existing ?? []) as Array<{ code: string }>).map((row) => row.code));
-    const rows = names.map((name) => {
-      seq += 1;
-      return {
-        code: `NV-${String(seq).padStart(3, "0")}`,
-        full_name: name,
-        initials: initialsOf(name),
-        phone: phone || null,
-        role: spec.role,
-        title: spec.label,
-        status: "active",
-      };
-    });
-    const { data, error } = await getSupabase().from("staff").insert(rows).select(DIRECTORY_COLUMNS);
+    const seq = nextStaffNumber(((existing ?? []) as Array<{ code: string }>).map((row) => row.code)) + 1;
+    const row = {
+      code: `NV-${String(seq).padStart(3, "0")}`,
+      full_name: fullName,
+      initials: initialsOf(fullName),
+      phone: phone || null,
+      email: email || null,
+      role: spec.role,
+      title: spec.label,
+      status: "active",
+    };
+    const { data, error } = await getSupabase().from("staff").insert(row).select(DIRECTORY_COLUMNS).single();
     if (error) throw error;
+    const created = data as { id: number };
     await writeAudit(ctx, {
       action: "INSERT",
       table: "staff",
-      recordId: names.length,
-      detail: `Them ${names.length} nhan su vao ${spec.label}`,
+      recordId: created.id,
+      detail: `Them nhan su ${fullName}`,
     });
-    return json(data, 201);
+    return json([data], 201);
   } catch (e) {
     return apiError(e);
   }

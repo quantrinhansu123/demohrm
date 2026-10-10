@@ -416,7 +416,7 @@ export interface PersonnelWrite {
   status: string;
 }
 
-export function createLivePersonnel(body: { department: string; names: string[]; phone?: string }): Promise<LivePersonnel[]> {
+export function createLivePersonnel(body: { department: string; full_name: string; phone?: string; email?: string }): Promise<LivePersonnel[]> {
   return apiPost<LivePersonnel[]>("/staff", body);
 }
 

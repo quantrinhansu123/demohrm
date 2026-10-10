@@ -79,11 +79,6 @@ export function PersonnelView() {
     );
   }, [query, rows]);
 
-  const groups = DEPARTMENTS.map((department) => ({
-    ...department,
-    people: filtered.filter((r) => departmentOf(r) === department.label),
-  }));
-  const unassigned = filtered.filter((r) => !departmentOf(r));
   const active = rows.filter((r) => r.status === "active").length;
 
   const handleDelete = async (person: LivePersonnel) => {
@@ -128,29 +123,16 @@ export function PersonnelView() {
           <div className="grid gap-4 md:grid-cols-3">
             <KpiCard title="TỔNG NHÂN SỰ" value={<>{rows.length}</>} sub="Đọc từ database" />
             <KpiCard title="ĐANG HOẠT ĐỘNG" value={<>{active}</>} sub={`${rows.length - active} tài khoản ngừng`} />
-            <KpiCard title="PHÒNG BAN" value={<>{DEPARTMENTS.length}</>} sub="Giám đốc đến truyền thông" />
+            <KpiCard title="PHÒNG BAN" value={<>{new Set(rows.map((r) => departmentOf(r)).filter(Boolean)).size}</>} sub="Theo người đang có trong danh sách" />
           </div>
-          {groups.map((group) => (
-            <div key={group.label} className="mt-4">
-              <h2 className="mb-2 text-[14px] font-bold text-slate-800">{group.label} <span className="font-medium text-slate-400">· {group.people.length}</span></h2>
-              <DataTable headers={["Nhân sự", "Mã", "Điện thoại", "Email", "Trạng thái", "Thao tác"]}>
-                {group.people.map((person) => (
-                  <PersonnelRow key={person.id} person={person} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
-                ))}
-                {group.people.length === 0 && <EmptyRow colSpan={6} text="Chưa có nhân viên" />}
-              </DataTable>
-            </div>
-          ))}
-          {unassigned.length > 0 && (
-            <div className="mt-4">
-              <h2 className="mb-2 text-[14px] font-bold text-slate-800">Chưa xếp phòng ban <span className="font-medium text-slate-400">· {unassigned.length}</span></h2>
-              <DataTable headers={["Nhân sự", "Mã", "Điện thoại", "Email", "Trạng thái", "Thao tác"]}>
-                {unassigned.map((person) => (
-                  <PersonnelRow key={person.id} person={person} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
-                ))}
-              </DataTable>
-            </div>
-          )}
+          <div className="mt-4">
+            <DataTable headers={["Nhân sự", "Mã", "Phòng ban", "Điện thoại", "Email", "Trạng thái", "Thao tác"]}>
+              {filtered.map((person) => (
+                <PersonnelRow key={person.id} person={person} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
+              ))}
+              {filtered.length === 0 && <EmptyRow colSpan={7} text="Chưa có nhân sự" />}
+            </DataTable>
+          </div>
         </div>
       </QueryState>
       )}
@@ -203,6 +185,7 @@ function PersonnelRow({
         </div>
       </td>
       <td><code>{person.code}</code></td>
+      <td>{departmentOf(person) ?? "—"}</td>
       <td>{person.phone || "—"}</td>
       <td>{person.email || "—"}</td>
       <td>
@@ -222,24 +205,30 @@ function PersonnelRow({
 }
 
 function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
+  const [fullName, setFullName] = useState("");
   const [department, setDepartment] = useState<string>(DEPARTMENTS[0].label);
-  const [names, setNames] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const lines = names.split("\n").map((line) => line.trim()).filter(Boolean);
 
   const save = async () => {
-    if (lines.length === 0) {
-      setError("Nhập ít nhất một họ tên, mỗi dòng một người.");
+    if (!fullName.trim()) {
+      setError("Nhập họ tên.");
       return;
     }
     setSaving(true);
     setError("");
     try {
-      await createLivePersonnel({ department, names: lines, phone: lines.length === 1 ? phone : undefined });
-      setNames("");
+      await createLivePersonnel({
+        full_name: fullName.trim(),
+        department,
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
+      });
+      setFullName("");
       setPhone("");
+      setEmail("");
       onClose();
       onSaved();
     } catch (e) {
@@ -265,6 +254,9 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
     >
       <div className="grid gap-3">
         {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700">{error}</p>}
+        <Field label="Họ tên">
+          <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} placeholder="Nguyễn Văn A" />
+        </Field>
         <Field label="Phòng ban">
           <select value={department} onChange={(e) => setDepartment(e.target.value)} className={inputClass}>
             {DEPARTMENTS.map((d) => (
@@ -272,20 +264,12 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
             ))}
           </select>
         </Field>
-        <Field label="Họ tên">
-          <textarea
-            value={names}
-            onChange={(e) => setNames(e.target.value)}
-            rows={6}
-            placeholder={"Mỗi dòng một người\nNguyễn Văn A\nTrần Thị B"}
-            className={inputClass}
-          />
+        <Field label="Điện thoại">
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
         </Field>
-        {lines.length <= 1 && (
-          <Field label="Điện thoại">
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
-          </Field>
-        )}
+        <Field label="Email">
+          <input value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+        </Field>
       </div>
     </Modal>
   );

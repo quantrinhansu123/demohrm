@@ -367,7 +367,7 @@ export function WorkerDetailModal({
             <StatusPill tone={worker.type === "Thời vụ" ? "warning" : "info"}>{worker.type}</StatusPill>
           </div>
           <div className="mt-0.5 text-[12.5px] text-blue-100">
-            Doanh nghiệp: <strong>{worker.company} Việt Nam</strong> · Vị trí: {worker.position} · Người giới thiệu: {worker.introducer || "—"} · Người quản lý: {worker.manager || worker.recruiter || "—"}
+            Doanh nghiệp: <strong>{worker.company} Việt Nam</strong> · Vị trí: {worker.position} · Sale: {worker.recruiter || "—"} · Phụ trách: {worker.manager || "—"}
           </div>
         </div>
       </div>

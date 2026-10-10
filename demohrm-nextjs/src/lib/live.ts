@@ -146,6 +146,8 @@ export interface LiveWorkerRow {
   recruiter_id: number | null;
   recruiter_name: string | null;
   recruited_by: string | null;
+  manager_id?: number | null;
+  manager_name?: string | null;
   supervisor_name: string | null;
   supervisor_phone: string | null;
   assignment_count: number;
@@ -189,7 +191,7 @@ export function toWorker(row: LiveWorkerRow): Worker {
     type: EN_TYPE[row.employment_type] ?? "Thời vụ",
     recruiter: row.recruited_by ?? row.recruiter_name ?? "",
     introducer: "",
-    manager: row.supervisor_name ?? "",
+    manager: row.manager_name ?? row.supervisor_name ?? "",
     status: EN_STATUS[row.status] ?? "Đang làm",
     dailyRate: 0,
     workedDays: 0,
@@ -236,6 +238,7 @@ export interface WorkerCreateBody {
   hometown: string | null;
   employment_type: string;
   recruiter_id: number;
+  manager_id: number;
   current_company_id: number;
   status: string;
 }
@@ -281,6 +284,8 @@ export function updateLiveWorker(id: number, body: {
   current_position: string;
   employment_type: string;
   status: string;
+  recruiter_id?: number;
+  manager_id?: number;
 }): Promise<unknown> {
   return apiPatch(`/workers/${id}`, body);
 }

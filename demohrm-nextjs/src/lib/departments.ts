@@ -21,6 +21,18 @@ const ROLE_DEPARTMENT: Record<string, DepartmentLabel> = {
   recruiter: "Nhân viên kinh doanh",
 };
 
+const LEAD_DEPARTMENTS = new Set<string>(["Giám đốc", "Phó giám đốc", "Trưởng phòng", "Quản lý"]);
+
+export function isSaleStaff(person: { title?: string | null; role: string }): boolean {
+  return departmentOf(person) === "Nhân viên sale";
+}
+
+export function isLeadStaff(person: { title?: string | null; role: string }): boolean {
+  const department = departmentOf(person);
+  if (department && LEAD_DEPARTMENTS.has(department)) return true;
+  return (person.title ?? "").includes("Phụ trách");
+}
+
 export function departmentSpec(label: string): (typeof DEPARTMENTS)[number] | null {
   return DEPARTMENTS.find((d) => d.label === label) ?? null;
 }

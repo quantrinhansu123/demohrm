@@ -8,7 +8,7 @@ import { ROLE } from "@/lib/server/roles";
 const WORKER_INSERT = [
   "code", "full_name", "phone", "date_of_birth", "gender", "hometown", "permanent_address",
   "national_id", "old_id_number", "employment_type", "status", "current_company_id",
-  "current_position", "recruiter_id", "source_vendor_id", "note",
+  "current_position", "recruiter_id", "manager_id", "source_vendor_id", "note",
 ] as const;
 
 const PUBLIC_RETURN = "id,code,full_name,phone,hometown,employment_type,status,current_position,current_company_id,recruiter_id";
@@ -52,6 +52,22 @@ export async function GET(req: Request): Promise<Response> {
     const { data, error, count } = await q.range(offset, offset + limit - 1);
     if (error) throw error;
     let rows = (data ?? []) as Array<Record<string, unknown>>;
+    const ids = rows.map((row) => Number(row["id"])).filter((id) => Number.isInteger(id) && id > 0);
+    if (ids.length > 0) {
+      const links = await getSupabase().from("workers").select("id,manager_id").in("id", ids);
+      if (links.error && links.error.code !== "PGRST204" && links.error.code !== "42703") throw links.error;
+      const byWorker = new Map((links.data ?? []).map((row) => [row.id as number, row.manager_id as number | null]));
+      const managerIds = [...new Set([...byWorker.values()].filter((id): id is number => typeof id === "number" && id > 0))];
+      const people = managerIds.length > 0
+        ? await getSupabase().from("staff").select("id,full_name").in("id", managerIds)
+        : { data: [], error: null };
+      if (people.error) throw people.error;
+      const names = new Map((people.data ?? []).map((row) => [row.id as number, String(row.full_name)]));
+      rows = rows.map((row) => {
+        const managerId = byWorker.get(row["id"] as number) ?? null;
+        return { ...row, manager_id: managerId, manager_name: managerId ? names.get(managerId) ?? null : null };
+      });
+    }
     if (canViewCccd && rows.length > 0) {
       const ids = rows.map((r) => r["id"] as number);
       const { data: full, error: e2 } = await getSupabase().from("workers").select("id,national_id").in("id", ids);

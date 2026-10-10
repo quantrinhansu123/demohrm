@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { MoreHorizontal } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { useSession } from "@/lib/session";
 import { ApiError } from "@/lib/api";
@@ -16,6 +17,7 @@ import {
   updateLiveWorker,
 } from "@/lib/live";
 import type { DuplicateHit } from "@/lib/live";
+import { isLeadStaff, isSaleStaff } from "@/lib/departments";
 import { maskCitizenId, workerStatusTone } from "@/lib/format";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { Avatar } from "@/components/ui/avatar";
@@ -120,7 +122,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
           <span className="ml-auto text-[13px] text-slate-500">Tổng số: <strong className="text-slate-900">{total}</strong></span>
         </div>
         <QueryState loading={loading} error={error}>
-          <DataTable headers={["Ảnh & Họ và tên", "Số ĐT", "Quê quán", "CCCD / Định danh", "Công ty & Vị trí", "Loại hình", "Recruiter", "Trạng thái", "Thao tác"]}>
+          <DataTable headers={["Ảnh & Họ và tên", "Số ĐT", "Quê quán", "CCCD / Định danh", "Công ty & Vị trí", "Loại hình", "Sale", "Phụ trách", "Trạng thái", "Thao tác"]}>
             {rows.map((w) => (
               <tr key={w.id}>
                 <td>
@@ -134,19 +136,21 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                 <td><code>{maskCitizenId(w.citizenId, access.canViewCccd)}</code></td>
                 <td><strong>{w.company}</strong> <span className="text-[11.5px] text-slate-400">({w.position})</span></td>
                 <td><StatusPill tone={w.type === "Thời vụ" ? "warning" : "info"}>{w.type}</StatusPill></td>
-                <td>{w.recruiter}</td>
+                <td>{w.recruiter || "—"}</td>
+                <td>{w.manager || "—"}</td>
                 <td><StatusPill tone={workerStatusTone(w.status)}>{w.status}</StatusPill></td>
                 <td>
-                  <div className="flex gap-1">
-                    <Button variant="outline" size="xs" onClick={() => onViewDetail(w)}>Xem</Button>
-                    {w.status === "Đang tư vấn" && <Button variant="outline" size="xs" onClick={() => setClosing(w)}>Chốt</Button>}
-                    <Button variant="outline" size="xs" onClick={() => setEditing(w)}>Sửa</Button>
-                    <Button variant="destructive" size="xs" onClick={() => void handleDelete(w)}>Xóa</Button>
-                  </div>
+                  <WorkerMenu
+                    worker={w}
+                    onView={onViewDetail}
+                    onCloseDeal={setClosing}
+                    onEdit={setEditing}
+                    onDelete={handleDelete}
+                  />
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && <EmptyRow colSpan={9} text="Không tìm thấy hồ sơ phù hợp" />}
+            {rows.length === 0 && <EmptyRow colSpan={10} text="Không tìm thấy hồ sơ phù hợp" />}
           </DataTable>
           <div className="mt-3 flex items-center justify-end gap-2 text-[13px]">
             <Button variant="outline" size="xs" disabled={offset === 0} onClick={() => setOffset((n) => Math.max(0, n - PAGE))}>Trước</Button>
@@ -162,15 +166,63 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   );
 }
 
-function rememberManager(code: string, manager: string) {
-  const key = `tw-worker-profile:${code}`;
-  let prev: Record<string, unknown> = {};
-  try {
-    prev = JSON.parse(localStorage.getItem(key) || "{}") as Record<string, unknown>;
-  } catch {
-    prev = {};
-  }
-  localStorage.setItem(key, JSON.stringify({ ...prev, manager }));
+function WorkerMenu({
+  worker,
+  onView,
+  onCloseDeal,
+  onEdit,
+  onDelete,
+}: {
+  worker: Worker;
+  onView: (worker: Worker) => void;
+  onCloseDeal: (worker: Worker) => void;
+  onEdit: (worker: Worker) => void;
+  onDelete: (worker: Worker) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node) && !buttonRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const toggle = () => {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) setMenuPos({ top: rect.bottom + 4, left: rect.right - 112 });
+    setOpen((value) => !value);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={toggle}
+        className="rounded-lg border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
+        aria-label="Thao tác người lao động"
+        aria-expanded={open}
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open && (
+        <div ref={menuRef} className="fixed z-50 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg" style={{ top: menuPos.top, left: menuPos.left }}>
+          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onView(worker); }}>Xem</button>
+          {worker.status === "Đang tư vấn" && (
+            <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onCloseDeal(worker); }}>Chốt</button>
+          )}
+          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(worker); }}>Sửa</button>
+          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); void onDelete(worker); }}>Xóa</button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CreateWorkerModal({
@@ -181,8 +233,10 @@ function CreateWorkerModal({
   onCreated: () => void;
 }) {
   const { companies, staff } = useApp();
+  const saleStaff = staff.filter(isSaleStaff);
+  const leadStaff = staff.filter(isLeadStaff);
   const defaultCompany = companies[0]?.short_name ?? "";
-  const defaultRecruiter = staff[0]?.full_name ?? "";
+  const defaultRecruiter = saleStaff[0]?.full_name ?? "";
   const [form, setForm] = useState({ code: "", name: "", phone: "", citizenId: "", dob: "", hometown: "", company: defaultCompany, type: "Thời vụ" as Worker["type"], recruiter: defaultRecruiter });
   const [step, setStep] = useState<"consult" | "close">("consult");
   const [created, setCreated] = useState<{ id: number; code: string } | null>(null);
@@ -214,13 +268,14 @@ function CreateWorkerModal({
   const save = async () => {
     if (!form.code.trim() || !form.name.trim() || !form.phone.trim() || !form.citizenId.trim()) return;
     if (!manager.trim()) {
-      setError("Chọn người quản lý.");
+      setError("Chọn người phụ trách.");
       return;
     }
-    const recruiter = staff.find((s) => s.full_name === form.recruiter);
+    const recruiter = saleStaff.find((s) => s.full_name === form.recruiter);
+    const lead = leadStaff.find((s) => s.full_name === manager);
     const companyRow = companies.find((c) => c.short_name === form.company);
-    if (!recruiter || !companyRow) {
-      setError("Chọn công ty và người tuyển trong danh mục.");
+    if (!recruiter || !lead || !companyRow) {
+      setError("Chọn công ty, Sale và người phụ trách.");
       return;
     }
     if (!confirmed) {
@@ -264,10 +319,10 @@ function CreateWorkerModal({
         hometown: form.hometown.trim() || null,
         employment_type: VI_TYPE[form.type] ?? "seasonal",
         recruiter_id: recruiter.id,
+        manager_id: lead.id,
         current_company_id: companyRow.id,
         status: "candidate",
       });
-      rememberManager(createdRow.code, manager.trim());
       setCreated({ id: createdRow.id, code: createdRow.code });
       setStep("close");
       onCreated();
@@ -280,8 +335,9 @@ function CreateWorkerModal({
 
   const closeDeal = async () => {
     if (!created) return;
-    if (!manager.trim()) {
-      setError("Chọn người quản lý đón để chốt.");
+    const lead = leadStaff.find((s) => s.full_name === manager);
+    if (!lead) {
+      setError("Chọn người phụ trách.");
       return;
     }
     setSaving(true);
@@ -294,8 +350,8 @@ function CreateWorkerModal({
         current_position: "",
         employment_type: VI_TYPE[form.type] ?? "seasonal",
         status: "waiting_start",
+        manager_id: lead.id,
       });
-      rememberManager(created.code, manager);
       onCreated();
       onClose();
     } catch (e) {
@@ -337,12 +393,12 @@ function CreateWorkerModal({
       {step === "close" ? (
         <div className="grid gap-3">
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
-            Đã lưu hồ sơ <strong>{form.name}</strong> ở giai đoạn Đang tư vấn. Chọn người quản lý đón để chốt.
+            Đã lưu hồ sơ <strong>{form.name}</strong> ở giai đoạn Đang tư vấn. Chọn người phụ trách để chốt.
           </p>
-          <Field label="Người quản lý đón">
+          <Field label="Phụ trách">
             <select className={inputClass} value={manager} onChange={(e) => setManager(e.target.value)}>
-              <option value="">— Chọn người đón tại nhà máy —</option>
-              {staff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
+              <option value="">— Chọn người phụ trách —</option>
+              {leadStaff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
             </select>
           </Field>
         </div>
@@ -368,15 +424,16 @@ function CreateWorkerModal({
             <option value="Chính thức">Chính thức</option>
           </select>
         </Field>
-        <Field label="Người tuyển">
+        <Field label="Sale *">
           <select className={inputClass} value={form.recruiter} onChange={(e) => set("recruiter", e.target.value)}>
-            {staff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
+            <option value="">— Chọn sale —</option>
+            {saleStaff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
           </select>
         </Field>
-        <Field label="Người quản lý *">
+        <Field label="Phụ trách *">
           <select className={inputClass} value={manager} onChange={(e) => setManager(e.target.value)}>
-            <option value="">— Chọn người quản lý —</option>
-            {staff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
+            <option value="">— Chọn người phụ trách —</option>
+            {leadStaff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
           </select>
         </Field>
       </div>
@@ -393,13 +450,15 @@ function CloseWorkerModal({
   onSaved: () => void;
 }) {
   const { staff } = useApp();
-  const [manager, setManager] = useState("");
+  const leadStaff = staff.filter(isLeadStaff);
+  const [manager, setManager] = useState(worker.manager);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const save = async () => {
-    if (!manager.trim()) {
-      setError("Chọn người quản lý đón để chốt.");
+    const lead = leadStaff.find((person) => person.full_name === manager);
+    if (!lead) {
+      setError("Chọn người phụ trách.");
       return;
     }
     setSaving(true);
@@ -412,8 +471,8 @@ function CloseWorkerModal({
         current_position: worker.position === "—" ? "" : worker.position,
         employment_type: VI_TYPE[worker.type] ?? "seasonal",
         status: "waiting_start",
+        manager_id: lead.id,
       });
-      rememberManager(worker.code, manager);
       onSaved();
       onClose();
     } catch (e) {
@@ -436,11 +495,11 @@ function CloseWorkerModal({
       }
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
-      <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> đang tư vấn. Chọn người quản lý đón tại nhà máy để chốt.</p>
-      <Field label="Người quản lý đón">
+      <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> đang tư vấn. Chọn người phụ trách để chốt.</p>
+      <Field label="Phụ trách">
         <select className={inputClass} value={manager} onChange={(e) => setManager(e.target.value)}>
-          <option value="">— Chọn người đón tại nhà máy —</option>
-          {staff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
+          <option value="">— Chọn người phụ trách —</option>
+          {leadStaff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
         </select>
       </Field>
     </Modal>
@@ -454,12 +513,30 @@ function EditWorkerModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState({ name: worker.name, phone: worker.phone, hometown: worker.hometown, position: worker.position, type: worker.type, status: worker.status });
+  const { staff } = useApp();
+  const saleStaff = staff.filter(isSaleStaff);
+  const leadStaff = staff.filter(isLeadStaff);
+  const [form, setForm] = useState({
+    name: worker.name,
+    phone: worker.phone,
+    hometown: worker.hometown,
+    position: worker.position,
+    type: worker.type,
+    status: worker.status,
+    sale: worker.recruiter,
+    lead: worker.manager,
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
   const save = async () => {
+    const sale = saleStaff.find((person) => person.full_name === form.sale);
+    const lead = leadStaff.find((person) => person.full_name === form.lead);
+    if (!sale || !lead) {
+      setError("Chọn Sale và người phụ trách.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -470,6 +547,8 @@ function EditWorkerModal({
         current_position: form.position,
         employment_type: VI_TYPE[form.type] ?? "seasonal",
         status: VI_STATUS[form.status] ?? "working",
+        recruiter_id: sale.id,
+        manager_id: lead.id,
       });
       onSaved();
       onClose();
@@ -507,6 +586,18 @@ function EditWorkerModal({
         <Field label="Trạng thái">
           <select className={inputClass} value={form.status} onChange={(e) => set("status", e.target.value)}>
             {STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
+          </select>
+        </Field>
+        <Field label="Sale">
+          <select className={inputClass} value={form.sale} onChange={(e) => set("sale", e.target.value)}>
+            <option value="">— Chọn sale —</option>
+            {saleStaff.map((person) => (<option key={person.id} value={person.full_name}>{person.full_name}</option>))}
+          </select>
+        </Field>
+        <Field label="Phụ trách">
+          <select className={inputClass} value={form.lead} onChange={(e) => set("lead", e.target.value)}>
+            <option value="">— Chọn người phụ trách —</option>
+            {leadStaff.map((person) => (<option key={person.id} value={person.full_name}>{person.full_name}</option>))}
           </select>
         </Field>
       </div>

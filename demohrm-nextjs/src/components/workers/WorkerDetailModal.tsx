@@ -7,39 +7,229 @@ import { ApiError } from "@/lib/api";
 import {
   addLivePlacement,
   closeLivePlacement,
-  deleteLivePlacement,
   createLiveAdvance,
   fetchLiveAssignments,
-  fetchLiveOrders,
   fetchLivePayroll,
-  fetchLivePlacementPay,
-  fetchLivePositions,
-  fetchLiveSupervisors,
-  handoverAction,
-  setPlacementStage,
   toWorkAssignment,
-  fetchLiveWorkers,
-  toWorker,
 } from "@/lib/live";
-import type {
-  LiveAssignmentRow,
-  LiveOrderRow,
-  LivePayrollRow,
-  LivePlacementPayRow,
-  LivePositionRow,
-  LiveSupervisor,
-} from "@/lib/live";
+import type { LiveAssignmentRow, LivePayrollRow } from "@/lib/live";
 import { formatVND, maskCitizenId } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusPill, statusToneForWorker } from "@/components/ui/badge";
-import { Field, Modal, getInputClass, inputClass } from "@/components/ui/modal";
+import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { HandoverInvite } from "@/components/workers/HandoverInvite";
-import { WorkerDocuments } from "@/components/workers/WorkerDocuments";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Worker } from "@/types/hrm";
-import { AddPlacementSchema, ClosePlacementSchema, formatZodErrors } from "@/lib/validation";
-import { EditWorkerModal } from "@/components/workers/WorkersView";
+
+interface ProfileDraft {
+  name: string;
+  phone: string;
+  citizenId: string;
+  hometown: string;
+  address: string;
+  introducer: string;
+  manager: string;
+  sourceKind: "" | "Vendor" | "CTV";
+  sourceName: string;
+  note: string;
+  images: string[];
+}
+
+function profileKey(code: string): string {
+  return `tw-worker-profile:${code}`;
+}
+
+function loadProfile(worker: Worker, canViewCccd: boolean): ProfileDraft {
+  const base: ProfileDraft = {
+    name: worker.name,
+    phone: worker.phone,
+    citizenId: canViewCccd ? worker.citizenId : maskCitizenId(worker.citizenId, false),
+    hometown: worker.hometown,
+    address: worker.hometown ? `${worker.hometown}, Việt Nam` : "",
+    introducer: worker.introducer,
+    manager: worker.manager,
+    sourceKind: "",
+    sourceName: "",
+    note: "",
+    images: [],
+  };
+  if (typeof window === "undefined") return base;
+  try {
+    const raw = localStorage.getItem(profileKey(worker.code));
+    if (!raw) return base;
+    const saved = JSON.parse(raw) as Partial<ProfileDraft>;
+    const sourceKind = saved.sourceKind === "Vendor" || saved.sourceKind === "CTV" ? saved.sourceKind : "";
+    return { ...base, ...saved, sourceKind, sourceName: saved.sourceName ?? "", images: saved.images ?? [] };
+  } catch {
+    return base;
+  }
+}
+
+function readImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Không đọc được ảnh."));
+      img.onload = () => {
+        const max = 1200;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Không xử lý được ảnh."));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCccd: boolean }) {
+  const [form, setForm] = useState<ProfileDraft>(() => loadProfile(worker, canViewCccd));
+  const [hint, setHint] = useState("");
+  const [prevCode, setPrevCode] = useState(worker.code);
+  if (worker.code !== prevCode) {
+    setPrevCode(worker.code);
+    setForm(loadProfile(worker, canViewCccd));
+    setHint("");
+  }
+
+  const save = (next: ProfileDraft) => {
+    setForm(next);
+    localStorage.setItem(profileKey(worker.code), JSON.stringify(next));
+  };
+
+  const addImages = async (files: File[]) => {
+    const images = files.filter((file) => file.type.startsWith("image/"));
+    if (images.length === 0) return;
+    const urls = await Promise.all(images.map((file) => readImageFile(file)));
+    save({ ...form, images: [...form.images, ...urls] });
+    setHint(`Đã thêm ${urls.length} ảnh.`);
+  };
+
+  useEffect(() => {
+    const onPaste = (event: ClipboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+      const files = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
+      if (files.length === 0) return;
+      event.preventDefault();
+      void addImages(files);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  });
+
+  return (
+    <div className="mt-3 grid gap-4 lg:grid-cols-2">
+      <div className="flex flex-col gap-2">
+        <h4 className="text-[13px] font-bold text-slate-800">Nội dung hồ sơ</h4>
+        <Field label="Họ và tên"><input className={inputClass} value={form.name} onChange={(e) => save({ ...form, name: e.target.value })} /></Field>
+        <Field label="Số điện thoại"><input className={inputClass} value={form.phone} onChange={(e) => save({ ...form, phone: e.target.value })} /></Field>
+        <Field label="Số CCCD">
+          <input className={inputClass} value={form.citizenId} onChange={(e) => save({ ...form, citizenId: e.target.value })} readOnly={!canViewCccd} />
+        </Field>
+        <Field label="Quê quán"><input className={inputClass} value={form.hometown} onChange={(e) => save({ ...form, hometown: e.target.value })} /></Field>
+        <Field label="Địa chỉ thường trú"><input className={inputClass} value={form.address} onChange={(e) => save({ ...form, address: e.target.value })} /></Field>
+        <Field label="Người giới thiệu"><input className={inputClass} value={form.introducer} onChange={(e) => save({ ...form, introducer: e.target.value })} placeholder="Tên người giới thiệu" /></Field>
+        <Field label="Người quản lý"><input className={inputClass} value={form.manager} onChange={(e) => save({ ...form, manager: e.target.value })} placeholder="Tên người quản lý" /></Field>
+        <Field label="Nguồn">
+          <select
+            className={inputClass}
+            value={form.sourceKind}
+            onChange={(e) => {
+              const sourceKind = e.target.value as ProfileDraft["sourceKind"];
+              save({ ...form, sourceKind, sourceName: sourceKind ? form.sourceName : "" });
+            }}
+          >
+            <option value="">Chọn nguồn</option>
+            <option value="Vendor">Vendor</option>
+            <option value="CTV">CTV</option>
+          </select>
+        </Field>
+        {form.sourceKind && (
+          <Field label={form.sourceKind === "Vendor" ? "Tên Vendor" : "Tên CTV"}>
+            <input
+              className={inputClass}
+              value={form.sourceName}
+              onChange={(e) => save({ ...form, sourceName: e.target.value })}
+              placeholder={form.sourceKind === "Vendor" ? "Nhập tên vendor" : "Nhập tên cộng tác viên"}
+            />
+          </Field>
+        )}
+        <Field label="Ghi chú">
+          <textarea className={inputClass} rows={4} value={form.note} onChange={(e) => save({ ...form, note: e.target.value })} placeholder="Gõ nội dung hồ sơ..." />
+        </Field>
+        {!canViewCccd && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-700">Số CCCD đang bị che vì tài khoản không có quyền xem.</p>
+        )}
+      </div>
+
+      <div
+        className="flex min-h-[280px] flex-col rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 outline-none focus:border-[#0052cc]"
+        tabIndex={0}
+        onPaste={(event) => {
+          const files = Array.from(event.clipboardData.files).filter((file) => file.type.startsWith("image/"));
+          if (files.length === 0) return;
+          event.preventDefault();
+          event.stopPropagation();
+          void addImages(files);
+        }}
+      >
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h4 className="text-[13px] font-bold text-slate-800">Ảnh hồ sơ</h4>
+          <label className="cursor-pointer rounded-lg bg-[#0052cc] px-2.5 py-1 text-[12px] font-semibold text-white hover:bg-[#0747a6]">
+            Tải ảnh từ máy
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = "";
+                void addImages(files);
+              }}
+            />
+          </label>
+        </div>
+        <p className="text-[12px] text-slate-500">Bấm vào cột này rồi nhấn Ctrl+V để dán ảnh, hoặc tải từ máy tính.</p>
+        {hint && <p className="mt-1 text-[12px] font-medium text-emerald-700">{hint}</p>}
+        {form.images.length === 0 ? (
+          <div className="mt-3 grid flex-1 place-items-center rounded-lg border border-dashed border-slate-200 bg-white text-[13px] text-slate-400">
+            Chưa có ảnh
+          </div>
+        ) : (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {form.images.map((src, index) => (
+              <div key={`${index}-${src.slice(0, 24)}`} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt="" className="h-36 w-full rounded-lg object-cover" />
+                <button
+                  type="button"
+                  onClick={() => save({ ...form, images: form.images.filter((_, i) => i !== index) })}
+                  className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-slate-900/80 text-white"
+                  aria-label="Xóa ảnh"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function num(v: number | string | null | undefined): number {
   const n = Number(v ?? 0);
@@ -54,46 +244,15 @@ export function WorkerDetailModal({
   onClose: () => void;
 }) {
   const { access } = useSession();
-  const { periodCode, periods, companies, staff } = useApp();
-  const [currentWorker, setCurrentWorker] = useState<Worker | null>(worker);
-  const [editingProfile, setEditingProfile] = useState(false);
-
-  useEffect(() => {
-    setCurrentWorker(worker);
-  }, [worker]);
-
+  const { periodCode, periods } = useApp();
   const [tab, setTab] = useState<"personal" | "job" | "payroll">("personal");
   const [showAddDot, setShowAddDot] = useState(false);
-  const [newDot, setNewDot] = useState({
-    orderCode: "",
-    position: "",
-    supervisorId: "",
-    recruiterId: worker?.recruiterId ? String(worker.recruiterId) : "",
-    startDate: new Date().toISOString().slice(0, 10),
-  });
-  const [dotErrors, setDotErrors] = useState<Record<string, string>>({});
+  const [newDot, setNewDot] = useState({ orderCode: "", position: "", startDate: new Date().toISOString().slice(0, 10) });
   const [advAmount, setAdvAmount] = useState("500000");
-  const [advError, setAdvError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [liveDots, setLiveDots] = useState<LiveAssignmentRow[] | null>(null);
   const [livePay, setLivePay] = useState<LivePayrollRow | null>(null);
-  const [placementPay, setPlacementPay] = useState<LivePlacementPayRow[]>([]);
-  const [availableOrders, setAvailableOrders] = useState<LiveOrderRow[]>([]);
-  const [availablePositions, setAvailablePositions] = useState<LivePositionRow[]>([]);
-  const [availableSupervisors, setAvailableSupervisors] = useState<LiveSupervisor[]>([]);
-  const [closingDot, setClosingDot] = useState<{
-    placementId: number;
-    startDate: string;
-    company: string;
-    position: string;
-  } | null>(null);
-  const [closeForm, setCloseForm] = useState({
-    endDate: new Date().toISOString().slice(0, 10),
-    endReason: "Kết thúc đợt",
-  });
-  const [closeErrors, setCloseErrors] = useState<Record<string, string>>({});
-  const [closeError, setCloseError] = useState("");
 
   const workerId = worker?.id ?? 0;
   const workerCode = worker?.code ?? "";
@@ -108,92 +267,42 @@ export function WorkerDetailModal({
   };
 
   useEffect(() => {
-    void reloadDots();
-  }, [workerId]);
-
-  useEffect(() => {
-    if (tab === "job") {
-      void reloadDots();
-      void fetchLiveOrders(periodCode || "2026-10")
-        .then((orders) => {
-          setAvailableOrders(orders);
-          if (orders[0] && !newDot.orderCode) {
-            setNewDot((d) => ({ ...d, orderCode: orders[0].code }));
-          }
-        })
-        .catch(() => {});
-      void fetchLivePositions().then(setAvailablePositions).catch(() => {});
-      void fetchLiveSupervisors().then(setAvailableSupervisors).catch(() => {});
-    }
+    if (tab === "job") void reloadDots();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, workerId, periodCode]);
+  }, [tab, workerId]);
 
   useEffect(() => {
     if (tab !== "payroll" || !workerCode || !periodCode) return;
     let alive = true;
     (async () => {
       try {
-        const [rows, pPay] = await Promise.all([
-          fetchLivePayroll(periodCode, workerCode),
-          fetchLivePlacementPay(periodCode, workerId),
-        ]);
-        if (alive) {
-          setLivePay(rows[0] ?? null);
-          setPlacementPay(pPay);
-        }
+        const rows = await fetchLivePayroll(periodCode, workerCode);
+        if (alive) setLivePay(rows[0] ?? null);
       } catch {
-        if (alive) {
-          setLivePay(null);
-          setPlacementPay([]);
-        }
+        if (alive) setLivePay(null);
       }
     })();
     return () => {
       alive = false;
     };
-  }, [tab, workerCode, workerId, periodCode]);
+  }, [tab, workerCode, periodCode]);
 
   if (!worker) return null;
-  const activeWorker = currentWorker ?? worker;
   const assignments = (liveDots ?? []).map(toWorkAssignment);
 
-  const selectedOrder = availableOrders.find((o) => o.code === newDot.orderCode);
-  const currentPositions = selectedOrder
-    ? availablePositions.filter((p) => p.order_id === selectedOrder.order_id)
-    : [];
-  const currentCompany = companies.find((c) => c.short_name === selectedOrder?.company);
-  const currentSupervisors = currentCompany
-    ? availableSupervisors.filter((s) => s.company_id === currentCompany.id)
-    : availableSupervisors;
-
   const saveDot = async () => {
-    setError("");
-    const parsed = AddPlacementSchema.safeParse(newDot);
-    if (!parsed.success) {
-      setDotErrors(formatZodErrors(parsed.error));
-      return;
-    }
-    setDotErrors({});
-
+    if (!newDot.orderCode.trim() || !newDot.startDate) return;
     setBusy(true);
+    setError("");
     try {
       await addLivePlacement({
         worker_id: worker.id,
         order_code: newDot.orderCode.trim(),
         position: newDot.position.trim() || undefined,
-        recruiter_id: newDot.recruiterId ? Number(newDot.recruiterId) : (worker.recruiterId ?? undefined),
-        supervisor_id: newDot.supervisorId ? Number(newDot.supervisorId) : undefined,
         start_date: newDot.startDate,
       });
       setShowAddDot(false);
-      setNewDot({
-        orderCode: availableOrders[0]?.code ?? "",
-        position: "",
-        supervisorId: "",
-        recruiterId: worker?.recruiterId ? String(worker.recruiterId) : "",
-        startDate: new Date().toISOString().slice(0, 10),
-      });
-      setDotErrors({});
+      setNewDot({ orderCode: "", position: "", startDate: new Date().toISOString().slice(0, 10) });
       await reloadDots();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Thêm đợt thất bại.");
@@ -202,61 +311,25 @@ export function WorkerDetailModal({
     }
   };
 
-  const openCloseDot = (placementId: number, startDate: string, company: string, position: string) => {
-    setClosingDot({ placementId, startDate, company, position });
-    const today = new Date().toISOString().slice(0, 10);
-    const defaultEnd = today >= startDate ? today : startDate;
-    setCloseForm({ endDate: defaultEnd, endReason: "Kết thúc đợt" });
-    setCloseErrors({});
-    setCloseError("");
-  };
-
-  const submitCloseDot = async () => {
-    if (!closingDot) return;
-    setCloseError("");
-    const parsed = ClosePlacementSchema.safeParse({
-      startDate: closingDot.startDate,
-      endDate: closeForm.endDate,
-      endReason: closeForm.endReason,
-    });
-    if (!parsed.success) {
-      setCloseErrors(formatZodErrors(parsed.error));
+  const closeDot = async (placementId: number, startDate: string) => {
+    const end = window.prompt("Nhập ngày kết thúc đợt (YYYY-MM-DD):", new Date().toISOString().slice(0, 10));
+    if (!end) return;
+    if (end < startDate) {
+      window.alert("Ngày kết thúc không được trước ngày vào.");
       return;
     }
-    setCloseErrors({});
-    setBusy(true);
-    try {
-      await closeLivePlacement(closingDot.placementId, closeForm.endDate, closeForm.endReason);
-      setClosingDot(null);
-      await reloadDots();
-    } catch (e) {
-      setCloseError(e instanceof ApiError ? e.message : "Kết thúc đợt thất bại.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleHandover = async (placementId: number, action: "hand-over" | "receive") => {
     setError("");
     try {
-      const full = (liveDots ?? []).find((d) => d.placement_id === placementId);
-      const actionName = action === "hand-over" ? "bàn giao" : "tiếp nhận";
-      const receiverName = window.prompt(`Nhập tên người ${actionName}:`, full?.supervisor_name || worker.name);
-      if (!receiverName) return;
-      await handoverAction(placementId, action, { received_by_name: receiverName });
+      await closeLivePlacement(placementId, end, "Kết thúc đợt");
       await reloadDots();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Thao tác bàn giao thất bại.");
+      setError(e instanceof ApiError ? e.message : "Kết thúc đợt thất bại.");
     }
   };
 
   const saveAdvance = async () => {
     const amount = parseInt(advAmount, 10);
-    if (!amount || amount <= 0) {
-      setAdvError("Số tiền tạm ứng phải lớn hơn 0");
-      return;
-    }
-    setAdvError("");
+    if (!amount || amount <= 0) return;
     const period = periods.find((p) => p.code === periodCode);
     if (!period) {
       setError("Chưa chọn kỳ lương.");
@@ -267,7 +340,6 @@ export function WorkerDetailModal({
     try {
       await createLiveAdvance({ worker_id: worker.id, period_id: period.id, amount, reason: `Tạm ứng cho ${worker.name}` });
       setAdvAmount("");
-      setAdvError("");
       const rows = await fetchLivePayroll(period.code, worker.code);
       setLivePay(rows[0] ?? null);
     } catch (e) {
@@ -278,34 +350,24 @@ export function WorkerDetailModal({
   };
 
   return (
-    <>
-      <Modal
+    <Modal
       open
       onClose={onClose}
       wide
       title="Hồ Sơ Chi Tiết Người Lao Động"
-      badge={<StatusPill tone="info">{activeWorker.code}</StatusPill>}
-      footer={
-        <div className="flex w-full items-center justify-between">
-          <Button variant="outline" onClick={() => setEditingProfile(true)}>
-            Chỉnh sửa hồ sơ
-          </Button>
-          <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={onClose}>
-            Đóng
-          </Button>
-        </div>
-      }
+      badge={<StatusPill tone="info">{worker.code}</StatusPill>}
+      footer={<Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={onClose}>Đóng</Button>}
     >
       <div className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#0b4c8f] to-[#0052cc] p-4 text-white">
-        <Avatar tone={activeWorker.avatarColor} size="lg">{activeWorker.initials}</Avatar>
+        <Avatar tone={worker.avatarColor} size="lg">{worker.initials}</Avatar>
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-[18px] font-bold">{activeWorker.name}</h2>
-            <StatusPill tone={statusToneForWorker(activeWorker.status)}>{activeWorker.status}</StatusPill>
-            <StatusPill tone={activeWorker.type === "Thời vụ" ? "warning" : "info"}>{activeWorker.type}</StatusPill>
+            <h2 className="text-[18px] font-bold">{worker.name}</h2>
+            <StatusPill tone={statusToneForWorker(worker.status)}>{worker.status}</StatusPill>
+            <StatusPill tone={worker.type === "Thời vụ" ? "warning" : "info"}>{worker.type}</StatusPill>
           </div>
           <div className="mt-0.5 text-[12.5px] text-blue-100">
-            Doanh nghiệp: <strong>{activeWorker.company} Việt Nam</strong> · Vị trí: {activeWorker.position} · Phụ trách: {activeWorker.recruiter}
+            Doanh nghiệp: <strong>{worker.company} Việt Nam</strong> · Vị trí: {worker.position} · Người giới thiệu: {worker.introducer || "—"} · Người quản lý: {worker.manager || worker.recruiter || "—"}
           </div>
         </div>
       </div>
@@ -326,32 +388,7 @@ export function WorkerDetailModal({
       {error && <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
 
       {tab === "personal" && (
-        <div className="mt-3 grid grid-cols-2 gap-3 text-[13.5px] sm:grid-cols-3">
-          {[
-            ["Họ và tên", activeWorker.name],
-            ["Mã NLĐ", activeWorker.code],
-            ["Số điện thoại", activeWorker.phone],
-            ["Số CCCD (12 số)", maskCitizenId(activeWorker.citizenId, access.canViewCccd)],
-            ["Quê quán", activeWorker.hometown],
-            ["Địa chỉ thường trú", `${activeWorker.hometown}, Việt Nam`],
-            ["Người tuyển dụng", activeWorker.recruiter || "—"],
-            ["Người nhập hồ sơ", activeWorker.creator || "Hệ thống"],
-            ["Thời gian nhập", activeWorker.createdAt ? new Date(activeWorker.createdAt).toLocaleDateString("vi-VN") : "—"],
-            ["Quản lý đón hiện tại", activeWorker.supervisorName ? `${activeWorker.supervisorName} (${activeWorker.supervisorPhone})` : "Chưa phân công"],
-            ["Đầu mối liên hệ nhà máy", currentCompany?.contact_name ? `${currentCompany.contact_name} (${currentCompany.hotline || currentCompany.contact_phone || "—"})` : "—"],
-          ].map(([k, v]) => (
-            <div key={k} className="rounded-lg border border-slate-100 bg-slate-50/60 p-2.5">
-              <div className="text-[11.5px] text-slate-500">{k}:</div>
-              <div className="font-semibold text-slate-900">{v}</div>
-            </div>
-          ))}
-          {!access.canViewCccd && (
-            <div className="col-span-full rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-700">
-              Chế độ xem bảo mật: vai trò hiện tại bị giới hạn quyền CCCD_VIEW, số định danh đã che mờ.
-            </div>
-          )}
-          {access.canViewCccd && <WorkerDocuments workerId={worker.id} />}
-        </div>
+        <WorkerProfilePane worker={worker} canViewCccd={access.canViewCccd} />
       )}
 
       {tab === "job" && (
@@ -362,109 +399,9 @@ export function WorkerDetailModal({
           </div>
           {showAddDot && (
             <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
-              <Field label="Đơn hàng *" error={dotErrors.orderCode}>
-                <select
-                  className={getInputClass(dotErrors.orderCode)}
-                  value={newDot.orderCode}
-                  onChange={(e) => {
-                    const code = e.target.value;
-                    const ord = availableOrders.find((o) => o.code === code);
-                    const pos = availablePositions.find((p) => p.order_id === ord?.order_id);
-                    setNewDot((d) => ({ ...d, orderCode: code, position: pos?.title || "" }));
-                    setDotErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.orderCode;
-                      return next;
-                    });
-                  }}
-                >
-                  <option value="">— Chọn đơn hàng —</option>
-                  {availableOrders.map((o) => (
-                    <option key={o.order_id} value={o.code}>
-                      {o.code} · {o.company} – {o.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Vị trí tuyển dụng">
-                {currentPositions.length > 0 ? (
-                  <select
-                    className={inputClass}
-                    value={newDot.position}
-                    onChange={(e) => setNewDot((d) => ({ ...d, position: e.target.value }))}
-                  >
-                    <option value="">— Vị trí theo đơn —</option>
-                    {currentPositions.map((p, idx) => (
-                      <option key={`${p.order_id}-${idx}`} value={p.title}>
-                        {p.title} (chỉ tiêu: {p.target_qty})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    className={inputClass}
-                    value={newDot.position}
-                    onChange={(e) => setNewDot((d) => ({ ...d, position: e.target.value }))}
-                    placeholder="VD: Công nhân lắp ráp"
-                  />
-                )}
-              </Field>
-              <Field label="Người tuyển dụng đợt này">
-                <select
-                  className={inputClass}
-                  value={newDot.recruiterId}
-                  onChange={(e) => setNewDot((d) => ({ ...d, recruiterId: e.target.value }))}
-                >
-                  <option value="">— Mặc định theo hồ sơ —</option>
-                  {staff.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.full_name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Quản lý trực tiếp đón NLĐ">
-                <select
-                  className={inputClass}
-                  value={newDot.supervisorId}
-                  onChange={(e) => setNewDot((d) => ({ ...d, supervisorId: e.target.value }))}
-                >
-                  <option value="">— Chọn người đón tại nhà máy —</option>
-                  {currentSupervisors.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.full_name} · {s.phone} {s.title ? `(${s.title})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Ngày vào *" error={dotErrors.startDate}>
-                <input
-                  type="date"
-                  className={getInputClass(dotErrors.startDate)}
-                  value={newDot.startDate}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setNewDot((d) => ({ ...d, startDate: val }));
-                    setDotErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.startDate;
-                      return next;
-                    });
-                  }}
-                />
-              </Field>
-              {currentCompany && (
-                <div className="col-span-2 rounded-lg border border-blue-200 bg-blue-50/70 p-2.5 text-[12px] text-blue-900">
-                  <span className="font-semibold">Đầu mối liên hệ nhà máy ({currentCompany.short_name}):</span>{" "}
-                  {currentCompany.contact_name ? (
-                    <>
-                      <strong>{currentCompany.contact_name}</strong> · SĐT/Hotline: <strong>{currentCompany.contact_phone || currentCompany.hotline || "—"}</strong>
-                    </>
-                  ) : (
-                    <span>Chưa cập nhật thông tin đầu mối liên hệ</span>
-                  )}
-                </div>
-              )}
+              <Field label="Mã đơn hàng *"><input suppressHydrationWarning className={inputClass} value={newDot.orderCode} onChange={(e) => setNewDot({ ...newDot, orderCode: e.target.value })} placeholder="VD: DH-2610-OJTEK" /></Field>
+              <Field label="Vị trí (để trống = vị trí đầu của đơn)"><input suppressHydrationWarning className={inputClass} value={newDot.position} onChange={(e) => setNewDot({ ...newDot, position: e.target.value })} placeholder="VD: QC ngoại quan" /></Field>
+              <Field label="Ngày vào *"><input suppressHydrationWarning type="date" className={inputClass} value={newDot.startDate} onChange={(e) => setNewDot({ ...newDot, startDate: e.target.value })} /></Field>
               <div className="col-span-2">
                 <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void saveDot()}>
                   {busy ? "Đang lưu..." : "Lưu đợt mới (tự kết thúc đợt đang làm)"}
@@ -480,11 +417,6 @@ export function WorkerDetailModal({
           <div className="flex flex-col gap-2">
             {assignments.map((a, i) => {
               const full = (liveDots ?? []).find((d) => String(d.placement_id) === a.id);
-              const hStatus = full?.handover_status;
-              const comp = companies.find((c) => c.short_name === a.company);
-              const compContact = full?.company_contact || comp?.contact_name;
-              const compPhone = full?.company_contact_phone || comp?.contact_phone || comp?.hotline;
-              const recName = full?.recruiter || a.recruiter || activeWorker.recruiter;
               return (
                 <div key={a.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 p-3 text-[13px]">
                   <span className="font-bold text-[#0052cc]">Đợt {assignments.length - i}</span>
@@ -492,77 +424,12 @@ export function WorkerDetailModal({
                   <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[12px]">{a.orderCode}</code>
                   <span className="text-slate-500">{a.position}</span>
                   <span className="text-slate-500">Vào: <strong className="text-slate-700">{a.startDate}</strong></span>
-                  <span className="text-slate-500">
-                    Kết thúc: {a.endDate ? (
-                      <strong className="text-slate-700">{a.endDate}</strong>
-                    ) : (
-                      <span className="text-slate-400 italic">(để trống)</span>
-                    )}
-                  </span>
-                  {full?.end_reason && (
-                    <span className="text-[11.5px] text-slate-500">({full.end_reason})</span>
-                  )}
-                  {recName && (
-                    <span className="rounded-md bg-purple-50 px-2 py-0.5 text-purple-700">
-                      Tuyển dụng: <strong>{recName}</strong>
-                    </span>
-                  )}
+                  <span className="text-slate-500">Kết thúc: <strong className="text-slate-700">{a.endDate ?? "— đang làm —"}</strong></span>
                   {full?.supervisor_name && (
-                    <span className="rounded-md bg-blue-50 px-2 py-0.5 text-blue-700">
-                      Người đón: <strong>{full.supervisor_name} ({full.supervisor_phone})</strong>
-                    </span>
+                    <span className="text-slate-500">Đón: <strong className="text-slate-700">{full.supervisor_name} ({full.supervisor_phone})</strong></span>
                   )}
-                  {(compContact || compPhone) && (
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-slate-700">
-                      Đầu mối NM: <strong>{compContact || "—"} ({compPhone || "—"})</strong>
-                    </span>
-                  )}
-                  {hStatus === "pending" && (
-                    <span className="flex items-center gap-1">
-                      <StatusPill tone="warning">Chờ bàn giao</StatusPill>
-                      <button
-                        type="button"
-                        onClick={() => void handleHandover(Number(a.id), "hand-over")}
-                        className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 hover:bg-amber-200"
-                      >
-                        Bàn giao ngay
-                      </button>
-                    </span>
-                  )}
-                  {hStatus === "handed_over" && (
-                    <span className="flex items-center gap-1">
-                      <StatusPill tone="info">Đã bàn giao</StatusPill>
-                      <button
-                        type="button"
-                        onClick={() => void handleHandover(Number(a.id), "receive")}
-                        className="rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-800 hover:bg-blue-200"
-                      >
-                        Xác nhận nhận
-                      </button>
-                    </span>
-                  )}
-                  {hStatus === "received" && (
-                    <StatusPill tone="success">Đã tiếp nhận</StatusPill>
-                  )}
-                  {full && (
-                    <select
-                      className="rounded-lg border border-slate-200 px-2 py-1 text-[12px]"
-                      value={full.stage}
-                      onChange={(e) => void (async () => {
-                        setError("");
-                        try {
-                          await setPlacementStage(full.placement_id, e.target.value);
-                          await reloadDots();
-                        } catch (err) {
-                          setError(err instanceof ApiError ? err.message : "Đổi bước thất bại.");
-                        }
-                      })()}
-                    >
-                      <option value="applied">Mới ứng tuyển</option>
-                      <option value="interview">Hẹn phỏng vấn</option>
-                      <option value="waiting_start">Chờ đi làm</option>
-                      <option value="working">Đang làm</option>
-                    </select>
+                  {full?.handover_status && full.handover_status !== "received" && (
+                    <StatusPill tone="warning">Bàn giao: {full.handover_status}</StatusPill>
                   )}
                   {a.endDate === null ? (
                     <span className="ml-auto flex items-center gap-2">
@@ -571,25 +438,9 @@ export function WorkerDetailModal({
                       <button
                         type="button"
                         className="text-[12px] font-semibold text-rose-600 hover:underline"
-                        onClick={() => openCloseDot(Number(a.id), a.startDate, a.company, a.position)}
+                        onClick={() => void closeDot(Number(a.id), a.startDate)}
                       >
                         Kết thúc đợt
-                      </button>
-                      <button
-                        type="button"
-                        className="text-[12px] font-semibold text-rose-600 hover:underline"
-                        onClick={() => void (async () => {
-                          if (!window.confirm("Xóa đợt làm việc này?")) return;
-                          setError("");
-                          try {
-                            await deleteLivePlacement(Number(a.id));
-                            await reloadDots();
-                          } catch (err) {
-                            setError(err instanceof ApiError ? err.message : "Xóa đợt thất bại.");
-                          }
-                        })()}
-                      >
-                        Xóa đợt
                       </button>
                     </span>
                   ) : (
@@ -603,7 +454,7 @@ export function WorkerDetailModal({
       )}
 
       {tab === "payroll" && (
-        <div className="mt-3 flex flex-col gap-4">
+        <div className="mt-3">
           {livePay ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
@@ -622,153 +473,14 @@ export function WorkerDetailModal({
           ) : (
             <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-[13px] text-slate-400">Chưa có dòng lương cho kỳ {periodCode || "đang chọn"}.</p>
           )}
-
-          {placementPay.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-3">
-              <h5 className="mb-2 text-[13px] font-bold text-slate-800">
-                Lương theo từng đợt làm việc trong kỳ ({placementPay.length} đợt)
-              </h5>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-[12.5px]">
-                  <thead>
-                    <tr className="border-b bg-slate-50 text-[11.5px] text-slate-500">
-                      <th className="p-2">Công ty</th>
-                      <th className="p-2">Đơn & Vị trí</th>
-                      <th className="p-2">Giai đoạn</th>
-                      <th className="p-2">Số ngày làm</th>
-                      <th className="p-2">Đơn giá/ngày</th>
-                      <th className="p-2 text-right">Tiền lương đợt</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {placementPay.map((p, idx) => (
-                      <tr key={`${p.placement_id}-${idx}`} className="border-b last:border-0 hover:bg-slate-50/50">
-                        <td className="p-2 font-semibold text-slate-800">{p.company}</td>
-                        <td className="p-2"><code>{p.order_code}</code> · {p.position}</td>
-                        <td className="p-2 text-slate-600">{p.first_day} → {p.last_day}</td>
-                        <td className="p-2 font-bold text-blue-700">{num(p.work_days)} ngày</td>
-                        <td className="p-2">{formatVND(num(p.daily_rate))}</td>
-                        <td className="p-2 text-right font-bold text-emerald-600">{formatVND(num(p.amount))}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <div className="flex items-center gap-2 rounded-xl border border-slate-100 p-3">
-              <input
-                suppressHydrationWarning
-                value={advAmount}
-                onChange={(e) => {
-                  setAdvAmount(e.target.value);
-                  setAdvError("");
-                }}
-                inputMode="numeric"
-                placeholder="Số tiền tạm ứng"
-                className={cn(
-                  "w-44 rounded-lg px-3 py-1.5 text-[13px] outline-none transition-colors",
-                  advError
-                    ? "border border-rose-500 ring-2 ring-rose-500/20"
-                    : "border border-slate-200 focus:border-[#0052cc] focus:ring-2 focus:ring-[#0052cc]/20",
-                )}
-              />
-              <Button size="sm" variant="outline" onClick={() => void saveAdvance()}>
-                {busy ? "Đang lưu..." : "+ Tạo tạm ứng"}
-              </Button>
-            </div>
-            {advError && <p className="mt-1 px-3 text-[11.5px] font-medium text-rose-600">{advError}</p>}
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-slate-100 p-3">
+            <input suppressHydrationWarning value={advAmount} onChange={(e) => setAdvAmount(e.target.value)} inputMode="numeric" placeholder="Số tiền tạm ứng" className="w-44 rounded-lg border border-slate-200 px-3 py-1.5 text-[13px]" />
+            <Button size="sm" variant="outline" onClick={() => void saveAdvance()}>
+              {busy ? "Đang lưu..." : "+ Tạo tạm ứng"}
+            </Button>
           </div>
         </div>
       )}
-      </Modal>
-      {editingProfile && activeWorker && (
-        <EditWorkerModal
-          worker={activeWorker}
-          onClose={() => setEditingProfile(false)}
-          onSaved={() => {
-            setEditingProfile(false);
-            void fetchLiveWorkers({ q: activeWorker.code, limit: 1 })
-              .then((res) => {
-                const found = res.rows.find((r) => r.id === activeWorker.id) ?? res.rows[0];
-                if (found) setCurrentWorker(toWorker(found));
-              })
-              .catch(() => {});
-          }}
-        />
-      )}
-      {closingDot && (
-        <Modal
-          open
-          onClose={() => setClosingDot(null)}
-          title="Kết Thúc Đợt Làm Việc"
-          footer={
-            <div className="flex w-full items-center justify-end gap-2">
-              <Button variant="outline" onClick={() => setClosingDot(null)}>
-                Hủy bỏ
-              </Button>
-              <Button
-                className="bg-rose-600 text-white hover:bg-rose-700"
-                onClick={() => void submitCloseDot()}
-              >
-                {busy ? "Đang xử lý..." : "Xác nhận kết thúc đợt"}
-              </Button>
-            </div>
-          }
-        >
-          <div className="flex flex-col gap-3">
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-[13px] leading-relaxed">
-              <div>Doanh nghiệp: <strong>{closingDot.company}</strong></div>
-              <div>Vị trí: <strong>{closingDot.position}</strong></div>
-              <div>Ngày vào làm việc: <strong className="text-blue-700">{closingDot.startDate}</strong></div>
-              <p className="mt-1 text-[11.5px] text-slate-500">
-                * Đợt đang làm trước đó để trống ngày kết thúc. Khi kết thúc đợt, ngày kết thúc bắt buộc không được trước ngày vào ({closingDot.startDate}).
-              </p>
-            </div>
-
-            <Field label="Ngày kết thúc *" error={closeErrors.endDate}>
-              <input
-                type="date"
-                min={closingDot.startDate}
-                className={getInputClass(closeErrors.endDate)}
-                value={closeForm.endDate}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setCloseForm((f) => ({ ...f, endDate: val }));
-                  setCloseErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.endDate;
-                    return next;
-                  });
-                }}
-              />
-            </Field>
-
-            <Field label="Lý do kết thúc">
-              <select
-                className={inputClass}
-                value={closeForm.endReason}
-                onChange={(e) => setCloseForm((f) => ({ ...f, endReason: e.target.value }))}
-              >
-                <option value="Kết thúc đợt">Kết thúc đợt</option>
-                <option value="Hết hạn hợp đồng đơn hàng">Hết hạn hợp đồng đơn hàng</option>
-                <option value="Tự xin nghỉ việc">Tự xin nghỉ việc</option>
-                <option value="Chuyển sang công ty khác">Chuyển sang công ty khác</option>
-                <option value="Công ty cắt giảm / cho nghỉ">Công ty cắt giảm / cho nghỉ</option>
-                <option value="Lý do cá nhân / gia đình">Lý do cá nhân / gia đình</option>
-              </select>
-            </Field>
-
-            {closeError && (
-              <div className="rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] font-medium text-rose-700">
-                {closeError}
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
-    </>
+    </Modal>
   );
 }

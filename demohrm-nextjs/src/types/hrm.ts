@@ -28,6 +28,7 @@ export type WorkerStatus =
   | "Tạm nghỉ"
   | "Nghỉ việc"
   | "Không đi làm"
+  | "Đang tư vấn"
   | "Ứng viên";
 
 export type WorkerType = "Thời vụ" | "Chính thức";
@@ -40,10 +41,6 @@ export interface WorkAssignment {
   startDate: string;
   endDate: string | null;
   recruiter: string;
-  companyContact?: string;
-  companyContactPhone?: string;
-  supervisorName?: string;
-  supervisorPhone?: string;
 }
 
 export interface Worker {
@@ -57,21 +54,14 @@ export interface Worker {
   position: string;
   type: WorkerType;
   recruiter: string;
+  introducer: string;
+  manager: string;
   status: WorkerStatus;
   dailyRate: number;
   workedDays: number;
   advance: number;
   avatarColor: string;
   initials: string;
-  creator?: string;
-  creatorId?: number | null;
-  createdAt?: string;
-  updatedBy?: string;
-  updatedAt?: string;
-  recruiterId?: number | null;
-  supervisorName?: string;
-  supervisorPhone?: string;
-  handoverStatus?: string | null;
   assignments?: WorkAssignment[];
 }
 
@@ -221,33 +211,19 @@ export interface Cycle {
 }
 
 export interface OrderPosition {
-  id?: number;
   idx: string;
   name: string;
   done: number;
   total: number;
-  jobDescription?: string;
-  shift?: string;
-  dayRate?: number;
-  rateAmount?: number;
-  wageUnit?: string;
-  rateFrom?: string;
-  rateTo?: string;
 }
 
 export interface OrderSummary {
-  id: number;
+  orderId?: number;
   title: string;
   period: string;
   manager: string;
   target: number;
   working: number;
-  arranged?: number;
-  missing?: number;
-  companyName?: string;
-  workSite?: string;
-  siteAddress?: string;
-  ownerPhone?: string;
   positions: number;
   vendors: number;
   code: string;

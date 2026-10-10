@@ -41,23 +41,11 @@ export async function POST(req: Request): Promise<Response> {
     }
     const { data: openRows, error: eOpen } = await getSupabase()
       .from("worker_placements")
-      .select("id, start_date")
+      .select("id")
       .eq("worker_id", b.worker_id)
       .is("end_date", null);
     if (eOpen) throw eOpen;
-    const typedOpenRows = (openRows ?? []) as Array<{ id: number; start_date: string | null }>;
-    for (const r of typedOpenRows) {
-      if (r.start_date && b.start_date < r.start_date) {
-        return json(
-          {
-            error: "invalid_date",
-            message: `Ngày vào của đợt mới (${b.start_date}) không được trước ngày vào của đợt đang làm (${r.start_date}).`,
-          },
-          400,
-        );
-      }
-    }
-    const openIds = typedOpenRows.map((r) => r.id);
+    const openIds = ((openRows ?? []) as Array<{ id: number }>).map((r) => r.id);
     const { error: e2 } = await getSupabase()
       .from("worker_placements")
       .update({ end_date: b.start_date, end_reason: `Chuyen sang ${b.order_code}` })

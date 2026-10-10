@@ -26,7 +26,7 @@ export function StatusPill({ tone = "neutral", className, children }: { tone?: T
 
 export function statusToneForWorker(status: string): Tone {
   if (status === "Chờ đi làm") return "warning";
-  if (status === "Tạm nghỉ" || status === "Ứng viên") return "info";
+  if (status === "Tạm nghỉ" || status === "Ứng viên" || status === "Đang tư vấn") return "info";
   if (status === "Nghỉ việc" || status === "Không đi làm") return "danger";
   return "success";
 }

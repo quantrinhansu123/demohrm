@@ -31,12 +31,6 @@ export async function PATCH(
       return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
     }
     const body = pick(await readBody(req), ["status", "review_note", "assigned_to"]);
-    if (body["status"] === "confirmed") body["status"] = "same_person";
-    if (body["status"] === "dismissed") body["status"] = "not_duplicate";
-    const VALID_STATUSES = ["open", "not_duplicate", "same_person", "resolved"];
-    if (body["status"] && !VALID_STATUSES.includes(String(body["status"]))) {
-      body["status"] = "same_person";
-    }
     if (auth.staffId) body["reviewed_by"] = Number(auth.staffId);
     body["reviewed_at"] = new Date().toISOString();
     const { data, error } = await getSupabase().from("duplicate_alerts").update(body).eq("id", id).select("id,status,review_note").single();

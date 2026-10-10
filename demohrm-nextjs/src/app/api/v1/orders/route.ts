@@ -41,14 +41,14 @@ function pick(body: unknown, keys: readonly string[]): Record<string, unknown> {
   return out;
 }
 
-// GET /api/v1/orders?period=2026-10 — Thẻ đơn hàng + vị trí
+// GET /api/v1/orders?period=2026-10 — The don hang + vi tri
 export async function GET(req: Request): Promise<Response> {
   try {
     getAuth(req);
     const q = getSupabase()
       .from("v_order_progress")
       .select(
-        "order_id,code,company,company_name,work_site,site_address,name,start_date,end_date,owner,owner_phone,status,health,target_qty,assigned_qty,working_qty,waiting_qty,interview_qty,applied_qty,left_qty,missing_qty,unassigned_qty,total_profiles,position_count,vendor_count,progress_pct",
+        "order_id,code,company,company_name,name,start_date,end_date,owner,status,health,target_qty,working_qty,waiting_qty,interview_qty,applied_qty,total_profiles,position_count,vendor_count",
       )
       .order("order_id")
       .limit(200);
@@ -62,7 +62,7 @@ export async function GET(req: Request): Promise<Response> {
   }
 }
 
-// POST /api/v1/orders — Tạo đơn hàng kèm vị trí tuyển và mức lương ban đầu
+// POST /api/v1/orders — Tao don hang kem vi tri tuyen
 export async function POST(req: Request): Promise<Response> {
   try {
     const auth = getAuth(req);
@@ -83,38 +83,10 @@ export async function POST(req: Request): Promise<Response> {
         order_id: createdId,
         sort_order: i + 1,
       }));
-      const { data: insertedPositions, error: e2 } = await getSupabase()
-        .from("order_positions")
-        .insert(rows)
-        .select("id,sort_order");
+      const { error: e2 } = await getSupabase().from("order_positions").insert(rows);
       if (e2) {
         await getSupabase().from("orders").delete().eq("id", createdId);
         throw e2;
-      }
-
-      // Khởi tạo mức lương cho từng vị trí nếu có day_rate hoặc rate_amount
-      const startDate = (order["start_date"] as string) || new Date().toISOString().slice(0, 10);
-      const wageRows: Array<Record<string, unknown>> = [];
-      for (let i = 0; i < raw.positions.length; i++) {
-        const p = raw.positions[i] as Record<string, unknown>;
-        const ins = ((insertedPositions ?? []) as Array<{ id: number; sort_order: number }>).find(
-          (ip) => ip.sort_order === i + 1,
-        );
-        if (!ins) continue;
-        const rate = Number(p.day_rate ?? p.rate_amount ?? 0);
-        if (rate > 0) {
-          wageRows.push({
-            position_id: ins.id,
-            wage_unit: (p.wage_unit as string) || "day",
-            rate_amount: rate,
-            day_rate: rate,
-            effective_from: startDate,
-            created_by: auth.staffId ? Number(auth.staffId) : null,
-          });
-        }
-      }
-      if (wageRows.length > 0) {
-        await getSupabase().from("position_wage_rates").insert(wageRows);
       }
     }
     return json(created, 201);

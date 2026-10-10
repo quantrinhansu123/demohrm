@@ -366,6 +366,8 @@ export interface LivePersonnel extends LiveStaff {
   email: string | null;
   phone: string | null;
   status: string;
+  date_of_birth: string | null;
+  hired_on: string | null;
 }
 
 export interface LiveCompany {
@@ -413,10 +415,12 @@ export interface PersonnelWrite {
   department: string;
   phone?: string | null;
   email?: string | null;
+  date_of_birth?: string | null;
+  hired_on?: string | null;
   status: string;
 }
 
-export function createLivePersonnel(body: { department: string; full_name: string; phone?: string; email?: string }): Promise<LivePersonnel[]> {
+export function createLivePersonnel(body: { department: string; full_name: string; phone?: string; email?: string; date_of_birth?: string | null; hired_on?: string | null }): Promise<LivePersonnel[]> {
   return apiPost<LivePersonnel[]>("/staff", body);
 }
 

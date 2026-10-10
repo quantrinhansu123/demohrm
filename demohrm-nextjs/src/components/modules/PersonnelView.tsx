@@ -24,11 +24,20 @@ function statusLabel(status: string): string {
   return status;
 }
 
+function showDate(value: string | null | undefined): string {
+  if (!value) return "—";
+  const [year, month, day] = value.slice(0, 10).split("-");
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+}
+
 interface PersonnelForm {
   full_name: string;
   department: string;
   phone: string;
   email: string;
+  date_of_birth: string;
+  hired_on: string;
   status: string;
 }
 
@@ -38,6 +47,8 @@ function formFromPerson(person: LivePersonnel): PersonnelForm {
     department: departmentOf(person) ?? DEPARTMENTS[0].label,
     phone: person.phone ?? "",
     email: person.email ?? "",
+    date_of_birth: person.date_of_birth?.slice(0, 10) ?? "",
+    hired_on: person.hired_on?.slice(0, 10) ?? "",
     status: person.status === "inactive" ? "inactive" : "active",
   };
 }
@@ -73,7 +84,7 @@ export function PersonnelView() {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((r) =>
-      [r.full_name, r.code, r.email, r.phone, departmentOf(r)]
+      [r.full_name, r.code, r.email, r.phone, departmentOf(r), r.date_of_birth, r.hired_on]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q))
     );
@@ -126,11 +137,11 @@ export function PersonnelView() {
             <KpiCard title="PHÒNG BAN" value={<>{new Set(rows.map((r) => departmentOf(r)).filter(Boolean)).size}</>} sub="Theo người đang có trong danh sách" />
           </div>
           <div className="mt-4">
-            <DataTable headers={["Nhân sự", "Mã", "Phòng ban", "Điện thoại", "Email", "Trạng thái", "Thao tác"]}>
+            <DataTable headers={["Nhân sự", "Mã", "Phòng ban", "Ngày sinh", "Ngày vào làm", "Điện thoại", "Email", "Trạng thái", "Thao tác"]}>
               {filtered.map((person) => (
                 <PersonnelRow key={person.id} person={person} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
               ))}
-              {filtered.length === 0 && <EmptyRow colSpan={7} text="Chưa có nhân sự" />}
+              {filtered.length === 0 && <EmptyRow colSpan={9} text="Chưa có nhân sự" />}
             </DataTable>
           </div>
         </div>
@@ -186,6 +197,8 @@ function PersonnelRow({
       </td>
       <td><code>{person.code}</code></td>
       <td>{departmentOf(person) ?? "—"}</td>
+      <td>{showDate(person.date_of_birth)}</td>
+      <td>{showDate(person.hired_on)}</td>
       <td>{person.phone || "—"}</td>
       <td>{person.email || "—"}</td>
       <td>
@@ -209,6 +222,8 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
   const [department, setDepartment] = useState<string>(DEPARTMENTS[0].label);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [hiredOn, setHiredOn] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -225,10 +240,14 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
         department,
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
+        date_of_birth: dateOfBirth || null,
+        hired_on: hiredOn || null,
       });
       setFullName("");
       setPhone("");
       setEmail("");
+      setDateOfBirth("");
+      setHiredOn("");
       onClose();
       onSaved();
     } catch (e) {
@@ -264,6 +283,12 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
             ))}
           </select>
         </Field>
+        <Field label="Ngày sinh">
+          <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputClass} />
+        </Field>
+        <Field label="Ngày vào làm">
+          <input type="date" value={hiredOn} onChange={(e) => setHiredOn(e.target.value)} className={inputClass} />
+        </Field>
         <Field label="Điện thoại">
           <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
         </Field>
@@ -286,6 +311,7 @@ function EditPersonnelModal({
 }) {
   const [form, setForm] = useState<PersonnelForm>(() => person ? formFromPerson(person) : formFromPerson({
     id: 0, code: "", full_name: "", role: "recruiter", initials: null, email: null, phone: null, status: "active",
+    date_of_birth: null, hired_on: null,
   }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -303,6 +329,8 @@ function EditPersonnelModal({
       department: form.department,
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
+      date_of_birth: form.date_of_birth || null,
+      hired_on: form.hired_on || null,
       status: form.status,
     };
     try {
@@ -348,6 +376,12 @@ function EditPersonnelModal({
         <Field label="Email">
           <input value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} className={inputClass} />
         </Field>
+        <Field label="Ngày sinh">
+          <input type="date" value={form.date_of_birth} onChange={(e) => setForm((prev) => ({ ...prev, date_of_birth: e.target.value }))} className={inputClass} />
+        </Field>
+        <Field label="Ngày vào làm">
+          <input type="date" value={form.hired_on} onChange={(e) => setForm((prev) => ({ ...prev, hired_on: e.target.value }))} className={inputClass} />
+        </Field>
         <Field label="Trạng thái">
           <select value={form.status} onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))} className={inputClass}>
             <option value="active">Hoạt động</option>
@@ -390,6 +424,8 @@ function PersonnelDetailModal({
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13.5px]">
           <Detail label="Mã" value={person.code} />
           <Detail label="Phòng ban" value={departmentOf(person) ?? "Chưa xếp"} />
+          <Detail label="Ngày sinh" value={showDate(person.date_of_birth)} />
+          <Detail label="Ngày vào làm" value={showDate(person.hired_on)} />
           <Detail label="Điện thoại" value={person.phone || "—"} />
           <Detail label="Email" value={person.email || "—"} />
           <Detail label="Chức danh lưu trên DB" value={person.title || "—"} />

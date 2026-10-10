@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, MoreHorizontal, Pencil, Plus } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { fetchLiveOrders, fetchLivePositions, toOrderSummary } from "@/lib/live";
+import { fetchLiveOrders, fetchLivePositions, fetchLiveSites, toOrderSummary } from "@/lib/live";
+import type { LiveSite } from "@/lib/live";
 import type { OrderSummary } from "@/types/hrm";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { JobDescriptionView } from "@/components/modules/JobDescriptionView";
@@ -11,7 +12,7 @@ import { LinkedVideo, playableVideo } from "@/components/modules/LinkedVideo";
 import { StatusPill } from "@/components/ui/badge";
 import { Field, Modal } from "@/components/ui/modal";
 import { QueryState } from "@/components/ui/query-state";
-import { ApiError, apiPatch } from "@/lib/api";
+import { ApiError, apiPatch, apiPost } from "@/lib/api";
 
 const legendTone: Record<string, string> = {
   green: "bg-emerald-500",
@@ -129,6 +130,7 @@ export function OrdersView() {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [drafts, setDrafts] = useState<Record<string, OrderDraft>>({});
   const [editing, setEditing] = useState<OrderSummary | null>(null);
+  const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const periodName = periods.find((p) => p.code === periodCode)?.name ?? periodCode;
@@ -143,15 +145,15 @@ export function OrdersView() {
     setDrafts(loadDrafts());
   }, []);
 
-  useEffect(() => {
-    if (!periodCode) return;
+  const loadOrders = useCallback(() => {
+    if (!periodCode) return undefined;
     let alive = true;
+    setLoading(true);
     Promise.all([fetchLiveOrders(periodCode), fetchLivePositions()])
       .then(([rows, positions]) => {
-        if (alive) {
-          setOrders(rows.map((r) => toOrderSummary(r, positions)));
-          setError("");
-        }
+        if (!alive) return;
+        setOrders(rows.map((r) => toOrderSummary(r, positions)));
+        setError("");
       })
       .catch((e: unknown) => {
         if (alive) setError(e instanceof ApiError ? e.message : "Không tải được đơn hàng.");
@@ -163,6 +165,8 @@ export function OrdersView() {
       alive = false;
     };
   }, [periodCode]);
+
+  useEffect(() => loadOrders(), [loadOrders]);
 
   const visible = useMemo(
     () => orders.filter((o) => o.title.toLowerCase().includes(query.toLowerCase().trim()) || o.code.toLowerCase().includes(query.toLowerCase().trim())),
@@ -200,6 +204,7 @@ export function OrdersView() {
             />
             <button
               type="button"
+              onClick={() => setCreating(true)}
               className="inline-flex items-center gap-1 rounded-full bg-[#2563eb] px-3.5 py-1.5 text-[13px] font-semibold text-white hover:bg-[#1d4ed8]"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -222,6 +227,16 @@ export function OrdersView() {
           {visible.length === 0 && <p className="py-10 text-center text-slate-400">Không có đơn hàng trong kỳ này.</p>}
         </div>
       </QueryState>
+      <CreateOrderModal
+        open={creating}
+        onClose={() => setCreating(false)}
+        onCreated={(code, draft) => {
+          const next = { ...drafts, [code]: draft };
+          setDrafts(next);
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+          loadOrders();
+        }}
+      />
       <OrderEditModal
         order={editing}
         draft={editing ? drafts[editing.code] ?? defaultDraft(editing) : null}
@@ -307,7 +322,7 @@ function OrderDemandCard({
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
-        <div className="w-full shrink-0 lg:w-[176px]">
+        <div className="w-full shrink-0 lg:w-[340px]">
           <PreviewMedia src={videoLink} images={images} onCopy={() => void copyShare()} copied={copied} onAdd={onEdit} />
         </div>
 
@@ -436,7 +451,7 @@ function PreviewMedia({
 }) {
   return (
     <div>
-      <div className="relative h-[150px] overflow-hidden rounded-lg bg-slate-900">
+      <div className="relative h-[220px] overflow-hidden rounded-lg bg-slate-900">
         {src ? (
           <LinkedVideo src={src} label="Phát từ link" className="absolute inset-0 h-full w-full" />
         ) : (
@@ -453,22 +468,259 @@ function PreviewMedia({
           {copied ? "Đã chép" : "Copy"}
         </button>
       </div>
-      <div className="mt-1 grid grid-cols-4 gap-1">
-        {(images.length > 0 ? images.slice(0, 4) : [0, 1, 2, 3]).map((item, i) => (
-          <div key={i} className="relative h-8 overflow-hidden rounded bg-slate-200">
-            {typeof item === "string" ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={item} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <ThumbScene className="absolute inset-0 h-full w-full" hue={item} />
-            )}
-            {images.length > 4 && i === 3 && (
-              <span className="absolute inset-0 grid place-items-center bg-black/45 text-[11px] font-bold text-white">+{images.length - 3}</span>
-            )}
-          </div>
-        ))}
-      </div>
+      {images.length > 0 && (
+        <div className={`mt-1.5 grid gap-1.5 ${images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+          {images.map((src, i) => (
+            <div key={`${i}-${src.slice(0, 16)}`} className={`relative overflow-hidden rounded-md bg-slate-200 ${images.length === 1 ? "h-40" : "h-28"}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt="" className="h-full w-full object-cover" />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function newOrderCode(): string {
+  const now = new Date();
+  const stamp = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const letters = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `DH-${stamp}-${letters}`;
+}
+
+const orderFieldClass = "w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#2563eb]";
+
+function CreateOrderModal({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (code: string, draft: OrderDraft) => void;
+}) {
+  const { companies, periods, periodCode, staff, teams } = useApp();
+  const period = periods.find((item) => item.code === periodCode) ?? null;
+  const [name, setName] = useState("");
+  const [companyId, setCompanyId] = useState("");
+  const [siteId, setSiteId] = useState("");
+  const [sites, setSites] = useState<LiveSite[]>([]);
+  const [ownerId, setOwnerId] = useState("");
+  const [teamId, setTeamId] = useState("");
+  const [target, setTarget] = useState("10");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [note, setNote] = useState("");
+  const [videoLink, setVideoLink] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setName("");
+    setNote("");
+    setVideoLink("");
+    setImages([]);
+    setError("");
+    setTarget("10");
+    setCompanyId(companies[0] ? String(companies[0].id) : "");
+    setOwnerId(staff[0] ? String(staff[0].id) : "");
+    setTeamId(teams[0] ? String(teams[0].id) : "");
+    setStartDate(period?.start_date ?? "");
+    setEndDate(period?.end_date ?? "");
+  }, [open, companies, staff, teams, period?.start_date, period?.end_date]);
+
+  useEffect(() => {
+    if (!companyId) {
+      setSites([]);
+      setSiteId("");
+      return;
+    }
+    let alive = true;
+    void fetchLiveSites(Number(companyId))
+      .then((rows) => {
+        if (!alive) return;
+        setSites(rows);
+        setSiteId(rows[0] ? String(rows[0].id) : "");
+      })
+      .catch(() => {
+        if (!alive) return;
+        setSites([]);
+        setSiteId("");
+      });
+    return () => {
+      alive = false;
+    };
+  }, [companyId]);
+
+  const submit = async () => {
+    if (!name.trim()) {
+      setError("Nhập tên đơn hàng.");
+      return;
+    }
+    if (!companyId) {
+      setError("Chọn công ty.");
+      return;
+    }
+    if (!period) {
+      setError("Chưa chọn kỳ làm việc.");
+      return;
+    }
+    if (!startDate || !endDate || endDate < startDate) {
+      setError("Ngày kết thúc phải sau ngày bắt đầu.");
+      return;
+    }
+    const qty = Number(target);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      setError("Chỉ tiêu phải lớn hơn 0.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    const code = newOrderCode();
+    try {
+      await apiPost("/orders", {
+        code,
+        company_id: Number(companyId),
+        period_id: period.id,
+        work_site_id: siteId ? Number(siteId) : null,
+        name: name.trim(),
+        owner_staff_id: ownerId ? Number(ownerId) : null,
+        team_id: teamId ? Number(teamId) : null,
+        start_date: startDate,
+        end_date: endDate,
+        target_qty: qty,
+        status: "running",
+        health: "on_track",
+        note: note.trim() || null,
+        positions: [{
+          title: name.trim(),
+          target_qty: qty,
+          job_description: note.trim() || name.trim(),
+          wage_unit: "day",
+        }],
+      });
+      const company = companies.find((item) => String(item.id) === companyId);
+      const manager = staff.find((person) => String(person.id) === ownerId)?.full_name ?? "";
+      onCreated(code, {
+        title: company ? `${company.short_name} – ${name.trim()}` : name.trim(),
+        summary: note.trim(),
+        manager,
+        target: qty,
+        videoLink: videoLink.trim(),
+        wages: WAGE_SLOTS.map((slot) => slot.pay),
+        images,
+      });
+      onClose();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Không tạo được đơn hàng.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Tạo đơn hàng"
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700">Hủy</button>
+          <button type="button" disabled={saving} onClick={() => void submit()} className="rounded-lg bg-[#2563eb] px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60">
+            {saving ? "Đang tạo..." : "Tạo đơn"}
+          </button>
+        </>
+      }
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700 sm:col-span-2">{error}</p>}
+        <div className="sm:col-span-2">
+          <Field label="Tên đơn hàng">
+            <input value={name} onChange={(e) => setName(e.target.value)} className={orderFieldClass} placeholder="Ví dụ: Công nhân đóng gói" />
+          </Field>
+        </div>
+        <Field label="Công ty">
+          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={orderFieldClass}>
+            {companies.map((company) => <option key={company.id} value={company.id}>{company.short_name}</option>)}
+          </select>
+        </Field>
+        <Field label="Địa điểm">
+          <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={orderFieldClass}>
+            <option value="">Chưa chọn</option>
+            {sites.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Người phụ trách">
+          <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)} className={orderFieldClass}>
+            <option value="">Chưa chọn</option>
+            {staff.map((person) => <option key={person.id} value={person.id}>{person.full_name}</option>)}
+          </select>
+        </Field>
+        <Field label="Nhóm">
+          <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className={orderFieldClass}>
+            <option value="">Chưa chọn</option>
+            {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Chỉ tiêu (người)">
+          <input value={target} onChange={(e) => setTarget(e.target.value)} inputMode="numeric" className={orderFieldClass} />
+        </Field>
+        <Field label="Ngày bắt đầu">
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={orderFieldClass} />
+        </Field>
+        <Field label="Ngày kết thúc">
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={orderFieldClass} />
+        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Link video">
+            <input value={videoLink} onChange={(e) => setVideoLink(e.target.value)} placeholder="https://youtube.com/... hoặc link Facebook, file video" className={orderFieldClass} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <span className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh nơi làm việc</span>
+          <div className="flex flex-wrap items-center gap-2">
+            {images.map((src, i) => (
+              <div key={`${i}-${src.slice(0, 24)}`} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                  className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-slate-900 text-[12px] text-white"
+                  aria-label="Xóa ảnh"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <label className="flex h-16 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 px-3 text-[12px] font-semibold text-[#1d4ed8]">
+              + Thêm ảnh
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  e.target.value = "";
+                  void Promise.all(files.map((file) => fileToImageDataUrl(file))).then((urls) => {
+                    setImages((prev) => [...prev, ...urls]);
+                  }).catch(() => setError("Không thêm được ảnh."));
+                }}
+              />
+            </label>
+          </div>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Mô tả">
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={orderFieldClass} />
+          </Field>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -648,19 +900,5 @@ function OrderEditModal({
         </div>
       )}
     </Modal>
-  );
-}
-
-function ThumbScene({ className, hue = 0 }: { className?: string; hue?: number }) {
-  const sky = ["#7dd3fc", "#93c5fd", "#67e8f9", "#fbbf24"][hue % 4];
-  return (
-    <svg viewBox="0 0 160 96" preserveAspectRatio="xMidYMid slice" className={className} aria-hidden>
-      <rect width="160" height="96" fill="#1e293b" />
-      <rect x="8" y="28" width="36" height="52" fill="#334155" />
-      <rect x="50" y="16" width="58" height="64" fill="#1e3a5f" />
-      <rect x="116" y="34" width="34" height="46" fill="#334155" />
-      <rect x="58" y="24" width="42" height="8" fill={sky} />
-      <rect y="78" width="160" height="18" fill="#0f172a" />
-    </svg>
   );
 }

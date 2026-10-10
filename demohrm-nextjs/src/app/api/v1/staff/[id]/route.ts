@@ -6,12 +6,15 @@ import { getAuth, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody } from "@/lib/server/http";
 
-const DIRECTORY_COLUMNS = "id,code,full_name,initials,email,phone,role,title,status";
-
 function positiveInt(value: unknown): number | null {
   const n = Number(value);
   if (!Number.isInteger(n) || n <= 0) return null;
   return n;
+}
+
+function dateOrNull(value: unknown): string | null | "invalid" {
+  if (typeof value !== "string" || !value.trim()) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value.trim()) ? value.trim() : "invalid";
 }
 
 function cleanText(value: unknown, max: number): string {
@@ -36,6 +39,11 @@ export async function PATCH(
     const status = body["status"] === "inactive" ? "inactive" : "active";
     const email = cleanText(body["email"], 120);
     if (email && !email.includes("@")) return json({ error: "bad_request", message: "Email không hợp lệ." }, 400);
+    const dateOfBirth = dateOrNull(body["date_of_birth"]);
+    const hiredOn = dateOrNull(body["hired_on"]);
+    if (dateOfBirth === "invalid" || hiredOn === "invalid") {
+      return json({ error: "bad_request", message: "Ngày sinh hoặc ngày vào làm không hợp lệ." }, 400);
+    }
     const { data, error } = await getSupabase()
       .from("staff")
       .update({
@@ -43,14 +51,21 @@ export async function PATCH(
         initials: initialsOf(fullName),
         phone: cleanText(body["phone"], 30) || null,
         email: email || null,
+        date_of_birth: dateOfBirth,
+        hired_on: hiredOn,
         title: spec.label,
         role: spec.role,
         status,
       })
       .eq("id", id)
-      .select(DIRECTORY_COLUMNS)
+      .select("id,code,full_name,initials,email,phone,role,title,status,date_of_birth,hired_on")
       .single();
-    if (error) throw error;
+    if (error) {
+      if (error.code === "42703") {
+        return json({ error: "missing_column", message: "Bảng staff chưa có cột ngày sinh và ngày vào làm." }, 400);
+      }
+      throw error;
+    }
     await writeAudit(auth, {
       action: "UPDATE",
       table: "staff",

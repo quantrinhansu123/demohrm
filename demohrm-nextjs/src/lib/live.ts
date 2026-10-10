@@ -439,8 +439,16 @@ export interface PersonnelWrite {
   status: string;
 }
 
-export function createLivePersonnel(body: { department: string; full_name: string; position?: string; phone?: string; email?: string; date_of_birth?: string | null; hired_on?: string | null }): Promise<LivePersonnel[]> {
+export function createLivePersonnel(body: { department: string; full_name: string; position?: string; phone?: string; email?: string; date_of_birth?: string | null; hired_on?: string | null; pin: string }): Promise<LivePersonnel[]> {
   return apiPost<LivePersonnel[]>("/staff", body);
+}
+
+export function changePinLive(body: { old_pin: string; new_pin: string }): Promise<{ ok: boolean }> {
+  return apiPost<{ ok: boolean }>("/auth/change-pin", body);
+}
+
+export function resetStaffPinLive(id: number, body: { new_pin: string }): Promise<{ ok: boolean }> {
+  return apiPost<{ ok: boolean }>(`/staff/${id}/reset-pin`, body);
 }
 
 export function updateLivePersonnel(id: number, body: PersonnelWrite): Promise<LivePersonnel> {

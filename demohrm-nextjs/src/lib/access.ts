@@ -4,6 +4,8 @@ export interface Access {
   canViewAudit: boolean;
   canViewCccd: boolean;
   canClosePeriod: boolean;
+  canDeletePersonnel: boolean;
+  canResetStaffPin: boolean;
 }
 
 const FINANCE = ["director", "deputy_director", "accountant"];
@@ -11,6 +13,8 @@ const COMMISSION = ["director", "deputy_director"];
 const AUDIT = ["director", "deputy_director", "team_lead"];
 const CCCD = ["director", "deputy_director", "recruiter"];
 const CLOSE = ["director", "deputy_director", "accountant"];
+// Ban giám đốc = director + deputy_director
+const BOARD = ["director", "deputy_director"];
 
 export function accessFor(role: string): Access {
   return {
@@ -19,6 +23,8 @@ export function accessFor(role: string): Access {
     canViewAudit: AUDIT.includes(role),
     canViewCccd: CCCD.includes(role),
     canClosePeriod: CLOSE.includes(role),
+    canDeletePersonnel: BOARD.includes(role),
+    canResetStaffPin: BOARD.includes(role),
   };
 }
 

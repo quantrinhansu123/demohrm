@@ -17,9 +17,10 @@ import {
   updateLiveWorker,
 } from "@/lib/live";
 import type { DuplicateHit } from "@/lib/live";
-import { isLeadStaff, isSaleStaff } from "@/lib/departments";
+import { isSaleStaff } from "@/lib/departments";
 import { maskCitizenId, workerStatusTone } from "@/lib/format";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
+import { SearchableStaffSelect } from "@/components/ui/searchable-staff-select";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusPill } from "@/components/ui/badge";
 import { DataTable, EmptyRow } from "@/components/ui/data-table";
@@ -234,13 +235,12 @@ function CreateWorkerModal({
 }) {
   const { companies, staff } = useApp();
   const saleStaff = staff.filter(isSaleStaff);
-  const leadStaff = staff.filter(isLeadStaff);
   const defaultCompany = companies[0]?.short_name ?? "";
   const defaultRecruiter = saleStaff[0]?.full_name ?? "";
   const [form, setForm] = useState({ code: "", name: "", phone: "", citizenId: "", dob: "", hometown: "", company: defaultCompany, type: "Thời vụ" as Worker["type"], recruiter: defaultRecruiter });
   const [step, setStep] = useState<"consult" | "close">("consult");
   const [created, setCreated] = useState<{ id: number; code: string } | null>(null);
-  const [manager, setManager] = useState("");
+  const [managerId, setManagerId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
@@ -252,7 +252,7 @@ function CreateWorkerModal({
     if (open) {
       setStep("consult");
       setCreated(null);
-      setManager("");
+      setManagerId(null);
       setError("");
       setDupHits(null);
       setConfirmed(false);
@@ -267,12 +267,12 @@ function CreateWorkerModal({
 
   const save = async () => {
     if (!form.code.trim() || !form.name.trim() || !form.phone.trim() || !form.citizenId.trim()) return;
-    if (!manager.trim()) {
+    if (!managerId) {
       setError("Chọn người phụ trách.");
       return;
     }
     const recruiter = saleStaff.find((s) => s.full_name === form.recruiter);
-    const lead = leadStaff.find((s) => s.full_name === manager);
+    const lead = staff.find((s) => s.id === managerId);
     const companyRow = companies.find((c) => c.short_name === form.company);
     if (!recruiter || !lead || !companyRow) {
       setError("Chọn công ty, Sale và người phụ trách.");
@@ -335,7 +335,7 @@ function CreateWorkerModal({
 
   const closeDeal = async () => {
     if (!created) return;
-    const lead = leadStaff.find((s) => s.full_name === manager);
+    const lead = staff.find((s) => s.id === managerId);
     if (!lead) {
       setError("Chọn người phụ trách.");
       return;
@@ -395,11 +395,8 @@ function CreateWorkerModal({
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
             Đã lưu hồ sơ <strong>{form.name}</strong> ở giai đoạn Đang tư vấn. Chọn người phụ trách để chốt.
           </p>
-          <Field label="Phụ trách">
-            <select className={inputClass} value={manager} onChange={(e) => setManager(e.target.value)}>
-              <option value="">— Chọn người phụ trách —</option>
-              {leadStaff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
-            </select>
+          <Field label="Phụ trách *">
+            <SearchableStaffSelect value={managerId} onChange={setManagerId} staff={staff} placeholder="— Chọn người phụ trách —" />
           </Field>
         </div>
       ) : (
@@ -431,10 +428,7 @@ function CreateWorkerModal({
           </select>
         </Field>
         <Field label="Phụ trách *">
-          <select className={inputClass} value={manager} onChange={(e) => setManager(e.target.value)}>
-            <option value="">— Chọn người phụ trách —</option>
-            {leadStaff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
-          </select>
+          <SearchableStaffSelect value={managerId} onChange={setManagerId} staff={staff} placeholder="— Chọn người phụ trách —" />
         </Field>
       </div>
       )}
@@ -450,13 +444,12 @@ function CloseWorkerModal({
   onSaved: () => void;
 }) {
   const { staff } = useApp();
-  const leadStaff = staff.filter(isLeadStaff);
-  const [manager, setManager] = useState(worker.manager);
+  const [managerId, setManagerId] = useState<number | null>(() => staff.find((s) => s.full_name === worker.manager)?.id ?? null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const save = async () => {
-    const lead = leadStaff.find((person) => person.full_name === manager);
+    const lead = staff.find((person) => person.id === managerId);
     if (!lead) {
       setError("Chọn người phụ trách.");
       return;
@@ -496,11 +489,8 @@ function CloseWorkerModal({
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
       <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> đang tư vấn. Chọn người phụ trách để chốt.</p>
-      <Field label="Phụ trách">
-        <select className={inputClass} value={manager} onChange={(e) => setManager(e.target.value)}>
-          <option value="">— Chọn người phụ trách —</option>
-          {leadStaff.map((s) => (<option key={s.id} value={s.full_name}>{s.full_name}</option>))}
-        </select>
+      <Field label="Phụ trách *">
+        <SearchableStaffSelect value={managerId} onChange={setManagerId} staff={staff} placeholder="— Chọn người phụ trách —" />
       </Field>
     </Modal>
   );
@@ -515,7 +505,6 @@ function EditWorkerModal({
 }) {
   const { staff } = useApp();
   const saleStaff = staff.filter(isSaleStaff);
-  const leadStaff = staff.filter(isLeadStaff);
   const [form, setForm] = useState({
     name: worker.name,
     phone: worker.phone,
@@ -524,15 +513,15 @@ function EditWorkerModal({
     type: worker.type,
     status: worker.status,
     sale: worker.recruiter,
-    lead: worker.manager,
   });
+  const [leadId, setLeadId] = useState<number | null>(() => staff.find((s) => s.full_name === worker.manager)?.id ?? null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
   const save = async () => {
     const sale = saleStaff.find((person) => person.full_name === form.sale);
-    const lead = leadStaff.find((person) => person.full_name === form.lead);
+    const lead = staff.find((person) => person.id === leadId);
     if (!sale || !lead) {
       setError("Chọn Sale và người phụ trách.");
       return;
@@ -594,11 +583,8 @@ function EditWorkerModal({
             {saleStaff.map((person) => (<option key={person.id} value={person.full_name}>{person.full_name}</option>))}
           </select>
         </Field>
-        <Field label="Phụ trách">
-          <select className={inputClass} value={form.lead} onChange={(e) => set("lead", e.target.value)}>
-            <option value="">— Chọn người phụ trách —</option>
-            {leadStaff.map((person) => (<option key={person.id} value={person.full_name}>{person.full_name}</option>))}
-          </select>
+        <Field label="Phụ trách *">
+          <SearchableStaffSelect value={leadId} onChange={setLeadId} staff={staff} placeholder="— Chọn người phụ trách —" />
         </Field>
       </div>
     </Modal>

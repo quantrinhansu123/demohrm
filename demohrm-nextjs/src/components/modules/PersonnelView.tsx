@@ -5,7 +5,8 @@ import { MoreHorizontal } from "lucide-react";
 import { ApiError } from "@/lib/api";
 import { DEPARTMENTS, departmentOf, positionOf } from "@/lib/departments";
 import { initialsOf } from "@/lib/format";
-import { createLivePersonnel, deleteLivePersonnel, fetchLivePersonnel, updateLivePersonnel } from "@/lib/live";
+import { useSession } from "@/lib/session";
+import { createLivePersonnel, deleteLivePersonnel, fetchLivePersonnel, resetStaffPinLive, updateLivePersonnel } from "@/lib/live";
 import type { LivePersonnel, PersonnelWrite } from "@/lib/live";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { Avatar } from "@/components/ui/avatar";
@@ -56,6 +57,8 @@ function formFromPerson(person: LivePersonnel): PersonnelForm {
 }
 
 export function PersonnelView() {
+  const { access } = useSession();
+  const canDelete = access.canDeletePersonnel;
   const [rows, setRows] = useState<LivePersonnel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -130,6 +133,10 @@ export function PersonnelView() {
   };
 
   const handleDelete = async (person: LivePersonnel) => {
+    if (!canDelete) {
+      window.alert("Chỉ Ban giám đốc được xóa nhân sự.");
+      return;
+    }
     if (!window.confirm(`Xóa ${person.full_name} (${person.code}) khỏi danh sách nhân sự?`)) return;
     try {
       await deleteLivePersonnel(person.id);
@@ -200,7 +207,7 @@ export function PersonnelView() {
                 </header>
                 <div className="flex min-h-36 flex-col gap-2 px-2 pb-2">
                   {column.people.map((person) => (
-                    <PersonnelCard key={person.id} person={person} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
+                    <PersonnelCard key={person.id} person={person} canDelete={canDelete} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
                   ))}
                   {column.people.length === 0 && <p className="px-1 py-6 text-center text-[12px] text-slate-400">Chưa có người</p>}
                 </div>
@@ -227,6 +234,8 @@ export function PersonnelView() {
       />
       <PersonnelDetailModal
         person={viewing}
+        canDelete={canDelete}
+        canResetPin={access.canResetStaffPin}
         onClose={() => setViewing(null)}
         onEdit={(person) => {
           setViewing(null);
@@ -240,11 +249,13 @@ export function PersonnelView() {
 
 function PersonnelCard({
   person,
+  canDelete,
   onView,
   onEdit,
   onDelete,
 }: {
   person: LivePersonnel;
+  canDelete: boolean;
   onView: (person: LivePersonnel) => void;
   onEdit: (person: LivePersonnel) => void;
   onDelete: (person: LivePersonnel) => void;
@@ -309,7 +320,11 @@ function PersonnelCard({
         <div ref={menuRef} className="fixed z-50 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg" style={{ top: menuPos.top, left: menuPos.left }}>
           <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onView(person); }}>Xem</button>
           <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(person); }}>Sửa</button>
-          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(person); }}>Xóa</button>
+          {canDelete ? (
+            <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(person); }}>Xóa</button>
+          ) : (
+            <span className="block w-full px-3 py-1.5 text-left text-[12px] text-slate-400" title="Chỉ Ban giám đốc được xóa nhân sự.">Xóa (BGĐ)</span>
+          )}
         </div>
       )}
     </article>
@@ -324,12 +339,23 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
   const [email, setEmail] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [hiredOn, setHiredOn] = useState("");
+  const [pin, setPin] = useState("");
+  const [pinConfirm, setPinConfirm] = useState("");
+  const [showPin, setShowPin] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const save = async () => {
     if (!fullName.trim()) {
       setError("Nhập họ tên.");
+      return;
+    }
+    if (!pin || pin.length < 4) {
+      setError("Đặt mật khẩu (PIN) tối thiểu 4 ký tự cho nhân viên mới.");
+      return;
+    }
+    if (pin !== pinConfirm) {
+      setError("Xác nhận mật khẩu chưa khớp.");
       return;
     }
     setSaving(true);
@@ -343,6 +369,7 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
         email: email.trim() || undefined,
         date_of_birth: dateOfBirth || null,
         hired_on: hiredOn || null,
+        pin,
       });
       setFullName("");
       setPosition("");
@@ -350,6 +377,8 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
       setEmail("");
       setDateOfBirth("");
       setHiredOn("");
+      setPin("");
+      setPinConfirm("");
       onClose();
       onSaved();
     } catch (e) {
@@ -399,6 +428,29 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
         </Field>
         <Field label="Email">
           <input value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+        </Field>
+        <Field label="Mật khẩu (PIN) *">
+          <div className="flex gap-2">
+            <input
+              type={showPin ? "text" : "password"}
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              className={inputClass}
+              placeholder="Tối thiểu 4 ký tự"
+              autoComplete="new-password"
+            />
+            <Button type="button" variant="outline" onClick={() => setShowPin((v) => !v)}>{showPin ? "Ẩn" : "Hiện"}</Button>
+          </div>
+        </Field>
+        <Field label="Xác nhận mật khẩu *">
+          <input
+            type={showPin ? "text" : "password"}
+            value={pinConfirm}
+            onChange={(e) => setPinConfirm(e.target.value)}
+            className={inputClass}
+            placeholder="Nhập lại mật khẩu"
+            autoComplete="new-password"
+          />
         </Field>
       </div>
     </Modal>
@@ -504,45 +556,118 @@ function EditPersonnelModal({
 
 function PersonnelDetailModal({
   person,
+  canDelete,
+  canResetPin,
   onClose,
   onEdit,
   onDelete,
 }: {
   person: LivePersonnel | null;
+  canDelete: boolean;
+  canResetPin: boolean;
   onClose: () => void;
   onEdit: (person: LivePersonnel) => void;
   onDelete: (person: LivePersonnel) => void;
 }) {
+  const [resetting, setResetting] = useState(false);
+  const handleClose = () => {
+    setResetting(false);
+    onClose();
+  };
   return (
     <Modal
       open={person !== null}
-      onClose={onClose}
+      onClose={handleClose}
       title={person ? person.full_name : "Nhân sự"}
       badge={person ? <StatusPill tone={person.status === "active" ? "success" : "danger"}>{statusLabel(person.status)}</StatusPill> : null}
       footer={
         person ? (
           <>
-            <Button variant="destructive" onClick={() => onDelete(person)}>Xóa</Button>
-            <Button variant="outline" onClick={onClose}>Đóng</Button>
+            {canDelete ? (
+              <Button variant="destructive" onClick={() => onDelete(person)}>Xóa</Button>
+            ) : (
+              <span className="mr-auto text-[12px] text-slate-400" title="Chỉ Ban giám đốc được xóa nhân sự.">Xóa (BGĐ)</span>
+            )}
+            <Button variant="outline" onClick={handleClose}>Đóng</Button>
+            {canResetPin && (
+              <Button variant="outline" onClick={() => setResetting((v) => !v)}>Đặt lại PIN</Button>
+            )}
             <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => onEdit(person)}>Sửa</Button>
           </>
         ) : null
       }
     >
       {person && (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13.5px]">
-          <Detail label="Mã" value={person.code} />
-          <Detail label="Phòng ban" value={departmentOf(person) ?? "Chưa xếp"} />
-          <Detail label="Vị trí" value={positionOf(person) || "—"} />
-          <Detail label="Ngày sinh" value={showDate(person.date_of_birth)} />
-          <Detail label="Ngày vào làm" value={showDate(person.hired_on)} />
-          <Detail label="Điện thoại" value={person.phone || "—"} />
-          <Detail label="Email" value={person.email || "—"} />
-          <Detail label="Chức danh lưu trên DB" value={person.title || "—"} />
-          <Detail label="Trạng thái" value={statusLabel(person.status)} />
-        </dl>
+        <>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13.5px]">
+            <Detail label="Mã" value={person.code} />
+            <Detail label="Phòng ban" value={departmentOf(person) ?? "Chưa xếp"} />
+            <Detail label="Vị trí" value={positionOf(person) || "—"} />
+            <Detail label="Ngày sinh" value={showDate(person.date_of_birth)} />
+            <Detail label="Ngày vào làm" value={showDate(person.hired_on)} />
+            <Detail label="Điện thoại" value={person.phone || "—"} />
+            <Detail label="Email" value={person.email || "—"} />
+            <Detail label="Chức danh lưu trên DB" value={person.title || "—"} />
+            <Detail label="Trạng thái" value={statusLabel(person.status)} />
+          </dl>
+          {resetting && canResetPin && (
+            <ResetStaffPinBox key={person.id} person={person} onDone={() => setResetting(false)} />
+          )}
+        </>
       )}
     </Modal>
+  );
+}
+
+function ResetStaffPinBox({ person, onDone }: { person: LivePersonnel; onDone: () => void }) {
+  const [pin, setPin] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [ok, setOk] = useState("");
+
+  const save = async () => {
+    if (!pin || pin.length < 4) {
+      setError("Mật khẩu mới tối thiểu 4 ký tự.");
+      return;
+    }
+    if (pin !== confirm) {
+      setError("Xác nhận mật khẩu chưa khớp.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setOk("");
+    try {
+      await resetStaffPinLive(person.id, { new_pin: pin });
+      setOk(`Đã đặt lại PIN cho ${person.full_name} (${person.code}).`);
+      setPin("");
+      setConfirm("");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Đặt lại PIN thất bại.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+      <div className="mb-2 text-[13px] font-bold text-amber-900">Đặt lại PIN cho {person.full_name} (không cần PIN cũ)</div>
+      {error && <p className="mb-2 rounded-lg bg-white px-3 py-2 text-[13px] text-rose-700">{error}</p>}
+      {ok && <p className="mb-2 rounded-lg bg-white px-3 py-2 text-[13px] text-emerald-700">{ok}</p>}
+      <div className="grid gap-2">
+        <Field label="PIN mới *">
+          <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} className={inputClass} placeholder="Tối thiểu 4 ký tự" autoComplete="new-password" />
+        </Field>
+        <Field label="Xác nhận PIN mới *">
+          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} placeholder="Nhập lại PIN mới" autoComplete="new-password" />
+        </Field>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onDone}>Đóng</Button>
+          <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>{saving ? "Đang lưu..." : "Đặt lại PIN"}</Button>
+        </div>
+      </div>
+    </div>
   );
 }
 

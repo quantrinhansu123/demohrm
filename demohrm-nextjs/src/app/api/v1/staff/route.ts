@@ -5,6 +5,7 @@ import { initialsOf } from "@/lib/format";
 import { getAuth, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody } from "@/lib/server/http";
+import { hashPin } from "@/lib/server/pin";
 
 const DIRECTORY_COLUMNS = "id,code,full_name,initials,email,phone,role,title,status";
 const CATALOG_COLUMNS = "id,code,full_name,role,title,status";
@@ -69,6 +70,13 @@ export async function POST(req: Request): Promise<Response> {
     if (fullName.length > 80) return json({ error: "bad_request", message: "Họ tên tối đa 80 ký tự." }, 400);
     const phone = typeof body["phone"] === "string" ? body["phone"].trim() : "";
     const email = typeof body["email"] === "string" ? body["email"].trim() : "";
+    const pin = typeof body["pin"] === "string" ? body["pin"] : "";
+    if (!pin || pin.length < 4) {
+      return json({ error: "bad_request", message: "Đặt mật khẩu (PIN) tối thiểu 4 ký tự cho nhân viên mới." }, 400);
+    }
+    if (pin.length > 32) {
+      return json({ error: "bad_request", message: "Mật khẩu tối đa 32 ký tự." }, 400);
+    }
     const dateOfBirth = dateOrNull(body["date_of_birth"]);
     const hiredOn = dateOrNull(body["hired_on"]);
     if (dateOfBirth === "invalid" || hiredOn === "invalid") {
@@ -88,6 +96,7 @@ export async function POST(req: Request): Promise<Response> {
       role: spec.role,
       title: staffTitle(spec.label, position),
       status: "active",
+      pin_hash: hashPin(pin),
     };
     const { data, error } = await getSupabase()
       .from("staff")

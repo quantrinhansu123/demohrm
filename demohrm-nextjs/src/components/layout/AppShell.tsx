@@ -11,6 +11,7 @@ import { LoginScreen } from "@/components/auth/LoginScreen";
 import { Avatar } from "@/components/ui/avatar";
 import { ApiStatus } from "@/components/layout/ApiStatus";
 import { Button } from "@/components/ui/button";
+import { ChangePinModal } from "@/components/auth/ChangePinModal";
 import { WorkerDetailModal } from "@/components/workers/WorkerDetailModal";
 import type { Worker } from "@/types/hrm";
 
@@ -35,6 +36,7 @@ function Shell() {
   const { staff, logout } = useSession();
   const [viewing, setViewing] = useState<Worker | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
   useEffect(() => {
     setMenuOpen(false);
   }, [currentModule]);
@@ -60,6 +62,7 @@ function Shell() {
               <div className="text-[13px] font-bold text-slate-900">{staff.full_name}</div>
               <div className="text-[11.5px] text-slate-500">{roleLabel(staff.role)} · {staff.code}</div>
             </div>
+            <Button variant="outline" size="xs" onClick={() => setPinOpen(true)}>Đổi MK</Button>
             <Button variant="outline" size="xs" onClick={logout}>Thoát</Button>
           </div>
         </div>
@@ -83,6 +86,7 @@ function Shell() {
         </main>
       </div>
       <WorkerDetailModal worker={viewing} onClose={() => setViewing(null)} />
+      <ChangePinModal open={pinOpen} onClose={() => setPinOpen(false)} />
     </div>
   );
 }

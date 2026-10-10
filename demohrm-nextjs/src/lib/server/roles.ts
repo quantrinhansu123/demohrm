@@ -6,6 +6,8 @@ export const ROLE = {
   audit: ["director", "deputy_director", "team_lead"],
   cccd: ["director", "deputy_director", "recruiter"],
   closePeriod: ["director", "deputy_director", "accountant"],
+  personnelDelete: ["director", "deputy_director"],
+  staffPinReset: ["director", "deputy_director"],
 } as const;
 
 export function hasRole(role: string | undefined, allowed: readonly string[]): boolean {

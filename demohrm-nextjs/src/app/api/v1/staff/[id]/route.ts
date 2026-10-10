@@ -2,9 +2,10 @@ export const runtime = "nodejs";
 
 import { departmentSpec, staffTitle } from "@/lib/departments";
 import { initialsOf } from "@/lib/format";
-import { getAuth, writeAudit } from "@/lib/server/authctx";
+import { getAuth, requireRole, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
-import { apiError, json, readBody } from "@/lib/server/http";
+import { ForbiddenError, apiError, json, readBody } from "@/lib/server/http";
+import { ROLE } from "@/lib/server/roles";
 
 function positiveInt(value: unknown): number | null {
   const n = Number(value);
@@ -79,13 +80,18 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/v1/staff/:id — Xoa nhan su khoi bang staff.
+// DELETE /api/v1/staff/:id — Xoa nhan su khoi bang staff. Chỉ Ban giám đốc.
 export async function DELETE(
   req: Request,
   ctx: { params: Promise<Record<string, string>> },
 ): Promise<Response> {
   try {
     const auth = getAuth(req);
+    try {
+      requireRole(auth, ...ROLE.personnelDelete);
+    } catch {
+      throw new ForbiddenError("Chỉ Ban giám đốc được xóa nhân sự.");
+    }
     const id = positiveInt((await ctx.params)["id"]);
     if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
     if (String(id) === auth.staffId) {

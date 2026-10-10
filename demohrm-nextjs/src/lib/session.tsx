@@ -30,6 +30,8 @@ const EMPTY_ACCESS: Access = {
   canViewAudit: false,
   canViewCccd: false,
   canClosePeriod: false,
+  canDeletePersonnel: false,
+  canResetStaffPin: false,
 };
 
 const SessionContext = createContext<SessionState | null>(null);

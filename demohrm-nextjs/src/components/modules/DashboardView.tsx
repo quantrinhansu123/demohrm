@@ -1082,7 +1082,7 @@ export function DashboardView() {
                 className="gap-1 text-[12px]"
               >
                 <Building2 className="h-3.5 w-3.5 text-slate-500" />
-                <span>Khách hàng & Địa điểm</span>
+                <span>Công ty</span>
               </Button>
             </div>
           </div>

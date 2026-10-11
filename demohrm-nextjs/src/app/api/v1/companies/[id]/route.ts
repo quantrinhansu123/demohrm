@@ -58,7 +58,7 @@ export async function DELETE(
     const { error } = await getSupabase().from("companies").delete().eq("id", id);
     if (error) {
       if (error.code === "23503") {
-        return json({ error: "foreign_key", message: "Khách hàng này đang có đơn hàng hoặc địa điểm, chưa xóa được." }, 400);
+        return json({ error: "foreign_key", message: "Công ty này đang có đơn hàng hoặc địa điểm, chưa xóa được." }, 400);
       }
       throw error;
     }

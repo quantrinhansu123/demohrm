@@ -15,10 +15,10 @@ export function companyPayload(src: Record<string, unknown>, creating: boolean):
   const code = String(src["code"] ?? "").trim();
   const shortName = String(src["short_name"] ?? "").trim();
   const name = String(src["name"] ?? "").trim();
-  if (creating && !code) return bad("Nhập mã khách hàng.");
+  if (creating && !code) return bad("Nhập mã công ty.");
   if ((creating || src["short_name"] !== undefined) && !shortName) return bad("Nhập tên ngắn.");
   if ((creating || src["name"] !== undefined) && !name) return bad("Nhập tên công ty.");
-  if (!creating && src["code"] !== undefined && !code) return bad("Nhập mã khách hàng.");
+  if (!creating && src["code"] !== undefined && !code) return bad("Nhập mã công ty.");
 
   const out: Record<string, unknown> = {};
   if (creating || src["code"] !== undefined) out["code"] = code;

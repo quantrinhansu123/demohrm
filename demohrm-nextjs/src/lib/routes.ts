@@ -6,7 +6,7 @@ export const MODULE_SLUG: Record<ModuleId, string> = {
   orders: "don-hang-cung-ung",
   workers: "nguoi-lao-dong",
   personnel: "nhan-su",
-  companies: "khach-hang",
+  companies: "cong-ty",
   vendors: "vendor",
   attendance: "cham-cong",
   timesheet: "bang-cong",
@@ -30,6 +30,7 @@ export function isModuleSlug(slug: string): boolean {
 
 export function moduleFromPath(pathname: string): ModuleId {
   const slug = pathname.split("/").filter(Boolean)[0] ?? "";
+  if (slug === "khach-hang") return "companies";
   return SLUG_MODULE[slug] ?? "orders";
 }
 

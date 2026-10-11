@@ -92,7 +92,7 @@ export function CompaniesView() {
   }, [periodCode]);
 
   const handleDelete = async (company: LiveCompany) => {
-    if (!window.confirm(`Xóa khách hàng ${company.short_name} (${company.code})?`)) return;
+    if (!window.confirm(`Xóa công ty ${company.short_name} (${company.code})?`)) return;
     try {
       await deleteLiveCompany(company.id);
       if (viewing?.id === company.id) setViewing(null);
@@ -105,8 +105,8 @@ export function CompaniesView() {
   return (
     <section className="flex h-full flex-col">
       <ModuleHeader
-        title="Công ty khách hàng"
-        sub="Thêm, xem, sửa và xóa khách hàng"
+        title="Công ty"
+        sub="Thêm, xem, sửa và xóa công ty"
         actions={
           <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setCreating(true)}>
             + Thêm mới
@@ -134,7 +134,7 @@ export function CompaniesView() {
                 </tr>
               );
             })}
-            {companies.length === 0 && <EmptyRow colSpan={8} text="Chưa có khách hàng" />}
+            {companies.length === 0 && <EmptyRow colSpan={8} text="Chưa có công ty" />}
           </DataTable>
         </div>
       </QueryState>
@@ -203,7 +203,7 @@ function CompanyMenu({
         type="button"
         onClick={toggle}
         className="rounded-lg border border-slate-200 p-1 text-slate-500 hover:bg-slate-50"
-        aria-label="Thao tác khách hàng"
+        aria-label="Thao tác công ty"
         aria-expanded={open}
       >
         <MoreHorizontal className="h-4 w-4" />
@@ -278,7 +278,7 @@ function CompanyFormModal({
       onSaved();
       onClose();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Không lưu được khách hàng.");
+      setError(e instanceof ApiError ? e.message : "Không lưu được công ty.");
     } finally {
       setSaving(false);
     }
@@ -288,7 +288,7 @@ function CompanyFormModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={company ? `Sửa ${company.code}` : "Thêm khách hàng"}
+      title={company ? `Sửa ${company.code}` : "Thêm công ty"}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>Hủy</Button>
@@ -377,7 +377,7 @@ function CompanyDetailModal({
       open={company !== null}
       onClose={onClose}
       wide
-      title={company ? company.short_name : "Khách hàng"}
+      title={company ? company.short_name : "Công ty"}
       footer={
         company ? (
           <>
@@ -429,7 +429,7 @@ function CompanyDetailModal({
                   <td className="whitespace-nowrap"><StatusPill tone={order.status === "running" || order.status === "open" ? "success" : "neutral"}>{ORDER_STATUS[order.status] ?? order.status}</StatusPill></td>
                 </tr>
               ))}
-              {orders.length === 0 && <EmptyRow colSpan={7} text="Khách hàng này chưa có đơn hàng" />}
+              {orders.length === 0 && <EmptyRow colSpan={7} text="Công ty này chưa có đơn hàng" />}
             </DataTable>
           )}
           {tab === "people" && (
@@ -445,7 +445,7 @@ function CompanyDetailModal({
                     <td className="whitespace-nowrap"><StatusPill tone={workerStatusTone(person.status)}>{person.status}</StatusPill></td>
                   </tr>
                 ))}
-                {people.length === 0 && <EmptyRow colSpan={6} text="Chưa có nhân sự tại khách hàng này" />}
+                {people.length === 0 && <EmptyRow colSpan={6} text="Chưa có nhân sự tại công ty này" />}
               </DataTable>
             </QueryState>
           )}

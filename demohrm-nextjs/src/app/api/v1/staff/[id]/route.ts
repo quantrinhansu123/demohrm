@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 
-import { departmentSpec, staffTitle } from "@/lib/departments";
+import { resolveDepartment, staffTitle } from "@/lib/departments";
 import { initialsOf } from "@/lib/format";
 import { getAuth, requireRole, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
@@ -34,9 +34,8 @@ export async function PATCH(
     const body = await readBody(req);
     const fullName = cleanText(body["full_name"], 80);
     if (!fullName) return json({ error: "bad_request", message: "Nhập họ tên." }, 400);
-    const department = typeof body["department"] === "string" ? body["department"].trim() : "";
-    const spec = departmentSpec(department);
-    if (!spec) return json({ error: "bad_request", message: "Chọn phòng ban." }, 400);
+    const department = resolveDepartment(typeof body["department"] === "string" ? body["department"] : "");
+    if (!department) return json({ error: "bad_request", message: "Nhập phòng ban, tối đa 60 ký tự." }, 400);
     const position = cleanText(body["position"], 80);
     const status = body["status"] === "inactive" ? "inactive" : "active";
     const email = cleanText(body["email"], 120);
@@ -55,8 +54,8 @@ export async function PATCH(
         email: email || null,
         date_of_birth: dateOfBirth,
         hired_on: hiredOn,
-        title: staffTitle(spec.label, position),
-        role: spec.role,
+        title: staffTitle(department.label, position),
+        role: department.role,
         status,
       })
       .eq("id", id)
@@ -72,7 +71,7 @@ export async function PATCH(
       action: "UPDATE",
       table: "staff",
       recordId: id,
-      detail: `Sua nhan su ${fullName} · ${spec.label}`,
+      detail: `Sua nhan su ${fullName} · ${department.label}`,
     });
     return json(data);
   } catch (e) {

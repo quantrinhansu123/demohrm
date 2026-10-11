@@ -16,6 +16,7 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { QueryState } from "@/components/ui/query-state";
 import { AttendanceView } from "@/components/modules/AttendanceView";
+import { SuggestInput } from "@/components/ui/suggest-input";
 
 const AVATAR_TONES = ["avatar-blue", "avatar-teal", "avatar-indigo", "avatar-emerald", "avatar-amber", "avatar-rose"];
 
@@ -97,23 +98,53 @@ export function PersonnelView() {
   }, [query, rows]);
 
   const active = rows.filter((r) => r.status === "active").length;
+  const departmentOptions = useMemo(() => {
+    const labels: string[] = DEPARTMENTS.map((item) => item.label);
+    const extra = new Set<string>();
+    for (const person of rows) {
+      const department = departmentOf(person);
+      if (department && !labels.includes(department)) extra.add(department);
+    }
+    return [...labels, ...[...extra].sort((a, b) => a.localeCompare(b, "vi"))];
+  }, [rows]);
+
+  const positionOptions = useMemo(() => {
+    const labels = new Set<string>();
+    for (const person of rows) {
+      const position = positionOf(person);
+      if (position) labels.add(position);
+    }
+    return [...labels].sort((a, b) => a.localeCompare(b, "vi"));
+  }, [rows]);
+
   const columns = useMemo(() => {
     const groups = new Map<string, LivePersonnel[]>(DEPARTMENTS.map((item) => [item.label, []]));
+    const extras: string[] = [];
     const unmatched: LivePersonnel[] = [];
     for (const person of filtered) {
       const department = departmentOf(person);
-      const bucket = department ? groups.get(department) : undefined;
-      if (bucket) bucket.push(person);
-      else unmatched.push(person);
+      if (!department) {
+        unmatched.push(person);
+        continue;
+      }
+      if (!groups.has(department)) {
+        groups.set(department, []);
+        extras.push(department);
+      }
+      groups.get(department)?.push(person);
     }
-    const board: { label: string; people: LivePersonnel[] }[] = DEPARTMENTS.map((item) => ({ label: item.label, people: groups.get(item.label) ?? [] }));
+    extras.sort((a, b) => a.localeCompare(b, "vi"));
+    const board: { label: string; people: LivePersonnel[] }[] = [
+      ...DEPARTMENTS.map((item) => ({ label: item.label, people: groups.get(item.label) ?? [] })),
+      ...extras.map((label) => ({ label, people: groups.get(label) ?? [] })),
+    ];
     if (unmatched.length > 0) board.push({ label: "Chưa phân phòng", people: unmatched });
     if (!query.trim()) return board;
     return board.filter((column) => column.people.length > 0);
   }, [filtered, query]);
 
   const movePerson = async (person: LivePersonnel, department: string) => {
-    if (!DEPARTMENTS.some((item) => item.label === department) || departmentOf(person) === department) return;
+    if (department === "Chưa phân phòng" || departmentOf(person) === department) return;
     try {
       const updated = await updateLivePersonnel(person.id, {
         full_name: person.full_name,
@@ -185,6 +216,7 @@ export function PersonnelView() {
               <section
                 key={column.label}
                 onDragOver={(event) => {
+                  if (column.label === "Chưa phân phòng") return;
                   event.preventDefault();
                   setDropDepartment(column.label);
                 }}
@@ -220,12 +252,16 @@ export function PersonnelView() {
       )}
       <AddPersonnelModal
         open={creating}
+        departments={departmentOptions}
+        positions={positionOptions}
         onClose={() => setCreating(false)}
         onSaved={() => void reload()}
       />
       <EditPersonnelModal
         key={editing ? `edit-${editing.id}` : "edit-closed"}
         person={editing}
+        departments={departmentOptions}
+        positions={positionOptions}
         onClose={() => setEditing(null)}
         onSaved={(updated) => {
           setRows((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
@@ -331,7 +367,26 @@ function PersonnelCard({
   );
 }
 
-function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
+function departmentError(value: string): string {
+  const name = value.trim().replace(/\s+/g, " ");
+  if (!name) return "Nhập phòng ban.";
+  if (name.length > 60 || name.includes("·")) return "Phòng ban tối đa 60 ký tự và không chứa dấu ·.";
+  return "";
+}
+
+function AddPersonnelModal({
+  open,
+  departments,
+  positions,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  departments: string[];
+  positions: string[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const [fullName, setFullName] = useState("");
   const [department, setDepartment] = useState<string>(DEPARTMENTS[0].label);
   const [position, setPosition] = useState("");
@@ -350,6 +405,11 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
       setError("Nhập họ tên.");
       return;
     }
+    const departmentProblem = departmentError(department);
+    if (departmentProblem) {
+      setError(departmentProblem);
+      return;
+    }
     if (!pin || pin.length < 4) {
       setError("Đặt mật khẩu (PIN) tối thiểu 4 ký tự cho nhân viên mới.");
       return;
@@ -363,7 +423,7 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
     try {
       await createLivePersonnel({
         full_name: fullName.trim(),
-        department,
+        department: department.trim().replace(/\s+/g, " "),
         position: position.trim() || undefined,
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
@@ -408,14 +468,10 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} placeholder="Nguyễn Văn A" />
         </Field>
         <Field label="Phòng ban">
-          <select value={department} onChange={(e) => setDepartment(e.target.value)} className={inputClass}>
-            {DEPARTMENTS.map((d) => (
-              <option key={d.label} value={d.label}>{d.label}</option>
-            ))}
-          </select>
+          <SuggestInput value={department} onChange={setDepartment} suggestions={departments} createLabel="Thêm phòng ban" placeholder="Chọn hoặc thêm phòng ban" />
         </Field>
         <Field label="Vị trí">
-          <input value={position} onChange={(e) => setPosition(e.target.value)} className={inputClass} placeholder="Ví dụ: Nhân viên tuyển dụng" />
+          <SuggestInput value={position} onChange={setPosition} suggestions={positions} createLabel="Thêm vị trí" placeholder="Gõ vị trí mới hoặc chọn gợi ý" />
         </Field>
         <Field label="Ngày sinh">
           <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputClass} />
@@ -459,10 +515,14 @@ function AddPersonnelModal({ open, onClose, onSaved }: { open: boolean; onClose:
 
 function EditPersonnelModal({
   person,
+  departments,
+  positions,
   onClose,
   onSaved,
 }: {
   person: LivePersonnel | null;
+  departments: string[];
+  positions: string[];
   onClose: () => void;
   onSaved: (person: LivePersonnel) => void;
 }) {
@@ -479,11 +539,16 @@ function EditPersonnelModal({
       setError("Nhập họ tên.");
       return;
     }
+    const departmentProblem = departmentError(form.department);
+    if (departmentProblem) {
+      setError(departmentProblem);
+      return;
+    }
     setSaving(true);
     setError("");
     const body: PersonnelWrite = {
       full_name: form.full_name.trim(),
-      department: form.department,
+      department: form.department.trim().replace(/\s+/g, " "),
       position: form.position.trim() || null,
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
@@ -522,14 +587,22 @@ function EditPersonnelModal({
           <input value={form.full_name} onChange={(e) => setForm((prev) => ({ ...prev, full_name: e.target.value }))} className={inputClass} />
         </Field>
         <Field label="Phòng ban">
-          <select value={form.department} onChange={(e) => setForm((prev) => ({ ...prev, department: e.target.value }))} className={inputClass}>
-            {DEPARTMENTS.map((d) => (
-              <option key={d.label} value={d.label}>{d.label}</option>
-            ))}
-          </select>
+          <SuggestInput
+            value={form.department}
+            onChange={(department) => setForm((prev) => ({ ...prev, department }))}
+            suggestions={departments}
+            createLabel="Thêm phòng ban"
+            placeholder="Chọn hoặc thêm phòng ban"
+          />
         </Field>
         <Field label="Vị trí">
-          <input value={form.position} onChange={(e) => setForm((prev) => ({ ...prev, position: e.target.value }))} className={inputClass} placeholder="Ví dụ: Nhân viên tuyển dụng" />
+          <SuggestInput
+            value={form.position}
+            onChange={(position) => setForm((prev) => ({ ...prev, position }))}
+            suggestions={positions}
+            createLabel="Thêm vị trí"
+            placeholder="Gõ vị trí mới hoặc chọn gợi ý"
+          />
         </Field>
         <Field label="Điện thoại">
           <input value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} className={inputClass} />

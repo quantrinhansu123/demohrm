@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 
-import { departmentSpec, staffTitle } from "@/lib/departments";
+import { resolveDepartment, staffTitle } from "@/lib/departments";
 import { initialsOf } from "@/lib/format";
 import { getAuth, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
@@ -60,9 +60,8 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const ctx = getAuth(req);
     const body = await readBody(req);
-    const department = typeof body["department"] === "string" ? body["department"].trim() : "";
-    const spec = departmentSpec(department);
-    if (!spec) return json({ error: "bad_request", message: "Chọn phòng ban." }, 400);
+    const department = resolveDepartment(typeof body["department"] === "string" ? body["department"] : "");
+    if (!department) return json({ error: "bad_request", message: "Nhập phòng ban, tối đa 60 ký tự." }, 400);
     const position = typeof body["position"] === "string" ? body["position"].trim().replace(/\s+/g, " ") : "";
     if (position.length > 80) return json({ error: "bad_request", message: "Vị trí tối đa 80 ký tự." }, 400);
     const fullName = typeof body["full_name"] === "string" ? body["full_name"].trim().replace(/\s+/g, " ") : "";
@@ -93,8 +92,8 @@ export async function POST(req: Request): Promise<Response> {
       email: email || null,
       date_of_birth: dateOfBirth,
       hired_on: hiredOn,
-      role: spec.role,
-      title: staffTitle(spec.label, position),
+      role: department.role,
+      title: staffTitle(department.label, position),
       status: "active",
       pin_hash: hashPin(pin),
     };

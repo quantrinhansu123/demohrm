@@ -37,21 +37,28 @@ export function departmentSpec(label: string): (typeof DEPARTMENTS)[number] | nu
   return DEPARTMENTS.find((d) => d.label === label) ?? null;
 }
 
-export function departmentOf(person: { title?: string | null; role: string }): DepartmentLabel | null {
+export function resolveDepartment(label: string): { label: string; role: string } | null {
+  const name = label.trim().replace(/\s+/g, " ");
+  if (!name || name.length > 60 || name.includes("·")) return null;
+  const spec = departmentSpec(name);
+  return { label: spec?.label ?? name, role: spec?.role ?? "coordinator" };
+}
+
+export function departmentOf(person: { title?: string | null; role: string }): string | null {
   const title = person.title?.trim() ?? "";
-  const head = title.split(" · ")[0] ?? "";
+  if (!title) return ROLE_DEPARTMENT[person.role] ?? null;
+  const head = title.split(" · ")[0]?.trim() ?? "";
   const exact = DEPARTMENTS.find((d) => d.label === head || d.label === title);
   if (exact) return exact.label;
-  return ROLE_DEPARTMENT[person.role] ?? null;
+  return head || ROLE_DEPARTMENT[person.role] || null;
 }
 
 export function positionOf(person: { title?: string | null; role: string }): string {
   const title = person.title?.trim() ?? "";
   const department = departmentOf(person);
-  if (department && title.startsWith(`${department} · `)) return title.slice(department.length + 3);
-  if (!title || (department && title === department)) return "";
-  if (DEPARTMENTS.some((d) => d.label === title)) return "";
-  return title;
+  if (!title || !department || title === department) return "";
+  const prefix = `${department} · `;
+  return title.startsWith(prefix) ? title.slice(prefix.length) : "";
 }
 
 export function staffTitle(department: string, position: string): string {

@@ -3,14 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Copy, MoreHorizontal, Plus } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { fetchLiveOrders, fetchLivePositions, fetchLiveSites, saveLiveOrderMedia, toOrderSummary } from "@/lib/live";
-import type { LiveSite } from "@/lib/live";
+import { createLiveCompany, fetchLiveOrders, fetchLivePositions, fetchLiveSites, saveLiveOrderMedia, toOrderSummary, updateLiveCompany } from "@/lib/live";
+import type { LiveCompany } from "@/lib/live";
 import type { OrderSummary } from "@/types/hrm";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { JobDescriptionView } from "@/components/modules/JobDescriptionView";
 import { LinkedVideo, playableVideo } from "@/components/modules/LinkedVideo";
 import { StatusPill } from "@/components/ui/badge";
 import { Field, Modal } from "@/components/ui/modal";
+import { SearchableStaffSelect } from "@/components/ui/searchable-staff-select";
 import { QueryState } from "@/components/ui/query-state";
 import { ApiError, apiDelete, apiPatch, apiPost } from "@/lib/api";
 import { encodeOrderNote, readOrderCard } from "@/lib/order-card";
@@ -40,6 +41,9 @@ interface OrderDraft {
   wages: string[];
   images: string[];
   videoStamp?: number;
+  contactName: string;
+  contactPhone: string;
+  contactTitle: string;
 }
 
 function defaultDraft(order: OrderSummary): OrderDraft {
@@ -51,6 +55,9 @@ function defaultDraft(order: OrderSummary): OrderDraft {
     videoLink: "",
     wages: WAGE_SLOTS.map((slot) => slot.pay),
     images: [],
+    contactName: "",
+    contactPhone: "",
+    contactTitle: "",
   };
 }
 
@@ -125,6 +132,9 @@ function mergeDraft(order: OrderSummary, local?: OrderDraft): OrderDraft {
     videoLink: order.videoUrl || card.videoLink || base.videoLink,
     wages: card.wages.length >= WAGE_SLOTS.length ? card.wages : base.wages,
     images: (order.imageUrls?.length ? order.imageUrls : card.images.length > 0 ? card.images : (base.images ?? [])),
+    contactName: card.contactName || base.contactName || "",
+    contactPhone: card.contactPhone || base.contactPhone || "",
+    contactTitle: card.contactTitle || base.contactTitle || "",
   };
 }
 
@@ -593,6 +603,44 @@ function newOrderCode(): string {
 
 const orderFieldClass = "w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#2563eb]";
 
+function companyCode(name: string): string {
+  const ascii = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return (ascii || "CTY").slice(0, 12);
+}
+
+async function ensureCompany(companies: LiveCompany[], rawName: string, contact: { name: string; phone: string }): Promise<LiveCompany> {
+  const trimmed = rawName.trim().replace(/\s+/g, " ");
+  const found = companies.find((item) => item.short_name.toLowerCase() === trimmed.toLowerCase() || item.name.toLowerCase() === trimmed.toLowerCase());
+  if (found) {
+    if ((contact.name.trim() && contact.name.trim() !== found.contact_name) || (contact.phone.trim() && contact.phone.trim() !== found.contact_phone)) {
+      return updateLiveCompany(found.id, {
+        code: found.code,
+        short_name: found.short_name,
+        name: found.name,
+        contact_name: contact.name.trim() || found.contact_name || null,
+        contact_phone: contact.phone.trim() || found.contact_phone || null,
+      });
+    }
+    return found;
+  }
+  return createLiveCompany({
+    code: companyCode(trimmed),
+    short_name: trimmed.slice(0, 40),
+    name: trimmed,
+    contact_name: contact.name.trim() || null,
+    contact_phone: contact.phone.trim() || null,
+  });
+}
+
+async function ensureSite(companyId: number, rawName: string): Promise<number> {
+  const name = rawName.trim().replace(/\s+/g, " ");
+  const sites = await fetchLiveSites(companyId);
+  const found = sites.find((site) => site.name.toLowerCase() === name.toLowerCase());
+  if (found) return found.id;
+  const created = await apiPost<{ id: number }>(`/companies/${companyId}/sites`, { name, address: name });
+  return created.id;
+}
+
 function CreateOrderModal({
   open,
   onClose,
@@ -602,68 +650,53 @@ function CreateOrderModal({
   onClose: () => void;
   onCreated: (code: string, draft: OrderDraft) => void;
 }) {
-  const { companies, periods, periodCode, staff, teams } = useApp();
+  const { companies, periods, periodCode, staff } = useApp();
   const period = periods.find((item) => item.code === periodCode) ?? null;
   const [name, setName] = useState("");
-  const [companyId, setCompanyId] = useState("");
-  const [siteId, setSiteId] = useState("");
-  const [sites, setSites] = useState<LiveSite[]>([]);
-  const [ownerId, setOwnerId] = useState("");
-  const [teamId, setTeamId] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [siteName, setSiteName] = useState("");
+  const [ownerId, setOwnerId] = useState<number | null>(null);
   const [target, setTarget] = useState("10");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [note, setNote] = useState("");
   const [videoLink, setVideoLink] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactTitle, setContactTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setName("");
+    setCompanyName("");
+    setSiteName("");
     setNote("");
     setVideoLink("");
     setImages([]);
+    setContactName("");
+    setContactPhone("");
+    setContactTitle("");
     setError("");
     setTarget("10");
-    setCompanyId(companies[0] ? String(companies[0].id) : "");
-    setOwnerId(staff[0] ? String(staff[0].id) : "");
-    setTeamId(teams[0] ? String(teams[0].id) : "");
+    setOwnerId(null);
     setStartDate(period?.start_date ?? "");
     setEndDate(period?.end_date ?? "");
-  }, [open, companies, staff, teams, period?.start_date, period?.end_date]);
-
-  useEffect(() => {
-    if (!companyId) {
-      setSites([]);
-      setSiteId("");
-      return;
-    }
-    let alive = true;
-    void fetchLiveSites(Number(companyId))
-      .then((rows) => {
-        if (!alive) return;
-        setSites(rows);
-        setSiteId(rows[0] ? String(rows[0].id) : "");
-      })
-      .catch(() => {
-        if (!alive) return;
-        setSites([]);
-        setSiteId("");
-      });
-    return () => {
-      alive = false;
-    };
-  }, [companyId]);
+  }, [open, period?.start_date, period?.end_date]);
 
   const submit = async () => {
     if (!name.trim()) {
       setError("Nhập tên đơn hàng.");
       return;
     }
-    if (!companyId) {
-      setError("Chọn công ty.");
+    if (!companyName.trim()) {
+      setError("Nhập công ty.");
+      return;
+    }
+    if (!siteName.trim()) {
+      setError("Nhập địa điểm.");
       return;
     }
     if (!period) {
@@ -682,16 +715,17 @@ function CreateOrderModal({
     setSaving(true);
     setError("");
     const code = newOrderCode();
-    const managerName = staff.find((person) => String(person.id) === ownerId)?.full_name ?? "";
+    const managerName = staff.find((person) => person.id === ownerId)?.full_name ?? "";
     try {
+      const company = await ensureCompany(companies, companyName, { name: contactName, phone: contactPhone });
+      const siteId = await ensureSite(company.id, siteName);
       const created = await apiPost<{ id: number }>("/orders", {
         code,
-        company_id: Number(companyId),
+        company_id: company.id,
         period_id: period.id,
-        work_site_id: siteId ? Number(siteId) : null,
+        work_site_id: siteId,
         name: name.trim(),
-        owner_staff_id: ownerId ? Number(ownerId) : null,
-        team_id: teamId ? Number(teamId) : null,
+        owner_staff_id: ownerId,
         start_date: startDate,
         end_date: endDate,
         target_qty: qty,
@@ -703,6 +737,9 @@ function CreateOrderModal({
           wages: WAGE_SLOTS.map((slot) => slot.pay),
           images: [],
           manager: managerName,
+          contactName: contactName.trim(),
+          contactPhone: contactPhone.trim(),
+          contactTitle: contactTitle.trim(),
         }),
         positions: [{
           title: name.trim(),
@@ -713,36 +750,32 @@ function CreateOrderModal({
       });
       let savedVideo = videoLink.trim();
       let savedImages = images;
-      try {
-        if (savedVideo || savedImages.length > 0) {
-          const media = await saveLiveOrderMedia(created.id, { video_url: savedVideo, images: savedImages });
-          savedVideo = media.video_url;
-          savedImages = media.images;
-        }
-      } catch (mediaError) {
-        const company = companies.find((item) => String(item.id) === companyId);
-        onCreated(code, {
-          title: company ? `${company.short_name} – ${name.trim()}` : name.trim(),
-          summary: note.trim(),
-          manager: managerName,
-          target: qty,
-          videoLink: savedVideo,
-          wages: WAGE_SLOTS.map((slot) => slot.pay),
-          images: savedImages,
-        });
-        setError(mediaError instanceof ApiError ? mediaError.message : "Đơn đã tạo, nhưng chưa lưu được ảnh hoặc link video.");
-        return;
-      }
-      const company = companies.find((item) => String(item.id) === companyId);
-      onCreated(code, {
-        title: company ? `${company.short_name} – ${name.trim()}` : name.trim(),
+      const draft = {
+        title: `${companyName.trim()} – ${name.trim()}`,
         summary: note.trim(),
         manager: managerName,
         target: qty,
         videoLink: savedVideo,
         wages: WAGE_SLOTS.map((slot) => slot.pay),
         images: savedImages,
-      });
+        contactName: contactName.trim(),
+        contactPhone: contactPhone.trim(),
+        contactTitle: contactTitle.trim(),
+      };
+      try {
+        if (savedVideo || savedImages.length > 0) {
+          const media = await saveLiveOrderMedia(created.id, { video_url: savedVideo, images: savedImages });
+          savedVideo = media.video_url;
+          savedImages = media.images;
+          draft.videoLink = savedVideo;
+          draft.images = savedImages;
+        }
+      } catch (mediaError) {
+        onCreated(code, draft);
+        setError(mediaError instanceof ApiError ? mediaError.message : "Đơn đã tạo, nhưng chưa lưu được ảnh hoặc link video.");
+        return;
+      }
+      onCreated(code, draft);
       onClose();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Không tạo được đơn hàng.");
@@ -773,28 +806,30 @@ function CreateOrderModal({
           </Field>
         </div>
         <Field label="Công ty">
-          <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} className={orderFieldClass}>
-            {companies.map((company) => <option key={company.id} value={company.id}>{company.short_name}</option>)}
-          </select>
+          <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className={orderFieldClass} placeholder="Nhập tên công ty" />
         </Field>
         <Field label="Địa điểm">
-          <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={orderFieldClass}>
-            <option value="">Chưa chọn</option>
-            {sites.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}
-          </select>
+          <input value={siteName} onChange={(e) => setSiteName(e.target.value)} className={orderFieldClass} placeholder="Nhập địa điểm làm việc" />
         </Field>
-        <Field label="Người phụ trách">
-          <select value={ownerId} onChange={(e) => setOwnerId(e.target.value)} className={orderFieldClass}>
-            <option value="">Chưa chọn</option>
-            {staff.map((person) => <option key={person.id} value={person.id}>{person.full_name}</option>)}
-          </select>
-        </Field>
-        <Field label="Nhóm">
-          <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className={orderFieldClass}>
-            <option value="">Chưa chọn</option>
-            {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-          </select>
-        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Người phụ trách">
+            <SearchableStaffSelect value={ownerId} onChange={setOwnerId} staff={staff} placeholder="Chọn trong toàn bộ nhân sự" />
+          </Field>
+        </div>
+        <div className="sm:col-span-2 rounded-xl border border-slate-200 p-3">
+          <p className="mb-2 text-[12.5px] font-semibold text-slate-700">Người liên hệ trong công ty</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="Họ tên">
+              <input value={contactName} onChange={(e) => setContactName(e.target.value)} className={orderFieldClass} />
+            </Field>
+            <Field label="Chức danh">
+              <input value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} className={orderFieldClass} placeholder="Tổ trưởng, HR..." />
+            </Field>
+            <Field label="Số điện thoại">
+              <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={orderFieldClass} />
+            </Field>
+          </div>
+        </div>
         <Field label="Chỉ tiêu (người)">
           <input value={target} onChange={(e) => setTarget(e.target.value)} inputMode="numeric" className={orderFieldClass} />
         </Field>
@@ -865,6 +900,7 @@ function OrderEditModal({
   onClose: () => void;
   onSave: (order: OrderSummary, draft: OrderDraft) => void;
 }) {
+  const { staff } = useApp();
   const [form, setForm] = useState<OrderDraft | null>(draft);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState("");
@@ -903,6 +939,9 @@ function OrderEditModal({
             wages: form.wages,
             images: [],
             manager: form.manager,
+            contactName: form.contactName,
+            contactPhone: form.contactPhone,
+            contactTitle: form.contactTitle,
           }),
         });
         const media = await saveLiveOrderMedia(order.orderId, {
@@ -962,9 +1001,30 @@ function OrderEditModal({
               <input value={form.videoLink} onChange={(e) => set({ videoLink: e.target.value })} placeholder="https://youtube.com/... hoặc link Facebook, file video" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#2563eb]" />
             </Field>
           </div>
-          <Field label="Phụ trách">
-            <input value={form.manager} onChange={(e) => set({ manager: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#2563eb]" />
-          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Người phụ trách">
+              <SearchableStaffSelect
+                value={staff.find((person) => person.full_name === form.manager)?.id ?? null}
+                onChange={(id) => set({ manager: staff.find((person) => person.id === id)?.full_name ?? "" })}
+                staff={staff}
+                placeholder="Chọn trong toàn bộ nhân sự"
+              />
+            </Field>
+          </div>
+          <div className="sm:col-span-2 rounded-xl border border-slate-200 p-3">
+            <p className="mb-2 text-[12.5px] font-semibold text-slate-700">Người liên hệ trong công ty</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Họ tên">
+                <input value={form.contactName} onChange={(e) => set({ contactName: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#2563eb]" />
+              </Field>
+              <Field label="Chức danh">
+                <input value={form.contactTitle} onChange={(e) => set({ contactTitle: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#2563eb]" />
+              </Field>
+              <Field label="Số điện thoại">
+                <input value={form.contactPhone} onChange={(e) => set({ contactPhone: e.target.value })} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#2563eb]" />
+              </Field>
+            </div>
+          </div>
           <Field label="Chỉ tiêu (người)">
             <input value={form.target} onChange={(e) => set({ target: Number(e.target.value) || 0 })} inputMode="numeric" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#2563eb]" />
           </Field>

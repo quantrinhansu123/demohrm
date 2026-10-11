@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { ApiError } from "@/lib/api";
-import { DEPARTMENTS, departmentOf, positionOf } from "@/lib/departments";
+import { DEPARTMENTS, ORG_BANDS, departmentOf, positionOf } from "@/lib/departments";
 import { initialsOf } from "@/lib/format";
 import { useSession } from "@/lib/session";
-import { createLivePersonnel, deleteLivePersonnel, fetchLivePersonnel, resetStaffPinLive, updateLivePersonnel } from "@/lib/live";
+import { createLivePersonnel, deleteLivePersonnel, fetchLivePersonnel, fetchLiveWorkers, resetStaffPinLive, toWorker, updateLivePersonnel } from "@/lib/live";
 import type { LivePersonnel, PersonnelWrite } from "@/lib/live";
+import type { Worker } from "@/types/hrm";
+import { DataTable, EmptyRow } from "@/components/ui/data-table";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -65,7 +67,10 @@ export function PersonnelView() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
-  const [pane, setPane] = useState<"people" | "attendance">("people");
+  const [pane, setPane] = useState<"people" | "attendance" | "workers">("people");
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [workersLoading, setWorkersLoading] = useState(false);
+  const [workersError, setWorkersError] = useState("");
   const [editing, setEditing] = useState<LivePersonnel | null>(null);
   const [viewing, setViewing] = useState<LivePersonnel | null>(null);
   const [dropDepartment, setDropDepartment] = useState<string | null>(null);
@@ -86,6 +91,27 @@ export function PersonnelView() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    if (pane !== "workers") return;
+    let alive = true;
+    setWorkersLoading(true);
+    fetchLiveWorkers({ limit: 200 })
+      .then((page) => {
+        if (!alive) return;
+        setWorkers(page.rows.map(toWorker));
+        setWorkersError("");
+      })
+      .catch((e: unknown) => {
+        if (alive) setWorkersError(e instanceof ApiError ? e.message : "Không tải được danh sách công nhân.");
+      })
+      .finally(() => {
+        if (alive) setWorkersLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [pane]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -182,11 +208,12 @@ export function PersonnelView() {
     <section className="flex h-full flex-col">
       <ModuleHeader
         title="Nhân sự"
-        sub={pane === "attendance" ? "Chấm công trên điện thoại" : `${rows.length} người · dữ liệu lấy từ bảng staff`}
+        sub={pane === "attendance" ? "Chấm công trên điện thoại" : pane === "workers" ? `${workers.length} công nhân` : "Ban lãnh đạo · Hành chính nhân sự → Quản lý team → Nhân viên / CTV / Vendor"}
         actions={
           <>
             <div className="flex rounded-lg bg-slate-100 p-0.5 text-[13px] font-semibold">
-              <button type="button" onClick={() => setPane("people")} className={pane === "people" ? "rounded-md bg-white px-3 py-1 text-[#0052cc] shadow-sm" : "px-3 py-1 text-slate-500"}>Kanban</button>
+              <button type="button" onClick={() => setPane("people")} className={pane === "people" ? "rounded-md bg-white px-3 py-1 text-[#0052cc] shadow-sm" : "px-3 py-1 text-slate-500"}>Tổ chức</button>
+              <button type="button" onClick={() => setPane("workers")} className={pane === "workers" ? "rounded-md bg-white px-3 py-1 text-[#0052cc] shadow-sm" : "px-3 py-1 text-slate-500"}>Danh sách công nhân</button>
               <button type="button" onClick={() => setPane("attendance")} className={pane === "attendance" ? "rounded-md bg-white px-3 py-1 text-[#0052cc] shadow-sm" : "px-3 py-1 text-slate-500"}>Chấm công</button>
             </div>
             {pane === "people" && <input
@@ -203,7 +230,25 @@ export function PersonnelView() {
           </>
         }
       />
-      {pane === "attendance" ? <AttendanceView embedded /> : (
+      {pane === "attendance" ? <AttendanceView embedded /> : pane === "workers" ? (
+        <QueryState loading={workersLoading} error={workersError}>
+          <div className="page-body">
+            <DataTable headers={["Mã", "Họ tên", "Điện thoại", "Công ty", "Sale", "Trạng thái"]}>
+              {workers.map((worker) => (
+                <tr key={worker.id}>
+                  <td>{worker.code}</td>
+                  <td><strong>{worker.name}</strong></td>
+                  <td>{worker.phone || "—"}</td>
+                  <td>{worker.company || "—"}</td>
+                  <td>{worker.recruiter || "—"}</td>
+                  <td>{worker.status}</td>
+                </tr>
+              ))}
+              {workers.length === 0 && <EmptyRow colSpan={6} text="Chưa có công nhân" />}
+            </DataTable>
+          </div>
+        </QueryState>
+      ) : (
       <QueryState loading={loading} error={error}>
         <div className="page-body">
           <div className="grid gap-4 md:grid-cols-3">
@@ -211,7 +256,11 @@ export function PersonnelView() {
             <KpiCard title="ĐANG HOẠT ĐỘNG" value={<>{active}</>} sub={`${rows.length - active} tài khoản ngừng`} />
             <KpiCard title="PHÒNG BAN" value={<>{new Set(rows.map((r) => departmentOf(r)).filter(Boolean)).size}</>} sub="Theo người đang có trong danh sách" />
           </div>
-          <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+          <div className="mt-4 flex flex-col gap-4">
+            {ORG_BANDS.map((band) => (
+              <p key={band.title} className="text-[12px] font-semibold text-slate-500">{band.title}</p>
+            ))}
+            <div className="flex gap-3 overflow-x-auto pb-2">
             {columns.map((column) => (
               <section
                 key={column.label}
@@ -246,6 +295,7 @@ export function PersonnelView() {
               </section>
             ))}
             {columns.length === 0 && <p className="py-10 text-[13px] text-slate-400">Không có nhân sự khớp từ khóa.</p>}
+            </div>
           </div>
         </div>
       </QueryState>
@@ -468,7 +518,7 @@ function AddPersonnelModal({
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} placeholder="Nguyễn Văn A" />
         </Field>
         <Field label="Phòng ban">
-          <SuggestInput value={department} onChange={setDepartment} suggestions={departments} createLabel="Thêm phòng ban" placeholder="Chọn hoặc thêm phòng ban" />
+          <SuggestInput value={department} onChange={setDepartment} suggestions={departments} createLabel="Thêm vendor" placeholder="Chọn tầng, hoặc gõ tên vendor" />
         </Field>
         <Field label="Vị trí">
           <SuggestInput value={position} onChange={setPosition} suggestions={positions} createLabel="Thêm vị trí" placeholder="Gõ vị trí mới hoặc chọn gợi ý" />
@@ -592,7 +642,7 @@ function EditPersonnelModal({
             onChange={(department) => setForm((prev) => ({ ...prev, department }))}
             suggestions={departments}
             createLabel="Thêm phòng ban"
-            placeholder="Chọn hoặc thêm phòng ban"
+            placeholder="Chọn tầng, hoặc gõ tên vendor"
           />
         </Field>
         <Field label="Vị trí">

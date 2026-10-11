@@ -33,6 +33,17 @@ function safeSearch(raw: unknown): string {
   return String(raw ?? "").replace(/[%_,.()]/g, "").trim().slice(0, 80);
 }
 
+async function nextWorkerCode(): Promise<string> {
+  const { data, error } = await getSupabase().from("workers").select("code");
+  if (error) throw error;
+  let max = 0;
+  for (const row of data ?? []) {
+    const n = Number(/^NL-(\d+)$/.exec(String(row.code))?.[1] ?? 0);
+    if (n > max) max = n;
+  }
+  return `NL-${String(max + 1).padStart(3, "0")}`;
+}
+
 // GET /api/v1/workers — Danh sach NLD (merge national_id_full neu co quyen cccd)
 export async function GET(req: Request): Promise<Response> {
   try {
@@ -87,6 +98,7 @@ export async function POST(req: Request): Promise<Response> {
     const ctx = getAuth(req);
     const body = pick(await readBody(req), WORKER_INSERT);
     if (ctx.staffId) body["created_by"] = Number(ctx.staffId);
+    if (!body["code"]) body["code"] = await nextWorkerCode();
     const { data, error } = await getSupabase().from("workers").insert(body).select(PUBLIC_RETURN).single();
     if (error) throw error;
     return json(data, 201);

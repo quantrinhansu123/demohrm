@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { getAuth } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
-import { apiError, json } from "@/lib/server/http";
+import { apiError, json, readBody } from "@/lib/server/http";
 
 function positiveInt(value: unknown): number | null {
   const n = Number(value);
@@ -29,6 +29,30 @@ export async function GET(
       .order("name");
     if (error) throw error;
     return json(data);
+  } catch (e) {
+    return apiError(e);
+  }
+}
+
+export async function POST(
+  req: Request,
+  ctx: { params: Promise<Record<string, string>> },
+): Promise<Response> {
+  try {
+    getAuth(req);
+    const id = positiveInt((await ctx.params)["id"]);
+    if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
+    const body = await readBody(req);
+    const name = typeof body["name"] === "string" ? body["name"].trim().replace(/\s+/g, " ") : "";
+    if (!name || name.length > 120) return json({ error: "bad_request", message: "Nhập địa điểm, tối đa 120 ký tự." }, 400);
+    const address = typeof body["address"] === "string" && body["address"].trim() ? body["address"].trim() : name;
+    const { data, error } = await getSupabase()
+      .from("work_sites")
+      .insert({ company_id: id, name, address, status: "active" })
+      .select("id,company_id,name,address,latitude,longitude,geofence_radius_m,status")
+      .single();
+    if (error) throw error;
+    return json(data, 201);
   } catch (e) {
     return apiError(e);
   }

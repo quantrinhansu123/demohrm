@@ -17,6 +17,7 @@ import { formatVND, maskCitizenId } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusPill, statusToneForWorker } from "@/components/ui/badge";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
+import { SuggestInput } from "@/components/ui/suggest-input";
 import { HandoverInvite } from "@/components/workers/HandoverInvite";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -94,6 +95,8 @@ function readImageFile(file: File): Promise<string> {
 }
 
 function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCccd: boolean }) {
+  const { companies } = useApp();
+  const sourceOptions = ["Trangway", ...companies.map((company) => company.short_name).filter((name) => name && name.toLowerCase() !== "trangway")];
   const [form, setForm] = useState<ProfileDraft>(() => loadProfile(worker, canViewCccd));
   const [hint, setHint] = useState("");
   const [prevCode, setPrevCode] = useState(worker.code);
@@ -143,29 +146,14 @@ function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCcc
         <Field label="Người giới thiệu"><input className={inputClass} value={form.introducer} onChange={(e) => save({ ...form, introducer: e.target.value })} placeholder="Tên người giới thiệu" /></Field>
         <Field label="Người quản lý"><input className={inputClass} value={form.manager} onChange={(e) => save({ ...form, manager: e.target.value })} placeholder="Tên người quản lý" /></Field>
         <Field label="Nguồn">
-          <select
-            className={inputClass}
-            value={form.sourceKind}
-            onChange={(e) => {
-              const sourceKind = e.target.value as ProfileDraft["sourceKind"];
-              save({ ...form, sourceKind, sourceName: sourceKind ? form.sourceName : "" });
-            }}
-          >
-            <option value="">Chọn nguồn</option>
-            <option value="Vendor">Vendor</option>
-            <option value="CTV">CTV</option>
-          </select>
+          <SuggestInput
+            value={form.sourceName || form.sourceKind}
+            onChange={(sourceName) => save({ ...form, sourceName, sourceKind: "" })}
+            suggestions={sourceOptions}
+            createLabel="Thêm mã nguồn"
+            placeholder="Mã tên công ty, ví dụ Trangway"
+          />
         </Field>
-        {form.sourceKind && (
-          <Field label={form.sourceKind === "Vendor" ? "Tên Vendor" : "Tên CTV"}>
-            <input
-              className={inputClass}
-              value={form.sourceName}
-              onChange={(e) => save({ ...form, sourceName: e.target.value })}
-              placeholder={form.sourceKind === "Vendor" ? "Nhập tên vendor" : "Nhập tên cộng tác viên"}
-            />
-          </Field>
-        )}
         <Field label="Ghi chú">
           <textarea className={inputClass} rows={4} value={form.note} onChange={(e) => save({ ...form, note: e.target.value })} placeholder="Gõ nội dung hồ sơ..." />
         </Field>

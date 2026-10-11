@@ -1,30 +1,45 @@
 export const DEPARTMENTS = [
-  { label: "Giám đốc", role: "director" },
-  { label: "Phó giám đốc", role: "deputy_director" },
-  { label: "Trưởng phòng", role: "team_lead" },
-  { label: "Quản lý", role: "team_lead" },
-  { label: "Nhân viên kinh doanh", role: "recruiter" },
-  { label: "Kế toán", role: "accountant" },
+  { label: "Ban lãnh đạo", role: "director" },
   { label: "Hành chính nhân sự", role: "admin" },
-  { label: "Nhân viên sale", role: "recruiter" },
-  { label: "Nhân viên truyền thông", role: "coordinator" },
+  { label: "Quản lý team", role: "team_lead" },
+  { label: "Nhân viên", role: "recruiter" },
+  { label: "CTV", role: "recruiter" },
 ] as const;
+
+export const ORG_BANDS: { title: string; labels: string[] }[] = [
+  { title: "Ban lãnh đạo · Hành chính nhân sự", labels: ["Ban lãnh đạo", "Hành chính nhân sự"] },
+  { title: "Quản lý team", labels: ["Quản lý team"] },
+  { title: "Nhân viên / CTV / Vendor", labels: ["Nhân viên", "CTV"] },
+];
+
+const LEGACY_DEPARTMENT: Record<string, string> = {
+  "Giám đốc": "Ban lãnh đạo",
+  "Phó giám đốc": "Ban lãnh đạo",
+  "Trưởng phòng": "Quản lý team",
+  "Quản lý": "Quản lý team",
+  "Nhân viên kinh doanh": "Nhân viên",
+  "Nhân viên sale": "Nhân viên",
+  "Kế toán": "Hành chính nhân sự",
+  "Nhân viên truyền thông": "Nhân viên",
+  "Hành chính nhân sự": "Hành chính nhân sự",
+};
 
 export type DepartmentLabel = (typeof DEPARTMENTS)[number]["label"];
 
-const ROLE_DEPARTMENT: Record<string, DepartmentLabel> = {
-  director: "Giám đốc",
-  deputy_director: "Phó giám đốc",
-  team_lead: "Trưởng phòng",
-  accountant: "Kế toán",
+const ROLE_DEPARTMENT: Record<string, string> = {
+  director: "Ban lãnh đạo",
+  deputy_director: "Ban lãnh đạo",
+  team_lead: "Quản lý team",
+  accountant: "Hành chính nhân sự",
   admin: "Hành chính nhân sự",
-  recruiter: "Nhân viên kinh doanh",
+  recruiter: "Nhân viên",
+  coordinator: "CTV",
 };
 
-const LEAD_DEPARTMENTS = new Set<string>(["Giám đốc", "Phó giám đốc", "Trưởng phòng", "Quản lý"]);
+const LEAD_DEPARTMENTS = new Set<string>(["Ban lãnh đạo", "Quản lý team"]);
 
-export function isSaleStaff(person: { title?: string | null; role: string }): boolean {
-  return departmentOf(person) === "Nhân viên sale";
+export function isSaleStaff(_person: { title?: string | null; role: string }): boolean {
+  return true;
 }
 
 export function isLeadStaff(person: { title?: string | null; role: string }): boolean {
@@ -50,6 +65,8 @@ export function departmentOf(person: { title?: string | null; role: string }): s
   const head = title.split(" · ")[0]?.trim() ?? "";
   const exact = DEPARTMENTS.find((d) => d.label === head || d.label === title);
   if (exact) return exact.label;
+  const legacy = LEGACY_DEPARTMENT[head] ?? LEGACY_DEPARTMENT[title];
+  if (legacy) return legacy;
   return head || ROLE_DEPARTMENT[person.role] || null;
 }
 
@@ -58,7 +75,12 @@ export function positionOf(person: { title?: string | null; role: string }): str
   const department = departmentOf(person);
   if (!title || !department || title === department) return "";
   const prefix = `${department} · `;
-  return title.startsWith(prefix) ? title.slice(prefix.length) : "";
+  if (title.startsWith(prefix)) return title.slice(prefix.length);
+  const head = title.split(" · ")[0]?.trim() ?? "";
+  if ((LEGACY_DEPARTMENT[head] || DEPARTMENTS.some((item) => item.label === head)) && title.includes(" · ")) {
+    return title.split(" · ").slice(1).join(" · ");
+  }
+  return "";
 }
 
 export function staffTitle(department: string, position: string): string {

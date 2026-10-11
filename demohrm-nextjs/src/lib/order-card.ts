@@ -4,6 +4,9 @@ export interface OrderCard {
   wages: string[];
   images: string[];
   manager: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactTitle?: string;
 }
 
 export function encodeOrderNote(card: OrderCard): string {
@@ -12,6 +15,9 @@ export function encodeOrderNote(card: OrderCard): string {
     summary: card.summary,
     wages: card.wages,
     manager: card.manager,
+    contactName: card.contactName ?? "",
+    contactPhone: card.contactPhone ?? "",
+    contactTitle: card.contactTitle ?? "",
   });
 }
 
@@ -27,7 +33,7 @@ export function noteWithoutMedia(note: string | null | undefined): string | null
 }
 
 export function readOrderCard(note: string | null | undefined): OrderCard {
-  const empty: OrderCard = { summary: "", videoLink: "", wages: [], images: [], manager: "" };
+  const empty: OrderCard = { summary: "", videoLink: "", wages: [], images: [], manager: "", contactName: "", contactPhone: "", contactTitle: "" };
   if (!note) return empty;
   try {
     const value = JSON.parse(note) as Partial<OrderCard> & { twCard?: number };
@@ -38,6 +44,9 @@ export function readOrderCard(note: string | null | undefined): OrderCard {
         wages: Array.isArray(value.wages) ? value.wages.filter((item) => typeof item === "string") : [],
         images: Array.isArray(value.images) ? value.images.filter((item) => typeof item === "string") : [],
         manager: typeof value.manager === "string" ? value.manager : "",
+        contactName: typeof value.contactName === "string" ? value.contactName : "",
+        contactPhone: typeof value.contactPhone === "string" ? value.contactPhone : "",
+        contactTitle: typeof value.contactTitle === "string" ? value.contactTitle : "",
       };
     }
   } catch {

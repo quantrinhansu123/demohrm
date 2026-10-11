@@ -12,14 +12,12 @@ import {
   TimesheetIcon,
   AuditIcon,
   CommissionIcon,
-  CompaniesIcon,
   DashboardIcon,
   FinanceIcon,
   OrdersIcon,
   PayrollIcon,
   PersonnelIcon,
   ReportsIcon,
-  VendorsIcon,
   WorkersIcon,
 } from "@/components/icons";
 
@@ -28,8 +26,6 @@ const mainNav: { id: ModuleId; label: string; icon: typeof DashboardIcon }[] = [
   { id: "orders", label: "Đơn hàng cung ứng", icon: OrdersIcon },
   { id: "workers", label: "Người lao động (Hồ sơ)", icon: WorkersIcon },
   { id: "personnel", label: "Nhân sự", icon: PersonnelIcon },
-  { id: "companies", label: "Khách hàng & Địa điểm", icon: CompaniesIcon },
-  { id: "vendors", label: "Quản lý Vendor & Cấp số", icon: VendorsIcon },
   { id: "attendance", label: "Chấm công (GPS)", icon: AttendanceIcon },
   { id: "timesheet", label: "Bảng công", icon: TimesheetIcon },
   { id: "payroll", label: "Lương & Tạm ứng", icon: PayrollIcon },
@@ -43,9 +39,8 @@ export function Sidebar() {
   const {
     currentModule, setCurrentModule,
     currentTeam, setCurrentTeam,
-    currentFactory, setCurrentFactory,
     periodCode, setPeriodCode,
-    teams, companies, periods,
+    teams, periods,
   } = useApp();
   const { access } = useSession();
   const [navQuery, setNavQuery] = useState("");
@@ -119,29 +114,6 @@ export function Sidebar() {
             >
               <span className="flex h-6 w-6 items-center justify-center rounded-md bg-teal-500 text-[11px] font-bold">{t.name.charAt(0)}</span>
               {t.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-3 px-4">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-[#8ec3f8]">Nhà máy đang theo dõi</div>
-        <div className="mt-1.5 flex flex-col gap-1">
-          {companies.map((f) => (
-            <button
-              key={f.code}
-              type="button"
-              onClick={() => {
-                setCurrentFactory(f.short_name);
-                setCurrentModule("factory");
-              }}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px]",
-                currentModule === "factory" && currentFactory === f.short_name ? "bg-white/15 text-white" : "hover:bg-white/10"
-              )}
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-500 text-[11px] font-bold">{f.short_name.charAt(0)}</span>
-              {f.short_name}
             </button>
           ))}
         </div>

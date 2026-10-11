@@ -230,7 +230,7 @@ export function fetchLiveWorkers(f?: WorkerFilter, opts?: ApiOptions): Promise<W
 }
 
 export interface WorkerCreateBody {
-  code: string;
+  code?: string;
   full_name: string;
   phone: string;
   national_id: string;
@@ -241,6 +241,7 @@ export interface WorkerCreateBody {
   manager_id: number;
   current_company_id: number;
   status: string;
+  note?: string | null;
 }
 
 export function createLiveWorker(body: WorkerCreateBody): Promise<LiveWorkerRow> {

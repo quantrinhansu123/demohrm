@@ -14,7 +14,7 @@ export function StatusPill({ tone = "neutral", className, children }: { tone?: T
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-semibold ring-1 ring-inset",
+        "inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[12px] font-semibold ring-1 ring-inset",
         tones[tone],
         className
       )}

@@ -4,13 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import NextImage from "next/image";
 import { MapPin } from "lucide-react";
 import { ApiError } from "@/lib/api";
-import { checkInLive, checkOutLive, fetchLiveAttendances, fetchLivePersonnel } from "@/lib/live";
+import { useApp } from "@/lib/store";
+import { useSession } from "@/lib/session";
+import { checkInLive, checkOutLive, fetchLiveAttendances } from "@/lib/live";
 import type { LiveAttendance } from "@/lib/live";
 import { initialsOf } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusPill } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Field, Modal, inputClass } from "@/components/ui/modal";
+import { Modal } from "@/components/ui/modal";
 import { QueryState } from "@/components/ui/query-state";
 
 function clock(iso: string | null): string {
@@ -115,14 +117,14 @@ async function locate(): Promise<GeolocationPosition> {
 }
 
 export function AttendanceView({ embedded = false }: { embedded?: boolean }) {
+  const { setCurrentModule } = useApp();
+  const { staff } = useSession();
   const [rows, setRows] = useState<LiveAttendance[]>([]);
   const [photos, setPhotos] = useState<Record<number, string>>({});
   const [date, setDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [open, setOpen] = useState<"in" | "out" | null>(null);
-  const [people, setPeople] = useState<Array<{ id: number; name: string; code: string }>>([]);
-  const [personId, setPersonId] = useState("");
   const [photo, setPhoto] = useState("");
   const [formError, setFormError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -155,28 +157,17 @@ export function AttendanceView({ embedded = false }: { embedded?: boolean }) {
     void load(date);
   }, [date, load]);
 
-  const openForm = async (mode: "in" | "out") => {
+  const openForm = (mode: "in" | "out") => {
     setOpen(mode);
     setPhoto("");
-    setFormError("");
-    try {
-      const staff = await fetchLivePersonnel();
-      const list = staff.filter((person) => person.status === "active").map((person) => ({
-        id: person.id,
-        name: person.full_name,
-        code: person.code,
-      }));
-      setPeople(list);
-      setPersonId(list[0] ? String(list[0].id) : "");
-      if (list.length === 0) setFormError("Chưa có nhân sự đang làm.");
-    } catch (e) {
-      setFormError(e instanceof ApiError ? e.message : "Không tải được danh sách nhân sự.");
-    }
+    setFormError(staff ? "" : "Chưa có tài khoản đăng nhập.");
   };
 
   const submit = async () => {
-    const person = people.find((item) => String(item.id) === personId);
-    if (!person) return;
+    if (!staff) {
+      setFormError("Chưa có tài khoản đăng nhập.");
+      return;
+    }
     if (!photo) {
       setFormError("Chụp ảnh trước khi chấm công.");
       return;
@@ -187,16 +178,16 @@ export function AttendanceView({ embedded = false }: { embedded?: boolean }) {
       const pos = await locate();
       const blob = await (await fetch(photo)).blob();
       if (open === "out") {
-        const record = rows.find((row) => !row.check_out_at && row.worker && sameName(row.worker.full_name, person.name));
+        const record = rows.find((row) => !row.check_out_at && row.worker && sameName(row.worker.full_name, staff.full_name));
         if (!record) {
-          setFormError("Người này chưa check-in nên chưa check-out được.");
+          setFormError("Tài khoản này chưa check-in nên chưa check-out được.");
           return;
         }
         const saved = await checkOutLive(record.id, { check_out_lat: pos.coords.latitude, check_out_lng: pos.coords.longitude });
         await savePhoto(saved.id, blob);
       } else {
         const saved = await checkInLive({
-          staff_id: person.id,
+          staff_id: staff.id,
           check_in_lat: pos.coords.latitude,
           check_in_lng: pos.coords.longitude,
         });
@@ -219,18 +210,25 @@ export function AttendanceView({ embedded = false }: { embedded?: boolean }) {
           <NextImage src="/images/logo.png" alt="Trang Way" width={1024} height={1024} priority className="h-auto w-[240px]" />
           <div className="mt-1 text-[40px] font-bold leading-none tabular-nums tracking-tight text-[#0b4c8f]">{nowVN(now)}</div>
           <div className="mt-1 text-[13px] capitalize text-slate-500">{dayVN(now)}</div>
+          {staff && (
+            <div className="mt-2 text-center">
+              <div className="text-[16px] font-bold text-slate-900">{staff.full_name}</div>
+              <div className="text-[12px] text-slate-500">{staff.code}</div>
+            </div>
+          )}
         </div>
         <div className="mx-auto mt-4 grid max-w-lg grid-cols-2 gap-2">
-          <button type="button" onClick={() => void openForm("in")} className="rounded-2xl bg-[#0052cc] px-3 py-3 text-white">
+          <button type="button" onClick={() => openForm("in")} className="rounded-2xl bg-[#0052cc] px-3 py-3 text-white">
             <div className="text-[13px] font-semibold">Check-in</div>
             <div className="text-[18px] font-bold tabular-nums">{nowVN(now)}</div>
           </button>
-          <button type="button" onClick={() => void openForm("out")} className="rounded-2xl bg-slate-800 px-3 py-3 text-white">
+          <button type="button" onClick={() => openForm("out")} className="rounded-2xl bg-slate-800 px-3 py-3 text-white">
             <div className="text-[13px] font-semibold">Check-out</div>
             <div className="text-[18px] font-bold tabular-nums">{nowVN(now)}</div>
           </button>
         </div>
-        <div className="mx-auto mt-3 flex max-w-lg justify-end">
+        <div className="mx-auto mt-3 flex max-w-lg items-center justify-between">
+          <button type="button" onClick={() => setCurrentModule("timesheet")} className="text-[13px] font-semibold text-[#0052cc]">Xem bảng công</button>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-slate-200 px-2 py-1.5 text-[13px]" />
         </div>
       </header>
@@ -285,11 +283,11 @@ export function AttendanceView({ embedded = false }: { embedded?: boolean }) {
       >
         {formError && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{formError}</p>}
         <div className="mb-3 text-center text-[28px] font-bold tabular-nums text-[#0b4c8f]">{nowVN(now)}</div>
-        <Field label="Nhân sự đang làm">
-          <select className={inputClass} value={personId} onChange={(e) => setPersonId(e.target.value)}>
-            {people.map((person) => <option key={person.id} value={person.id}>{person.code} - {person.name}</option>)}
-          </select>
-        </Field>
+        <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+          <div className="text-[12px] text-slate-500">Tài khoản đang đăng nhập</div>
+          <div className="text-[15px] font-bold text-slate-900">{staff?.full_name ?? "—"}</div>
+          <div className="text-[12px] text-slate-500">{staff?.code ?? ""}</div>
+        </div>
         <div className="mt-3">
           <span className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh chấm công *</span>
           {photo && (

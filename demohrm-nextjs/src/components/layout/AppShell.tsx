@@ -22,6 +22,7 @@ const PersonnelView = dynamic(() => import("@/components/modules/PersonnelView")
 const CompaniesView = dynamic(() => import("@/components/modules/CompaniesView").then((m) => m.CompaniesView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const VendorsView = dynamic(() => import("@/components/modules/VendorsView").then((m) => m.VendorsView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const AttendanceView = dynamic(() => import("@/components/modules/AttendanceView").then((m) => m.AttendanceView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
+const TimesheetView = dynamic(() => import("@/components/modules/TimesheetView").then((m) => m.TimesheetView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const PayrollView = dynamic(() => import("@/components/modules/PayrollView").then((m) => m.PayrollView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const FinanceView = dynamic(() => import("@/components/modules/FinanceView").then((m) => m.FinanceView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const CommissionView = dynamic(() => import("@/components/modules/CommissionView").then((m) => m.CommissionView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
@@ -67,7 +68,7 @@ function Shell() {
           </div>
         </div>
         {catalogError && <p className="bg-rose-50 px-6 py-2 text-[12.5px] text-rose-700">{catalogError}</p>}
-        <main className="min-h-0 flex-1">
+        <main className="relative min-h-0 flex-1">
           {currentModule === "orders" && <OrdersView />}
           {currentModule === "dashboard" && <DashboardView />}
           {currentModule === "workers" && <WorkersView onViewDetail={setViewing} />}
@@ -75,6 +76,7 @@ function Shell() {
           {currentModule === "companies" && <CompaniesView />}
           {currentModule === "vendors" && <VendorsView />}
           {currentModule === "attendance" && <AttendanceView />}
+          {currentModule === "timesheet" && <TimesheetView />}
           {currentModule === "payroll" && <PayrollView />}
           {currentModule === "finance" && <FinanceView />}
           {currentModule === "commission" && <CommissionView />}

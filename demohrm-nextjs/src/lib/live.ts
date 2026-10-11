@@ -502,6 +502,7 @@ export interface Page<T> {
 
 export interface LiveAttendance {
   id: number;
+  worker_id?: number | null;
   work_date: string;
   check_in_at: string | null;
   check_out_at: string | null;
@@ -519,6 +520,25 @@ export function fetchLiveAttendances(date?: string): Promise<Page<LiveAttendance
   const p = new URLSearchParams({ limit: "100" });
   if (date) p.set("date", date);
   return apiGet(`/attendances?${p.toString()}`);
+}
+
+export async function fetchLiveAttendancesRange(from: string, to: string): Promise<LiveAttendance[]> {
+  const limit = 200;
+  const rows: LiveAttendance[] = [];
+  let offset = 0;
+  for (let page = 0; page < 25; page += 1) {
+    const p = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+      from,
+      to,
+    });
+    const data = await apiGet<Page<LiveAttendance>>(`/attendances?${p.toString()}`);
+    rows.push(...data.rows);
+    offset += data.rows.length;
+    if (data.rows.length === 0 || offset >= data.total) break;
+  }
+  return rows;
 }
 
 export function checkInLive(body: { staff_id?: number; worker_id?: number; check_in_lat?: number; check_in_lng?: number }): Promise<LiveAttendance> {

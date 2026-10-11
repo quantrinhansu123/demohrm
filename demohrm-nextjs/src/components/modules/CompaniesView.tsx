@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { ApiError } from "@/lib/api";
-import { createLiveCompany, deleteLiveCompany, fetchLiveOrders, fetchLiveSites, updateLiveCompany } from "@/lib/live";
+import { createLiveCompany, deleteLiveCompany, fetchLiveOrders, fetchLiveSites, fetchLiveWorkers, toWorker, updateLiveCompany } from "@/lib/live";
 import type { CompanyWrite, LiveCompany, LiveOrderRow, LiveSite } from "@/lib/live";
+import { workerStatusTone } from "@/lib/format";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
+import type { Worker } from "@/types/hrm";
 import { DataTable, EmptyRow } from "@/components/ui/data-table";
 import { StatusPill } from "@/components/ui/badge";
 import { QueryState } from "@/components/ui/query-state";
@@ -151,6 +153,7 @@ export function CompaniesView() {
       <CompanyDetailModal
         company={viewing}
         site={viewing ? sites.find((s) => s.company_id === viewing.id) : undefined}
+        orders={viewing ? orders.filter((order) => order.company === viewing.short_name) : []}
         onClose={() => setViewing(null)}
         onEdit={(company) => {
           setViewing(null);
@@ -303,23 +306,77 @@ function CompanyFormModal({
   );
 }
 
+const ORDER_STATUS: Record<string, string> = {
+  running: "Đang chạy",
+  open: "Đang chạy",
+  completed: "Đã hoàn thành",
+  closed: "Đã đóng",
+  draft: "Nháp",
+};
+
+function formatDate(iso: string): string {
+  const [year, month, day] = iso.split("-");
+  if (!year || !month || !day) return iso;
+  return `${day}/${month}/${year}`;
+}
+
+type CompanyTab = "info" | "orders" | "people";
+
 function CompanyDetailModal({
   company,
   site,
+  orders,
   onClose,
   onEdit,
   onDelete,
 }: {
   company: LiveCompany | null;
   site?: LiveSite;
+  orders: LiveOrderRow[];
   onClose: () => void;
   onEdit: (company: LiveCompany) => void;
   onDelete: (company: LiveCompany) => void;
 }) {
+  const [tab, setTab] = useState<CompanyTab>("info");
+  const [people, setPeople] = useState<Worker[]>([]);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+  const [peopleError, setPeopleError] = useState("");
+
+  useEffect(() => {
+    setTab("info");
+  }, [company?.id]);
+
+  useEffect(() => {
+    if (!company) return;
+    let alive = true;
+    setPeopleLoading(true);
+    setPeopleError("");
+    fetchLiveWorkers({ company: company.short_name, limit: 200 })
+      .then((page) => {
+        if (alive) setPeople(page.rows.map(toWorker));
+      })
+      .catch((e: unknown) => {
+        if (alive) setPeopleError(e instanceof ApiError ? e.message : "Không tải được nhân sự.");
+      })
+      .finally(() => {
+        if (alive) setPeopleLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [company]);
+
+  const tabs: { id: CompanyTab; label: string; count?: number }[] = [
+    { id: "info", label: "Thông tin" },
+    { id: "orders", label: "Đơn hàng", count: orders.length },
+    { id: "people", label: "Nhân sự", count: people.length },
+  ];
+
   return (
     <Modal
       open={company !== null}
       onClose={onClose}
+      wide
       title={company ? company.short_name : "Khách hàng"}
       footer={
         company ? (
@@ -332,16 +389,67 @@ function CompanyDetailModal({
       }
     >
       {company && (
-        <dl className="grid grid-cols-2 gap-3 text-[13px]">
-          <div><dt className="text-slate-500">Mã</dt><dd className="font-semibold">{company.code}</dd></div>
-          <div><dt className="text-slate-500">Tên ngắn</dt><dd className="font-semibold">{company.short_name}</dd></div>
-          <div className="col-span-2"><dt className="text-slate-500">Tên công ty</dt><dd className="font-semibold">{company.name}</dd></div>
-          <div><dt className="text-slate-500">Người liên hệ</dt><dd>{company.contact_name || "—"}</dd></div>
-          <div><dt className="text-slate-500">Điện thoại</dt><dd>{company.contact_phone || "—"}</dd></div>
-          <div><dt className="text-slate-500">Hotline</dt><dd>{company.hotline || "—"}</dd></div>
-          <div><dt className="text-slate-500">Đơn giá/ngày</dt><dd>{company.bill_rate_per_day ?? "—"}</dd></div>
-          <div className="col-span-2"><dt className="text-slate-500">Địa điểm</dt><dd>{site ? `${site.name}${site.address ? ` · ${site.address}` : ""}` : "—"}</dd></div>
-        </dl>
+        <div>
+          <div className="mb-4 flex gap-1 border-b">
+            {tabs.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                className={tab === item.id
+                  ? "border-b-2 border-[#0052cc] px-3 py-2 text-[13px] font-semibold text-[#0052cc]"
+                  : "border-b-2 border-transparent px-3 py-2 text-[13px] font-medium text-slate-500 hover:text-slate-800"}
+              >
+                {item.label}{item.count != null ? ` (${item.count})` : ""}
+              </button>
+            ))}
+          </div>
+          {tab === "info" && (
+            <dl className="grid grid-cols-2 gap-3 text-[13px]">
+              <div><dt className="text-slate-500">Mã</dt><dd className="font-semibold">{company.code}</dd></div>
+              <div><dt className="text-slate-500">Tên ngắn</dt><dd className="font-semibold">{company.short_name}</dd></div>
+              <div className="col-span-2"><dt className="text-slate-500">Tên công ty</dt><dd className="font-semibold">{company.name}</dd></div>
+              <div><dt className="text-slate-500">Người liên hệ</dt><dd>{company.contact_name || "—"}</dd></div>
+              <div><dt className="text-slate-500">Điện thoại</dt><dd>{company.contact_phone || "—"}</dd></div>
+              <div><dt className="text-slate-500">Hotline</dt><dd>{company.hotline || "—"}</dd></div>
+              <div><dt className="text-slate-500">Đơn giá/ngày</dt><dd>{company.bill_rate_per_day ?? "—"}</dd></div>
+              <div className="col-span-2"><dt className="text-slate-500">Địa điểm</dt><dd>{site ? `${site.name}${site.address ? ` · ${site.address}` : ""}` : "—"}</dd></div>
+            </dl>
+          )}
+          {tab === "orders" && (
+            <DataTable headers={["Mã", "Tên đơn", "Thời gian", "Phụ trách", "Chỉ tiêu", "Đang làm", "Trạng thái"]}>
+              {orders.map((order) => (
+                <tr key={order.order_id}>
+                  <td><strong>{order.code}</strong></td>
+                  <td>{order.name}</td>
+                  <td className="whitespace-nowrap">{formatDate(order.start_date)} – {formatDate(order.end_date)}</td>
+                  <td className="whitespace-nowrap">{order.owner || "—"}</td>
+                  <td>{order.target_qty}</td>
+                  <td>{order.working_qty}</td>
+                  <td className="whitespace-nowrap"><StatusPill tone={order.status === "running" || order.status === "open" ? "success" : "neutral"}>{ORDER_STATUS[order.status] ?? order.status}</StatusPill></td>
+                </tr>
+              ))}
+              {orders.length === 0 && <EmptyRow colSpan={7} text="Khách hàng này chưa có đơn hàng" />}
+            </DataTable>
+          )}
+          {tab === "people" && (
+            <QueryState loading={peopleLoading} error={peopleError}>
+              <DataTable headers={["Họ và tên", "Số ĐT", "Vị trí", "Sale", "Phụ trách", "Trạng thái"]}>
+                {people.map((person) => (
+                  <tr key={person.id}>
+                    <td><strong>{person.name}</strong></td>
+                    <td className="whitespace-nowrap">{person.phone || "—"}</td>
+                    <td>{person.position}</td>
+                    <td className="whitespace-nowrap">{person.recruiter || "—"}</td>
+                    <td className="whitespace-nowrap">{person.manager || "—"}</td>
+                    <td className="whitespace-nowrap"><StatusPill tone={workerStatusTone(person.status)}>{person.status}</StatusPill></td>
+                  </tr>
+                ))}
+                {people.length === 0 && <EmptyRow colSpan={6} text="Chưa có nhân sự tại khách hàng này" />}
+              </DataTable>
+            </QueryState>
+          )}
+        </div>
       )}
     </Modal>
   );

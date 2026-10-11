@@ -9,6 +9,7 @@ import { useSession } from "@/lib/session";
 import type { ModuleId } from "@/types/hrm";
 import {
   AttendanceIcon,
+  TimesheetIcon,
   AuditIcon,
   CommissionIcon,
   CompaniesIcon,
@@ -30,6 +31,7 @@ const mainNav: { id: ModuleId; label: string; icon: typeof DashboardIcon }[] = [
   { id: "companies", label: "Khách hàng & Địa điểm", icon: CompaniesIcon },
   { id: "vendors", label: "Quản lý Vendor & Cấp số", icon: VendorsIcon },
   { id: "attendance", label: "Chấm công (GPS)", icon: AttendanceIcon },
+  { id: "timesheet", label: "Bảng công", icon: TimesheetIcon },
   { id: "payroll", label: "Lương & Tạm ứng", icon: PayrollIcon },
   { id: "finance", label: "Tài chính (Thu/Chi)", icon: FinanceIcon },
   { id: "commission", label: "Hoa hồng dự kiến", icon: CommissionIcon },

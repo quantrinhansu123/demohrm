@@ -13,6 +13,7 @@ export type ModuleId =
   | "companies"
   | "vendors"
   | "attendance"
+  | "timesheet"
   | "payroll"
   | "finance"
   | "commission"

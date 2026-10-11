@@ -94,7 +94,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   };
 
   return (
-    <section className="flex h-full flex-col">
+    <section className="absolute inset-0 flex flex-col">
       <ModuleHeader
         title="Hồ sơ Người lao động"
         sub="Danh sách phân trang từ máy chủ"
@@ -136,10 +136,10 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                 <td>{w.hometown}</td>
                 <td><code>{maskCitizenId(w.citizenId, access.canViewCccd)}</code></td>
                 <td><strong>{w.company}</strong> <span className="text-[11.5px] text-slate-400">({w.position})</span></td>
-                <td><StatusPill tone={w.type === "Thời vụ" ? "warning" : "info"}>{w.type}</StatusPill></td>
+                <td className="w-[1%] whitespace-nowrap"><StatusPill tone={w.type === "Thời vụ" ? "warning" : "info"}>{w.type}</StatusPill></td>
                 <td>{w.recruiter || "—"}</td>
                 <td>{w.manager || "—"}</td>
-                <td><StatusPill tone={workerStatusTone(w.status)}>{w.status}</StatusPill></td>
+                <td className="w-[1%] whitespace-nowrap"><StatusPill tone={workerStatusTone(w.status)}>{w.status}</StatusPill></td>
                 <td>
                   <WorkerMenu
                     worker={w}

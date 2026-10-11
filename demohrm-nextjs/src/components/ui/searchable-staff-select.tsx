@@ -58,7 +58,11 @@ export function SearchableStaffSelect({ value, onChange, staff, placeholder, inp
     updatePos();
     setHighlight(0);
     const t = setTimeout(() => inputRef.current?.focus(), 0);
-    const onScroll = () => setOpen(false);
+    const onScroll = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Node && panelRef.current?.contains(target)) return;
+      setOpen(false);
+    };
     const onResize = () => updatePos();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);

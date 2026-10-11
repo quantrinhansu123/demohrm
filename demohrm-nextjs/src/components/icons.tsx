@@ -4,6 +4,7 @@ import {
   Briefcase,
   Building2,
   CalendarCheck,
+  CalendarDays,
   ClipboardList,
   Handshake,
   LayoutDashboard,
@@ -41,6 +42,10 @@ export function VendorsIcon(props: LucideProps) {
 
 export function AttendanceIcon(props: LucideProps) {
   return <MapPin {...props} />;
+}
+
+export function TimesheetIcon(props: LucideProps) {
+  return <CalendarDays {...props} />;
 }
 
 export function PayrollIcon(props: LucideProps) {

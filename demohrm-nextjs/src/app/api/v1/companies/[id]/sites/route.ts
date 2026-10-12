@@ -46,9 +46,18 @@ export async function POST(
     const name = typeof body["name"] === "string" ? body["name"].trim().replace(/\s+/g, " ") : "";
     if (!name || name.length > 120) return json({ error: "bad_request", message: "Nhập địa điểm, tối đa 120 ký tự." }, 400);
     const address = typeof body["address"] === "string" && body["address"].trim() ? body["address"].trim() : name;
+    const latitude = Number(body["latitude"]);
+    const longitude = Number(body["longitude"]);
     const { data, error } = await getSupabase()
       .from("work_sites")
-      .insert({ company_id: id, name, address, status: "active" })
+      .insert({
+        company_id: id,
+        name,
+        address,
+        status: "active",
+        latitude: Number.isFinite(latitude) ? latitude : 0,
+        longitude: Number.isFinite(longitude) ? longitude : 0,
+      })
       .select("id,company_id,name,address,latitude,longitude,geofence_radius_m,status")
       .single();
     if (error) throw error;

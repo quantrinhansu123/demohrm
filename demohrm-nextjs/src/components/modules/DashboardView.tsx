@@ -17,7 +17,6 @@ import {
   Eye,
   Filter,
   Grid3X3,
-  Layers,
   List,
   PieChart,
   RefreshCw,
@@ -31,8 +30,8 @@ import {
   Video,
   Wallet,
 } from "lucide-react";
-import { fetchLiveDashboard, fetchLiveOrders, fetchLiveRecruiters } from "@/lib/live";
-import type { LiveOrderRow, LivePeriodDashboard, LiveRecruiter } from "@/lib/live";
+import { fetchLiveDashboard, fetchLiveOrders, fetchLiveRecruiters, fetchWorkerStatusBySale } from "@/lib/live";
+import type { LiveOrderRow, LivePeriodDashboard, LiveRecruiter, WorkerSaleStatus } from "@/lib/live";
 import { useApp } from "@/lib/store";
 import { QueryState } from "@/components/ui/query-state";
 import { Button } from "@/components/ui/button";
@@ -43,8 +42,6 @@ import { cn } from "@/lib/utils";
 import {
   CyclePacingAreaChart,
   EnterpriseBarChart,
-  InteractiveFunnelChart,
-  OrderHealthDonutChart,
 } from "@/components/modules/dashboard/DashboardCharts";
 
 function parseTimeline(start?: string, end?: string) {
@@ -66,11 +63,21 @@ function parseTimeline(start?: string, end?: string) {
   };
 }
 
+const SALE_STATUSES: { key: string; label: string; className: string }[] = [
+  { key: "working", label: "Đang làm", className: "text-emerald-700" },
+  { key: "waiting_start", label: "Chờ đi làm", className: "text-sky-700" },
+  { key: "on_leave", label: "Tạm nghỉ", className: "text-amber-700" },
+  { key: "no_show", label: "Không đi làm", className: "text-rose-700" },
+  { key: "resigned", label: "Nghỉ việc", className: "text-slate-600" },
+  { key: "candidate", label: "Đang tư vấn", className: "text-violet-700" },
+];
+
 export function DashboardView() {
   const { setCurrentModule, periodCode, setPeriodCode, periods } = useApp();
   const [dash, setDash] = useState<LivePeriodDashboard | null>(null);
   const [rows, setRows] = useState<LiveOrderRow[]>([]);
   const [recruiters, setRecruiters] = useState<LiveRecruiter[]>([]);
+  const [saleStats, setSaleStats] = useState<WorkerSaleStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -80,7 +87,7 @@ export function DashboardView() {
   const [healthFilter, setHealthFilter] = useState<string>("all");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
-  const [analyticsTab, setAnalyticsTab] = useState<"charts" | "funnel" | "pacing" | "recruiters">("charts");
+  const [analyticsTab, setAnalyticsTab] = useState<"charts" | "pacing" | "recruiters">("charts");
 
   const currentPeriod = periods.find((p) => p.code === periodCode) ?? null;
   const periodName = currentPeriod?.name ?? "Tổng quan chu kỳ";
@@ -91,14 +98,29 @@ export function DashboardView() {
     else setRefreshing(true);
 
     try {
-      const [d, o, r] = await Promise.all([
-        fetchLiveDashboard(periodCode),
+      const [d, o, r, sales] = await Promise.all([
+        fetchLiveDashboard(periodCode).catch(() => null),
         fetchLiveOrders(periodCode),
         fetchLiveRecruiters().catch(() => [] as LiveRecruiter[]),
+        fetchWorkerStatusBySale().catch(() => ({ sales: [] as WorkerSaleStatus[] })),
       ]);
-      setDash(d);
       setRows(o);
       setRecruiters(r);
+      setSaleStats(sales.sales);
+      const period = periods.find((item) => item.code === periodCode);
+      setDash(d ?? {
+        code: periodCode,
+        name: period?.name ?? periodCode,
+        status: period?.status ?? "open",
+        start_date: period?.start_date ?? "",
+        end_date: period?.end_date ?? "",
+        order_count: o.length,
+        target_qty: o.reduce((sum, row) => sum + (row.target_qty || 0), 0),
+        working_qty: o.reduce((sum, row) => sum + (row.working_qty || 0), 0),
+        total_work_days: 0,
+        approved_advances: 0,
+        advance_workers: 0,
+      });
       setError("");
     } catch (e: unknown) {
       setError(e instanceof ApiError ? e.message : "Không thể tải dữ liệu bảng điều khiển.");
@@ -106,7 +128,7 @@ export function DashboardView() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [periodCode]);
+  }, [periodCode, periods]);
 
   useEffect(() => {
     void loadData(false);
@@ -126,12 +148,6 @@ export function DashboardView() {
   const lateCount = lateRows.length;
   const riskCount = riskRows.length;
   const slaRate = rows.length > 0 ? ((onTrackCount / rows.length) * 100).toFixed(0) : "100";
-
-  // Pipeline Metrics Aggregate
-  const totalProfiles = useMemo(() => rows.reduce((acc, r) => acc + (r.total_profiles || 0), 0), [rows]);
-  const totalApplied = useMemo(() => rows.reduce((acc, r) => acc + (r.applied_qty || 0), 0), [rows]);
-  const totalInterview = useMemo(() => rows.reduce((acc, r) => acc + (r.interview_qty || 0), 0), [rows]);
-  const totalWaiting = useMemo(() => rows.reduce((acc, r) => acc + (r.waiting_qty || 0), 0), [rows]);
 
   // Timeline
   const timeline = useMemo(
@@ -296,8 +312,7 @@ export function DashboardView() {
             </div>
           </div>
 
-          {/* 4 Executive KPI Cards (Bento Grid) */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {/* Card 1: Target vs Working */}
             <div className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm transition-all hover:border-blue-300 hover:shadow-md">
               <div className="flex items-center justify-between">
@@ -376,42 +391,7 @@ export function DashboardView() {
               </div>
             </div>
 
-            {/* Card 3: Recruitment Funnel Aggregate */}
-            <div className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm transition-all hover:border-sky-300 hover:shadow-md">
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] font-bold uppercase tracking-wider text-slate-500">
-                  Phễu Tuyển dụng
-                </span>
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 transition-transform group-hover:scale-105">
-                  <Layers className="h-4.5 w-4.5" />
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="text-[28px] font-extrabold tracking-tight text-slate-900">
-                  {totalProfiles}
-                </span>
-                <span className="text-[14px] font-medium text-slate-400">hồ sơ tiếp nhận</span>
-              </div>
-
-              <div className="mt-2.5 grid grid-cols-2 gap-1.5 text-[11.5px]">
-                <div className="flex items-center justify-between rounded bg-slate-50 px-2 py-1 text-slate-600">
-                  <span>Chờ việc:</span>
-                  <span className="font-bold text-sky-600">{totalWaiting}</span>
-                </div>
-                <div className="flex items-center justify-between rounded bg-slate-50 px-2 py-1 text-slate-600">
-                  <span>Phỏng vấn:</span>
-                  <span className="font-bold text-amber-600">{totalInterview}</span>
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 text-[12px]">
-                <span className="text-slate-500">Mới ứng tuyển:</span>
-                <span className="font-semibold text-slate-700">{totalApplied} hồ sơ</span>
-              </div>
-            </div>
-
-            {/* Card 4: Operations & Financial Advances */}
+            {/* Card 3: Operations & Financial Advances */}
             <div className="group relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm transition-all hover:border-purple-300 hover:shadow-md">
               <div className="flex items-center justify-between">
                 <span className="text-[12px] font-bold uppercase tracking-wider text-slate-500">
@@ -445,6 +425,54 @@ export function DashboardView() {
             </div>
           </div>
 
+          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm">
+            <h2 className="text-[16px] font-bold text-slate-900">Thống kê nhân sự theo trạng thái</h2>
+            <p className="mt-0.5 text-[12.5px] text-slate-500">Số người lao động của từng sale, tách theo trạng thái nhân sự</p>
+            {saleStats.length === 0 ? (
+              <p className="py-8 text-center text-[13px] text-slate-400">Chưa có nhân sự gắn sale.</p>
+            ) : (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[760px] border-collapse text-left text-[13px]">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-[11.5px] uppercase tracking-wide text-slate-500">
+                      <th className="px-2 py-2 font-semibold">Sale</th>
+                      {SALE_STATUSES.map((status) => (
+                        <th key={status.key} className="px-2 py-2 text-right font-semibold">{status.label}</th>
+                      ))}
+                      <th className="px-2 py-2 text-right font-semibold">Tổng</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {saleStats.map((row) => (
+                      <tr key={row.sale} className="border-b border-slate-100">
+                        <td className="px-2 py-2.5 font-semibold text-slate-900">{row.sale}</td>
+                        {SALE_STATUSES.map((status) => (
+                          <td key={status.key} className={`px-2 py-2.5 text-right font-semibold tabular-nums ${status.className}`}>
+                            {row.counts[status.key] ?? 0}
+                          </td>
+                        ))}
+                        <td className="px-2 py-2.5 text-right font-bold tabular-nums text-slate-900">{row.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="text-slate-900">
+                      <td className="px-2 py-2.5 font-bold">Tổng</td>
+                      {SALE_STATUSES.map((status) => (
+                        <td key={status.key} className="px-2 py-2.5 text-right font-bold tabular-nums">
+                          {saleStats.reduce((sum, row) => sum + (row.counts[status.key] ?? 0), 0)}
+                        </td>
+                      ))}
+                      <td className="px-2 py-2.5 text-right font-bold tabular-nums">
+                        {saleStats.reduce((sum, row) => sum + row.total, 0)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+
           {/* ========================================================================= */}
           {/* PROFESSIONAL SAAS ANALYTICS HUB (CHART SUITE) */}
           {/* ========================================================================= */}
@@ -460,7 +488,7 @@ export function DashboardView() {
                   </span>
                 </div>
                 <p className="text-[12.5px] text-slate-500">
-                  Biểu đồ trực quan hóa chỉ tiêu, tỷ lệ tuân thủ SLA, phễu tuyển dụng & tốc độ hoàn thành
+                  Biểu đồ trực quan hóa chỉ tiêu, tỷ lệ tuân thủ SLA và tốc độ hoàn thành
                 </p>
               </div>
 
@@ -478,19 +506,6 @@ export function DashboardView() {
                 >
                   <BarChart3 className="h-3.5 w-3.5 text-blue-600" />
                   <span>Chỉ tiêu Doanh nghiệp</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAnalyticsTab("funnel")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all",
-                    analyticsTab === "funnel"
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  <Layers className="h-3.5 w-3.5 text-sky-600" />
-                  <span>Phễu & Sức khỏe SLA</span>
                 </button>
                 <button
                   type="button"
@@ -572,44 +587,7 @@ export function DashboardView() {
               </div>
             )}
 
-            {/* TAB 2: Funnel Flow & Donut SLA Chart */}
-            {analyticsTab === "funnel" && (
-              <div className="pt-4 space-y-6">
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                  {/* Left 2 Cols: Funnel Flow */}
-                  <div className="lg:col-span-2 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-[14px] font-bold text-slate-800">
-                        Phễu Chuyển đổi Dòng Tuyển dụng
-                      </h3>
-                      <span className="text-[12px] text-slate-400">Từ Ứng tuyển đến Đi làm</span>
-                    </div>
-                    <InteractiveFunnelChart
-                      applied={totalApplied}
-                      interview={totalInterview}
-                      waiting={totalWaiting}
-                      working={working}
-                      target={target}
-                    />
-                  </div>
-
-                  {/* Right Col: SLA Donut Chart */}
-                  <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4">
-                    <div className="mb-2">
-                      <h3 className="text-[14px] font-bold text-slate-800">Tỷ lệ Tuân thủ SLA</h3>
-                      <p className="text-[11.5px] text-slate-500">Phân bố trạng thái đúng hạn của các đơn</p>
-                    </div>
-                    <OrderHealthDonutChart
-                      onTrack={onTrackCount}
-                      late={lateCount}
-                      risk={riskCount}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 3: Cycle Pacing & Burndown Area Chart */}
+            {/* TAB 2: Cycle Pacing & Burndown Area Chart */}
             {analyticsTab === "pacing" && (
               <div className="pt-4 space-y-6">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

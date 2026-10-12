@@ -14,12 +14,14 @@ export function SuggestInput({
   suggestions,
   placeholder,
   createLabel,
+  onCreate,
 }: {
   value: string;
   onChange: (value: string) => void;
   suggestions: string[];
   placeholder?: string;
   createLabel: string;
+  onCreate?: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const query = value.trim().toLowerCase();
@@ -86,7 +88,16 @@ export function SuggestInput({
                 type="button"
                 className="block w-full px-3 py-1.5 text-left text-[13px] font-semibold text-[#0052cc] hover:bg-slate-50"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => choose(value)}
+                onClick={() => {
+                  const next = tidy(value);
+                  if (onCreate) {
+                    onChange(next);
+                    setOpen(false);
+                    onCreate(next);
+                    return;
+                  }
+                  choose(value);
+                }}
               >
                 {createLabel}: {tidy(value)}
               </button>

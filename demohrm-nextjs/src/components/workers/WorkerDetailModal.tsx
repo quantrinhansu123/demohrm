@@ -8,17 +8,18 @@ import {
   addLivePlacement,
   closeLivePlacement,
   createLiveAdvance,
+  fetchLiveAdvances,
   fetchLiveAssignments,
-  fetchLivePayroll,
   toWorkAssignment,
 } from "@/lib/live";
-import type { LiveAssignmentRow, LivePayrollRow } from "@/lib/live";
+import type { LiveAdvance, LiveAssignmentRow } from "@/lib/live";
 import { formatVND, maskCitizenId } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusPill, statusToneForWorker } from "@/components/ui/badge";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { SuggestInput } from "@/components/ui/suggest-input";
 import { HandoverInvite } from "@/components/workers/HandoverInvite";
+import { SearchableStaffSelect } from "@/components/ui/searchable-staff-select";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Worker } from "@/types/hrm";
@@ -219,9 +220,17 @@ function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCcc
   );
 }
 
-function num(v: number | string | null | undefined): number {
-  const n = Number(v ?? 0);
-  return Number.isFinite(n) ? n : 0;
+function nowLocalInput(): string {
+  const date = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function formatWhen(iso: string | null): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString("vi-VN", { hour12: false });
 }
 
 export function WorkerDetailModal({
@@ -232,18 +241,21 @@ export function WorkerDetailModal({
   onClose: () => void;
 }) {
   const { access } = useSession();
-  const { periodCode, periods } = useApp();
+  const { periodCode, periods, staff } = useApp();
   const [tab, setTab] = useState<"personal" | "job" | "payroll">("personal");
   const [showAddDot, setShowAddDot] = useState(false);
   const [newDot, setNewDot] = useState({ orderCode: "", position: "", startDate: new Date().toISOString().slice(0, 10) });
-  const [advAmount, setAdvAmount] = useState("500000");
+  const [advAt, setAdvAt] = useState(nowLocalInput);
+  const [advAmount, setAdvAmount] = useState("");
+  const [advReason, setAdvReason] = useState("");
+  const [advStaffId, setAdvStaffId] = useState<number | null>(null);
+  const [advPhoto, setAdvPhoto] = useState("");
+  const [advances, setAdvances] = useState<LiveAdvance[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [liveDots, setLiveDots] = useState<LiveAssignmentRow[] | null>(null);
-  const [livePay, setLivePay] = useState<LivePayrollRow | null>(null);
 
   const workerId = worker?.id ?? 0;
-  const workerCode = worker?.code ?? "";
 
   const reloadDots = async () => {
     if (!workerId) return;
@@ -260,20 +272,19 @@ export function WorkerDetailModal({
   }, [tab, workerId]);
 
   useEffect(() => {
-    if (tab !== "payroll" || !workerCode || !periodCode) return;
+    if (tab !== "payroll" || !workerId) return;
     let alive = true;
-    (async () => {
-      try {
-        const rows = await fetchLivePayroll(periodCode, workerCode);
-        if (alive) setLivePay(rows[0] ?? null);
-      } catch {
-        if (alive) setLivePay(null);
-      }
-    })();
+    fetchLiveAdvances(workerId)
+      .then((rows) => {
+        if (alive) setAdvances(rows);
+      })
+      .catch(() => {
+        if (alive) setAdvances([]);
+      });
     return () => {
       alive = false;
     };
-  }, [tab, workerCode, periodCode]);
+  }, [tab, workerId]);
 
   if (!worker) return null;
   const assignments = (liveDots ?? []).map(toWorkAssignment);
@@ -316,20 +327,54 @@ export function WorkerDetailModal({
   };
 
   const saveAdvance = async () => {
-    const amount = parseInt(advAmount, 10);
-    if (!amount || amount <= 0) return;
+    const amount = Number(advAmount.replace(/\D/g, ""));
+    if (!amount || amount <= 0) {
+      setError("Nhập số tiền tạm ứng.");
+      return;
+    }
+    if (!advAt) {
+      setError("Chọn ngày giờ.");
+      return;
+    }
+    if (!advReason.trim()) {
+      setError("Nhập lý do.");
+      return;
+    }
+    if (!advStaffId) {
+      setError("Chọn người tạm ứng.");
+      return;
+    }
+    if (!advPhoto) {
+      setError("Chụp ảnh bằng chứng.");
+      return;
+    }
     const period = periods.find((p) => p.code === periodCode);
     if (!period) {
       setError("Chưa chọn kỳ lương.");
       return;
     }
+    const requestedAt = new Date(advAt);
+    if (Number.isNaN(requestedAt.getTime())) {
+      setError("Ngày giờ không hợp lệ.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
-      await createLiveAdvance({ worker_id: worker.id, period_id: period.id, amount, reason: `Tạm ứng cho ${worker.name}` });
+      await createLiveAdvance({
+        worker_id: worker.id,
+        period_id: period.id,
+        amount,
+        reason: advReason.trim(),
+        requested_at: requestedAt.toISOString(),
+        requested_by: advStaffId,
+        evidence: advPhoto,
+      });
       setAdvAmount("");
-      const rows = await fetchLivePayroll(period.code, worker.code);
-      setLivePay(rows[0] ?? null);
+      setAdvReason("");
+      setAdvPhoto("");
+      setAdvAt(nowLocalInput());
+      setAdvances(await fetchLiveAdvances(worker.id));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Tạo tạm ứng thất bại.");
     } finally {
@@ -361,7 +406,7 @@ export function WorkerDetailModal({
       </div>
 
       <div className="mt-3 flex gap-1 rounded-lg bg-slate-100 p-1">
-        {([["personal", "1. Hồ Sơ & Ảnh CCCD"], ["job", "2. Điều Phối & Công Việc"], ["payroll", "3. Chấm Công & Tạm Ứng"]] as const).map(([id, label]) => (
+        {([["personal", "1. Hồ Sơ & Ảnh CCCD"], ["job", "2. Điều Phối & Công Việc"], ["payroll", "3. Tạm ứng"]] as const).map(([id, label]) => (
           <button
             key={id}
             type="button"
@@ -442,30 +487,72 @@ export function WorkerDetailModal({
       )}
 
       {tab === "payroll" && (
-        <div className="mt-3">
-          {livePay ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                [`SỐ NGÀY CÔNG (${periodCode || "kỳ"})`, `${num(livePay.work_days)} ngày`, "Từ bảng lương"],
-                ["LƯƠNG THEO CÔNG", formatVND(num(livePay.wage_amount)), `Phụ cấp: ${formatVND(num(livePay.extra_amount))} · Trừ: ${formatVND(num(livePay.deduction))}`],
-                ["ĐÃ TẠM ỨNG", formatVND(num(livePay.advance_amount)), "Đã giải ngân"],
-                ["THỰC NHẬN", formatVND(num(livePay.net_amount)), livePay.has_variance ? "⚠ Lệch với chấm công" : "Khớp chấm công"],
-              ].map(([k, v, s]) => (
-                <div key={k} className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-                  <div className="text-[11px] font-semibold text-slate-500">{k}</div>
-                  <div className="text-[16px] font-bold text-slate-900">{v}</div>
-                  <div className="text-[11.5px] text-slate-400">{s}</div>
+        <div className="mt-3 grid gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Ngày giờ *">
+              <input suppressHydrationWarning type="datetime-local" className={inputClass} value={advAt} onChange={(e) => setAdvAt(e.target.value)} />
+            </Field>
+            <Field label="Số tiền *">
+              <input suppressHydrationWarning value={advAmount} onChange={(e) => setAdvAmount(e.target.value)} inputMode="numeric" placeholder="Ví dụ: 500000" className={inputClass} />
+            </Field>
+            <Field label="Lý do *">
+              <input suppressHydrationWarning value={advReason} onChange={(e) => setAdvReason(e.target.value)} placeholder="Ví dụ: Ứng tiền ăn" className={inputClass} />
+            </Field>
+            <Field label="Người tạm ứng *">
+              <SearchableStaffSelect value={advStaffId} onChange={setAdvStaffId} staff={staff} placeholder="Chọn nhân sự" />
+            </Field>
+            <div className="sm:col-span-2">
+              <span className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh bằng chứng *</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="cursor-pointer rounded-lg bg-[#0052cc] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-[#0747a6]">
+                  Chụp ảnh
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (!file) return;
+                      void readImageFile(file).then(setAdvPhoto).catch(() => setError("Không đọc được ảnh."));
+                    }}
+                  />
+                </label>
+                <span className="text-[12px] text-slate-500">Mở camera điện thoại để chụp bằng chứng.</span>
+              </div>
+              {advPhoto && (
+                <div className="relative mt-2 w-40">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={advPhoto} alt="Ảnh bằng chứng tạm ứng" className="h-28 w-40 rounded-lg object-cover" />
+                  <button type="button" onClick={() => setAdvPhoto("")} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-slate-900/80 text-white" aria-label="Xóa ảnh">×</button>
                 </div>
-              ))}
+              )}
             </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-[13px] text-slate-400">Chưa có dòng lương cho kỳ {periodCode || "đang chọn"}.</p>
-          )}
-          <div className="mt-3 flex items-center gap-2 rounded-xl border border-slate-100 p-3">
-            <input suppressHydrationWarning value={advAmount} onChange={(e) => setAdvAmount(e.target.value)} inputMode="numeric" placeholder="Số tiền tạm ứng" className="w-44 rounded-lg border border-slate-200 px-3 py-1.5 text-[13px]" />
-            <Button size="sm" variant="outline" onClick={() => void saveAdvance()}>
-              {busy ? "Đang lưu..." : "+ Tạo tạm ứng"}
+          </div>
+          <div>
+            <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void saveAdvance()}>
+              {busy ? "Đang lưu..." : "Lưu tạm ứng"}
             </Button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {advances.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-[13px] text-slate-400">Chưa có tạm ứng.</p>
+            ) : advances.map((row) => (
+              <article key={row.id} className="flex flex-wrap items-start gap-3 rounded-xl border border-slate-100 p-3">
+                {row.evidence_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={row.evidence_url} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                ) : (
+                  <div className="grid h-16 w-16 place-items-center rounded-lg bg-slate-100 text-[11px] text-slate-400">Không ảnh</div>
+                )}
+                <div className="min-w-0 flex-1 text-[13px]">
+                  <div className="font-semibold text-slate-900">{formatWhen(row.requested_at)} · {formatVND(Number(row.amount) || 0)}</div>
+                  <div className="text-slate-600">{row.reason || "—"}</div>
+                  <div className="text-[12px] text-slate-500">Người tạm ứng: {row.giver_name || "—"}</div>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       )}

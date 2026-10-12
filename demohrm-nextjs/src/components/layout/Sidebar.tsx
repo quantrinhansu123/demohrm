@@ -38,12 +38,7 @@ const mainNav: { id: ModuleId; label: string; icon: typeof DashboardIcon }[] = [
 ];
 
 export function Sidebar() {
-  const {
-    currentModule, setCurrentModule,
-    currentTeam, setCurrentTeam,
-    periodCode, setPeriodCode,
-    teams, periods,
-  } = useApp();
+  const { currentModule, setCurrentModule } = useApp();
   const { access } = useSession();
   const [navQuery, setNavQuery] = useState("");
 
@@ -97,51 +92,6 @@ export function Sidebar() {
           );
         })}
       </nav>
-
-      <div className="mt-4 px-4">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-[#8ec3f8]">Nhóm của tôi</div>
-        <div className="mt-1.5 flex flex-col gap-1">
-          {teams.map((t) => (
-            <button
-              key={t.code}
-              type="button"
-              onClick={() => {
-                setCurrentTeam(t.code);
-                setCurrentModule("team");
-              }}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px]",
-                currentModule === "team" && currentTeam === t.code ? "bg-white/15 text-white" : "hover:bg-white/10"
-              )}
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-md bg-teal-500 text-[11px] font-bold">{t.name.charAt(0)}</span>
-              {t.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mb-4 mt-3 px-4">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-[#8ec3f8]">Chu kỳ</div>
-        <div className="mt-1.5 flex flex-col gap-1">
-          {periods.map((c) => (
-            <button
-              key={c.code}
-              type="button"
-              onClick={() => {
-                setPeriodCode(c.code);
-                setCurrentModule("cycle");
-              }}
-              className={cn(
-                "rounded-lg px-2 py-1.5 text-left text-[13px]",
-                currentModule === "cycle" && periodCode === c.code ? "bg-white/15 text-white" : "hover:bg-white/10"
-              )}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
-      </div>
     </aside>
   );
 }

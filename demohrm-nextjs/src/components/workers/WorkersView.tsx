@@ -9,6 +9,8 @@ import {
   VI_STATUS,
   VI_TYPE,
   checkLiveDuplicates,
+  createLiveCompany,
+  createLivePersonnel,
   createLiveWorker,
   deleteLiveWorker,
   dupFieldLabel,
@@ -17,11 +19,10 @@ import {
   toWorker,
   updateLiveWorker,
 } from "@/lib/live";
-import type { DuplicateHit } from "@/lib/live";
+import type { DuplicateHit, LiveCompany, LiveStaff } from "@/lib/live";
 import { maskCitizenId, workerStatusTone } from "@/lib/format";
 import { SuggestInput } from "@/components/ui/suggest-input";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
-import { SearchableStaffSelect } from "@/components/ui/searchable-staff-select";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusPill } from "@/components/ui/badge";
 import { DataTable, EmptyRow } from "@/components/ui/data-table";
@@ -31,7 +32,65 @@ import { QueryState } from "@/components/ui/query-state";
 import type { Worker } from "@/types/hrm";
 
 const STATUSES = ["Đang làm", "Chờ đi làm", "Tạm nghỉ", "Nghỉ việc", "Không đi làm", "Đang tư vấn"];
+const TYPES = ["Thời vụ", "Chính thức"];
 const PAGE = 50;
+
+function uniq(values: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of values) {
+    const value = (raw ?? "").trim().replace(/\s+/g, " ");
+    const key = value.toLowerCase();
+    if (!value || value === "—" || value.includes("*") || seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+  }
+  return out.sort((a, b) => a.localeCompare(b, "vi"));
+}
+
+function companyCode(name: string): string {
+  const ascii = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d").replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 8);
+  return `${ascii || "CT"}${Date.now().toString().slice(-4)}`;
+}
+
+function errorText(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
+
+function isoDate(value: string): string | null | "invalid" {
+  const text = value.trim();
+  if (!text) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "invalid";
+}
+
+async function ensureCompanyId(companies: LiveCompany[], name: string): Promise<number> {
+  const trimmed = name.trim().replace(/\s+/g, " ");
+  const found = companies.find((company) => company.short_name.toLowerCase() === trimmed.toLowerCase() || company.name.toLowerCase() === trimmed.toLowerCase());
+  if (found) return found.id;
+  const created = await createLiveCompany({ code: companyCode(trimmed), short_name: trimmed, name: trimmed });
+  return created.id;
+}
+
+async function ensureStaffId(staff: LiveStaff[], known: Map<string, number>, name: string, position: string, pins: string[]): Promise<number> {
+  const trimmed = name.trim().replace(/\s+/g, " ");
+  const key = trimmed.toLowerCase();
+  const cached = known.get(key);
+  if (cached) return cached;
+  const existing = staff.find((person) => person.full_name.trim().toLowerCase() === key);
+  if (existing) {
+    known.set(key, existing.id);
+    return existing.id;
+  }
+  const pin = String(Math.floor(1000 + Math.random() * 9000));
+  const created = await createLivePersonnel({ department: "Nhân viên", full_name: trimmed, position, pin });
+  const person = created[0];
+  if (!person?.id) throw new Error("Không thêm được nhân sự mới.");
+  known.set(key, person.id);
+  pins.push(`${trimmed} (${person.code}): PIN ${pin}`);
+  return person.id;
+}
 
 export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => void }) {
   const { companies } = useApp();
@@ -234,16 +293,16 @@ function CreateWorkerModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const { companies, staff, periodCode } = useApp();
-  const [form, setForm] = useState({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ" as Worker["type"], source: "" });
+  const { companies, staff, periodCode, reloadCatalog } = useApp();
+  const [form, setForm] = useState({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "" });
   const [orderCompanies, setOrderCompanies] = useState<string[]>([]);
-  const [recruiterId, setRecruiterId] = useState<number | null>(null);
+  const [knownWorkers, setKnownWorkers] = useState<Worker[]>([]);
   const [step, setStep] = useState<"consult" | "close">("consult");
   const [created, setCreated] = useState<{ id: number; code: string } | null>(null);
-  const [managerId, setManagerId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [dupHits, setDupHits] = useState<DuplicateHit[] | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
@@ -252,12 +311,11 @@ function CreateWorkerModal({
     if (open) {
       setStep("consult");
       setCreated(null);
-      setManagerId(null);
       setError("");
+      setNotice("");
       setDupHits(null);
       setConfirmed(false);
-      setForm({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ", source: "" });
-      setRecruiterId(null);
+      setForm({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "" });
     }
   }
   useEffect(() => {
@@ -276,6 +334,20 @@ function CreateWorkerModal({
       alive = false;
     };
   }, [open, periodCode]);
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    fetchLiveWorkers({ limit: 200 })
+      .then((page) => {
+        if (alive) setKnownWorkers(page.rows.map(toWorker));
+      })
+      .catch(() => {
+        if (alive) setKnownWorkers([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [open]);
 
   const set = (k: keyof typeof form, v: string) => {
     setForm((p) => ({ ...p, [k]: v }));
@@ -285,15 +357,13 @@ function CreateWorkerModal({
 
   const save = async () => {
     if (!form.name.trim() || !form.phone.trim() || !form.citizenId.trim()) return;
-    if (!managerId) {
-      setError("Chọn người phụ trách.");
+    if (!form.company.trim() || !form.sale.trim() || !form.manager.trim()) {
+      setError("Nhập công ty, sale và người phụ trách. Có thể chọn gợi ý hoặc gõ giá trị mới.");
       return;
     }
-    const recruiter = staff.find((s) => s.id === recruiterId);
-    const lead = staff.find((s) => s.id === managerId);
-    const companyRow = companies.find((c) => c.short_name === form.company || c.name === form.company);
-    if (!recruiter || !lead || !companyRow) {
-      setError("Chọn công ty theo đơn hàng, Sale và người phụ trách.");
+    const dob = isoDate(form.dob);
+    if (dob === "invalid") {
+      setError("Ngày sinh theo dạng YYYY-MM-DD.");
       return;
     }
     if (!confirmed) {
@@ -304,7 +374,7 @@ function CreateWorkerModal({
           national_id: form.citizenId.trim(),
           phone: form.phone.trim(),
           full_name: form.name.trim(),
-          date_of_birth: form.dob || null,
+          date_of_birth: dob,
         });
         const exact = hits.filter((h) => h.level === "exact");
         if (exact.length > 0) {
@@ -318,7 +388,7 @@ function CreateWorkerModal({
           return;
         }
       } catch (e) {
-        setError(e instanceof ApiError ? e.message : "Kiểm trùng thất bại.");
+        setError(errorText(e, "Kiểm trùng thất bại."));
         return;
       } finally {
         setChecking(false);
@@ -327,24 +397,33 @@ function CreateWorkerModal({
     setSaving(true);
     setError("");
     try {
+      const pins: string[] = [];
+      const known = new Map<string, number>();
+      const companyId = await ensureCompanyId(companies, form.company);
+      const recruiterId = await ensureStaffId(staff, known, form.sale, "Sale", pins);
+      const managerId = await ensureStaffId(staff, known, form.manager, "Phụ trách", pins);
       const createdRow = await createLiveWorker({
         note: form.source.trim() ? `Nguồn: ${form.source.trim()}` : null,
         full_name: form.name.trim(),
         phone: form.phone.trim(),
         national_id: form.citizenId.trim(),
-        date_of_birth: form.dob || null,
+        date_of_birth: dob,
         hometown: form.hometown.trim() || null,
-        employment_type: VI_TYPE[form.type] ?? "seasonal",
-        recruiter_id: recruiter.id,
-        manager_id: lead.id,
-        current_company_id: companyRow.id,
+        employment_type: VI_TYPE[form.type] ?? form.type.trim(),
+        recruiter_id: recruiterId,
+        manager_id: managerId,
+        current_company_id: companyId,
         status: "candidate",
       });
+      if (pins.length > 0) {
+        setNotice(`Đã thêm nhân sự mới. ${pins.join(". ")}`);
+        await reloadCatalog();
+      }
       setCreated({ id: createdRow.id, code: createdRow.code });
       setStep("close");
       onCreated();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Lưu thất bại.");
+      setError(errorText(e, "Lưu thất bại."));
     } finally {
       setSaving(false);
     }
@@ -352,31 +431,38 @@ function CreateWorkerModal({
 
   const closeDeal = async () => {
     if (!created) return;
-    const lead = staff.find((s) => s.id === managerId);
-    if (!lead) {
-      setError("Chọn người phụ trách.");
+    if (!form.manager.trim()) {
+      setError("Nhập người phụ trách.");
       return;
     }
     setSaving(true);
     setError("");
     try {
+      const pins: string[] = [];
+      const managerId = await ensureStaffId(staff, new Map(), form.manager, "Phụ trách", pins);
       await updateLiveWorker(created.id, {
         full_name: form.name.trim(),
         phone: form.phone.trim(),
         hometown: form.hometown.trim() || null,
         current_position: "",
-        employment_type: VI_TYPE[form.type] ?? "seasonal",
+        employment_type: VI_TYPE[form.type] ?? form.type.trim(),
         status: "waiting_start",
-        manager_id: lead.id,
+        manager_id: managerId,
       });
+      if (pins.length > 0) await reloadCatalog();
       onCreated();
       onClose();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Chốt thất bại.");
+      setError(errorText(e, "Chốt thất bại."));
     } finally {
       setSaving(false);
     }
   };
+
+  const companyNames = uniq([...orderCompanies, ...companies.map((company) => company.short_name), ...knownWorkers.map((worker) => worker.company)]);
+  const staffNames = uniq(staff.map((person) => person.full_name));
+  const typeNames = uniq([...TYPES, ...knownWorkers.map((worker) => worker.type)]);
+  const sources = uniq(["Trangway", ...companies.map((company) => company.short_name)]);
 
   return (
     <Modal
@@ -402,6 +488,7 @@ function CreateWorkerModal({
       }
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
+      {notice && <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{notice}</p>}
       {dupHits && dupHits.length > 0 && !error && (
         <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800">
           Nghi trùng. Bấm “Vẫn lưu” nếu đây là người khác.
@@ -410,16 +497,16 @@ function CreateWorkerModal({
       {step === "close" ? (
         <div className="grid gap-3">
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
-            Đã lưu hồ sơ <strong>{form.name}</strong> ở giai đoạn Đang tư vấn. Chọn người phụ trách để chốt.
+            Đã lưu hồ sơ <strong>{form.name}</strong> ở giai đoạn Đang tư vấn. Chọn hoặc gõ người phụ trách để chốt.
           </p>
           <Field label="Phụ trách *">
-            <SearchableStaffSelect value={managerId} onChange={setManagerId} staff={staff} placeholder="— Chọn người phụ trách —" />
+            <SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" />
           </Field>
         </div>
       ) : (
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 rounded-lg bg-sky-50 px-3 py-2 text-[13px] text-sky-800">
-          Giai đoạn: <strong>Đang tư vấn</strong>. Lưu thông tin trước, rồi chốt khi đã chọn người đón.
+          Giai đoạn: <strong>Đang tư vấn</strong>. Công ty, loại hình, nguồn, sale và phụ trách có thể chọn gợi ý hoặc gõ giá trị mới.
         </div>
         <Field label="Mã NLĐ"><input className={inputClass} value="Tự động khi lưu" readOnly /></Field>
         <Field label="Họ và tên *"><input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
@@ -427,32 +514,16 @@ function CreateWorkerModal({
         <Field label="CCCD *"><input className={inputClass} value={form.citizenId} onChange={(e) => set("citizenId", e.target.value)} /></Field>
         <Field label="Ngày sinh"><input type="date" className={inputClass} value={form.dob} onChange={(e) => set("dob", e.target.value)} /></Field>
         <Field label="Quê quán"><input className={inputClass} value={form.hometown} onChange={(e) => set("hometown", e.target.value)} /></Field>
-        <Field label="Công ty">
-          <select className={inputClass} value={form.company} onChange={(e) => set("company", e.target.value)}>
-            <option value="">{orderCompanies.length === 0 ? "Chưa có đơn hàng trong kỳ" : "Chọn công ty trên đơn"}</option>
-            {orderCompanies.map((name) => (<option key={name} value={name}>{name}</option>))}
-          </select>
-        </Field>
-        <Field label="Loại hình">
-          <select className={inputClass} value={form.type} onChange={(e) => set("type", e.target.value)}>
-            <option value="Thời vụ">Thời vụ</option>
-            <option value="Chính thức">Chính thức</option>
-          </select>
-        </Field>
+        <Field label="Công ty *"><SuggestInput value={form.company} onChange={(company) => set("company", company)} suggestions={companyNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ công ty mới" /></Field>
+        <Field label="Loại hình"><SuggestInput value={form.type} onChange={(type) => set("type", type)} suggestions={typeNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ loại hình mới" /></Field>
         <Field label="Nguồn">
-          <SuggestInput
-            value={form.source}
-            onChange={(source) => set("source", source)}
-            suggestions={["Trangway", ...companies.map((company) => company.short_name).filter((name) => name.toLowerCase() !== "trangway")]}
-            createLabel="Thêm mã nguồn"
-            placeholder="Mã tên công ty, ví dụ Trangway"
-          />
+          <SuggestInput value={form.source} onChange={(source) => set("source", source)} suggestions={sources} createLabel="Thêm mới" placeholder="Chọn hoặc gõ nguồn mới" />
         </Field>
         <Field label="Sale *">
-          <SearchableStaffSelect value={recruiterId} onChange={setRecruiterId} staff={staff} placeholder="Toàn bộ nhân sự, CTV, vendor" />
+          <SuggestInput value={form.sale} onChange={(sale) => set("sale", sale)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ sale mới" />
         </Field>
         <Field label="Phụ trách *">
-          <SearchableStaffSelect value={managerId} onChange={setManagerId} staff={staff} placeholder="— Chọn người phụ trách —" />
+          <SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" />
         </Field>
       </div>
       )}
@@ -467,33 +538,44 @@ function CloseWorkerModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { staff } = useApp();
-  const [managerId, setManagerId] = useState<number | null>(() => staff.find((s) => s.full_name === worker.manager)?.id ?? null);
+  const { staff, reloadCatalog } = useApp();
+  const [manager, setManager] = useState(worker.manager === "—" ? "" : worker.manager);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const save = async () => {
-    const lead = staff.find((person) => person.id === managerId);
-    if (!lead) {
-      setError("Chọn người phụ trách.");
+    if (notice) {
+      onClose();
+      return;
+    }
+    if (!manager.trim()) {
+      setError("Nhập người phụ trách.");
       return;
     }
     setSaving(true);
     setError("");
     try {
+      const pins: string[] = [];
+      const managerId = await ensureStaffId(staff, new Map(), manager, "Phụ trách", pins);
       await updateLiveWorker(worker.id, {
         full_name: worker.name,
         phone: worker.phone,
         hometown: worker.hometown || null,
         current_position: worker.position === "—" ? "" : worker.position,
-        employment_type: VI_TYPE[worker.type] ?? "seasonal",
+        employment_type: VI_TYPE[worker.type] ?? worker.type,
         status: "waiting_start",
-        manager_id: lead.id,
+        manager_id: managerId,
       });
       onSaved();
+      if (pins.length > 0) {
+        setNotice(`Đã chốt. Đã thêm nhân sự mới. ${pins.join(". ")}`);
+        await reloadCatalog();
+        return;
+      }
       onClose();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Chốt thất bại.");
+      setError(errorText(e, "Chốt thất bại."));
     } finally {
       setSaving(false);
     }
@@ -507,14 +589,15 @@ function CloseWorkerModal({
       footer={
         <>
           <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>{saving ? "Đang chốt..." : "Chốt"}</Button>
+          <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>{notice ? "Đóng" : saving ? "Đang chốt..." : "Chốt"}</Button>
         </>
       }
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
-      <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> đang tư vấn. Chọn người phụ trách để chốt.</p>
+      {notice && <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{notice}</p>}
+      <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> đang tư vấn. Chọn hoặc gõ người phụ trách để chốt.</p>
       <Field label="Phụ trách *">
-        <SearchableStaffSelect value={managerId} onChange={setManagerId} staff={staff} placeholder="— Chọn người phụ trách —" />
+        <SuggestInput value={manager} onChange={setManager} suggestions={uniq(staff.map((person) => person.full_name))} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" />
       </Field>
     </Modal>
   );
@@ -527,49 +610,77 @@ function EditWorkerModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { staff } = useApp();
+  const { staff, reloadCatalog } = useApp();
+  const [knownWorkers, setKnownWorkers] = useState<Worker[]>([]);
   const [form, setForm] = useState({
     name: worker.name,
     phone: worker.phone,
-    hometown: worker.hometown,
-    position: worker.position,
+    hometown: worker.hometown === "—" ? "" : worker.hometown,
+    position: worker.position === "—" ? "" : worker.position,
     type: worker.type,
     status: worker.status,
     sale: worker.recruiter,
+    manager: worker.manager === "—" ? "" : worker.manager,
   });
-  const [leadId, setLeadId] = useState<number | null>(() => staff.find((s) => s.full_name === worker.manager)?.id ?? null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
+  useEffect(() => {
+    let alive = true;
+    fetchLiveWorkers({ limit: 200 })
+      .then((page) => {
+        if (alive) setKnownWorkers(page.rows.map(toWorker));
+      })
+      .catch(() => {
+        if (alive) setKnownWorkers([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const save = async () => {
-    const sale = staff.find((person) => person.full_name === form.sale);
-    const lead = staff.find((person) => person.id === leadId);
-    if (!sale || !lead) {
-      setError("Chọn Sale và người phụ trách.");
+    if (!form.sale.trim() || !form.manager.trim()) {
+      setError("Nhập sale và người phụ trách. Có thể chọn gợi ý hoặc gõ tên mới.");
       return;
     }
     setSaving(true);
     setError("");
     try {
+      const pins: string[] = [];
+      const known = new Map<string, number>();
+      const saleId = await ensureStaffId(staff, known, form.sale, "Sale", pins);
+      const managerId = await ensureStaffId(staff, known, form.manager, "Phụ trách", pins);
       await updateLiveWorker(worker.id, {
-        full_name: form.name,
-        phone: form.phone,
-        hometown: form.hometown || null,
-        current_position: form.position,
-        employment_type: VI_TYPE[form.type] ?? "seasonal",
-        status: VI_STATUS[form.status] ?? "working",
-        recruiter_id: sale.id,
-        manager_id: lead.id,
+        full_name: form.name.trim(),
+        phone: form.phone.trim(),
+        hometown: form.hometown.trim() || null,
+        current_position: form.position.trim(),
+        employment_type: VI_TYPE[form.type] ?? form.type.trim(),
+        status: VI_STATUS[form.status] ?? form.status.trim(),
+        recruiter_id: saleId,
+        manager_id: managerId,
       });
       onSaved();
+      if (pins.length > 0) {
+        setNotice(`Đã lưu. Đã thêm nhân sự mới. ${pins.join(". ")}`);
+        await reloadCatalog();
+        return;
+      }
       onClose();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Lưu thất bại.");
+      setError(errorText(e, "Lưu thất bại."));
     } finally {
       setSaving(false);
     }
   };
+
+  const positions = uniq(knownWorkers.map((person) => person.position));
+  const typeNames = uniq([...TYPES, ...knownWorkers.map((person) => person.type)]);
+  const statusNames = uniq([...STATUSES, ...knownWorkers.map((person) => person.status)]);
+  const staffNames = uniq(staff.map((person) => person.full_name));
 
   return (
     <Modal
@@ -579,36 +690,21 @@ function EditWorkerModal({
       footer={
         <>
           <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>{saving ? "Đang lưu..." : "Lưu"}</Button>
+          <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => { if (notice) onClose(); else void save(); }}>{notice ? "Đóng" : saving ? "Đang lưu..." : "Lưu"}</Button>
         </>
       }
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
+      {notice && <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{notice}</p>}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Họ và tên"><input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
         <Field label="Số điện thoại"><input className={inputClass} value={form.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
         <Field label="Quê quán"><input className={inputClass} value={form.hometown} onChange={(e) => set("hometown", e.target.value)} /></Field>
-        <Field label="Vị trí"><input className={inputClass} value={form.position} onChange={(e) => set("position", e.target.value)} /></Field>
-        <Field label="Loại hình">
-          <select className={inputClass} value={form.type} onChange={(e) => set("type", e.target.value)}>
-            <option value="Thời vụ">Thời vụ</option>
-            <option value="Chính thức">Chính thức</option>
-          </select>
-        </Field>
-        <Field label="Trạng thái">
-          <select className={inputClass} value={form.status} onChange={(e) => set("status", e.target.value)}>
-            {STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
-          </select>
-        </Field>
-        <Field label="Sale">
-          <select className={inputClass} value={form.sale} onChange={(e) => set("sale", e.target.value)}>
-            <option value="">— Chọn sale —</option>
-            {staff.map((person) => (<option key={person.id} value={person.full_name}>{person.full_name}</option>))}
-          </select>
-        </Field>
-        <Field label="Phụ trách *">
-          <SearchableStaffSelect value={leadId} onChange={setLeadId} staff={staff} placeholder="— Chọn người phụ trách —" />
-        </Field>
+        <Field label="Vị trí"><SuggestInput value={form.position} onChange={(position) => set("position", position)} suggestions={positions} createLabel="Thêm mới" placeholder="Chọn hoặc gõ vị trí mới" /></Field>
+        <Field label="Loại hình"><SuggestInput value={form.type} onChange={(type) => set("type", type)} suggestions={typeNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ loại hình mới" /></Field>
+        <Field label="Trạng thái"><SuggestInput value={form.status} onChange={(status) => set("status", status)} suggestions={statusNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ trạng thái mới" /></Field>
+        <Field label="Sale"><SuggestInput value={form.sale} onChange={(sale) => set("sale", sale)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ sale mới" /></Field>
+        <Field label="Phụ trách *"><SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" /></Field>
       </div>
     </Modal>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiGet } from "@/lib/api";
@@ -51,30 +51,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [staff, setStaff] = useState<LiveStaff[]>([]);
   const [catalogError, setCatalogError] = useState("");
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const catalogRequest = useRef(0);
 
   const loadCatalog = useCallback(async () => {
+    const requestId = catalogRequest.current + 1;
+    catalogRequest.current = requestId;
     setCatalogLoading(true);
-    try {
-      const [periodRows, companyRows, teamRows, staffRows] = await Promise.all([
-        apiGet<LivePeriod[]>("/periods"),
-        apiGet<LiveCompany[]>("/companies"),
-        apiGet<LiveTeam[]>("/teams"),
-        apiGet<LiveStaff[]>("/staff"),
-      ]);
-      setPeriods(periodRows);
-      setCompanies(companyRows);
-      setTeams(teamRows);
-      setStaff(staffRows);
-      setCatalogError("");
-      const openMonth = periodRows.find((p) => p.status === "open" && p.type === "month");
-      setPeriodCode((prev) => prev || openMonth?.code || periodRows[0]?.code || "");
-      setCurrentFactory((prev) => prev || companyRows[0]?.short_name || "");
-      setCurrentTeam((prev) => prev || teamRows[0]?.code || "");
-    } catch {
-      setCatalogError("Không tải được danh mục (kỳ, công ty, nhóm).");
-    } finally {
-      setCatalogLoading(false);
+    const load = <T,>(path: string) => apiGet<T[]>(path, { timeoutMs: 60000 });
+    const [periodRows, companyRows, teamRows, staffRows] = await Promise.allSettled([
+      load<LivePeriod>("/periods"),
+      load<LiveCompany>("/companies"),
+      load<LiveTeam>("/teams"),
+      load<LiveStaff>("/staff"),
+    ]);
+    if (catalogRequest.current !== requestId) return;
+    const failed: string[] = [];
+    if (periodRows.status === "fulfilled" && Array.isArray(periodRows.value)) {
+      setPeriods(periodRows.value);
+      const openMonth = periodRows.value.find((p) => p.status === "open" && p.type === "month");
+      setPeriodCode((prev) => prev || openMonth?.code || periodRows.value[0]?.code || "");
+    } else {
+      failed.push("kỳ");
     }
+    if (companyRows.status === "fulfilled" && Array.isArray(companyRows.value)) {
+      setCompanies(companyRows.value);
+      setCurrentFactory((prev) => prev || companyRows.value[0]?.short_name || "");
+    } else {
+      failed.push("công ty");
+    }
+    if (teamRows.status === "fulfilled" && Array.isArray(teamRows.value)) {
+      setTeams(teamRows.value);
+      setCurrentTeam((prev) => prev || teamRows.value[0]?.code || "");
+    } else {
+      failed.push("nhóm");
+    }
+    if (staffRows.status === "fulfilled" && Array.isArray(staffRows.value)) {
+      setStaff(staffRows.value);
+    } else {
+      failed.push("nhân sự");
+    }
+    setCatalogError(failed.length > 0 ? `Không tải được danh mục (${failed.join(", ")}).` : "");
+    setCatalogLoading(false);
   }, []);
 
   useEffect(() => {

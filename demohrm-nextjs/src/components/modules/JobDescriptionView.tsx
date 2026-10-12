@@ -239,21 +239,6 @@ export function JobDescriptionView({
                   <span className="text-[11px] text-slate-400">Bản nháp</span>
                 </div>
                 <p className="whitespace-pre-line text-[12.5px] leading-relaxed text-slate-600">{zaloText}</p>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => void copyZalo()}
-                    className="rounded-lg border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Đọc mẫu tin nhắn
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    Tải ảnh + video
-                  </button>
-                </div>
               </article>
 
               <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

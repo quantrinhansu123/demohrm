@@ -188,11 +188,11 @@ export function toWorker(row: LiveWorkerRow): Worker {
     citizenId: row.national_id_full ?? row.national_id_masked ?? "",
     company: row.company ?? "—",
     position: row.current_position ?? "—",
-    type: EN_TYPE[row.employment_type] ?? "Thời vụ",
+    type: EN_TYPE[row.employment_type] ?? (row.employment_type as Worker["type"]),
     recruiter: row.recruited_by ?? row.recruiter_name ?? "",
     introducer: "",
     manager: row.manager_name ?? row.supervisor_name ?? "",
-    status: EN_STATUS[row.status] ?? "Đang làm",
+    status: EN_STATUS[row.status] ?? (row.status as Worker["status"]),
     dailyRate: 0,
     workedDays: 0,
     advance: 0,
@@ -490,8 +490,33 @@ export function fetchLivePeriods(): Promise<LivePeriod[]> {
   return apiGet<LivePeriod[]>("/periods");
 }
 
-export function createLiveAdvance(body: { worker_id: number; period_id: number; amount: number; reason: string }): Promise<unknown> {
-  return apiPost("/advances", body);
+export interface LiveAdvance {
+  id: number;
+  code: string;
+  worker_id: number;
+  amount: number;
+  reason: string | null;
+  status: string;
+  requested_by: number | null;
+  requested_at: string | null;
+  giver_name: string | null;
+  evidence_url: string | null;
+}
+
+export function fetchLiveAdvances(workerId: number): Promise<LiveAdvance[]> {
+  return apiGet(`/advances?worker_id=${workerId}`);
+}
+
+export function createLiveAdvance(body: {
+  worker_id: number;
+  period_id: number;
+  amount: number;
+  reason: string;
+  requested_at: string;
+  requested_by: number;
+  evidence: string;
+}): Promise<LiveAdvance> {
+  return apiPost("/advances", body, { timeoutMs: 60000 });
 }
 
 export interface Page<T> {
@@ -611,6 +636,16 @@ export interface LiveRecruiter {
 
 export function fetchLiveRecruiters(): Promise<LiveRecruiter[]> {
   return apiGet("/recruiters");
+}
+
+export interface WorkerSaleStatus {
+  sale: string;
+  counts: Record<string, number>;
+  total: number;
+}
+
+export function fetchWorkerStatusBySale(): Promise<{ sales: WorkerSaleStatus[] }> {
+  return apiGet("/workers/by-sale");
 }
 
 export interface LiveVendor {

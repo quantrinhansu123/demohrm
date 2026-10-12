@@ -4,14 +4,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Copy, MoreHorizontal, Plus } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { createLiveCompany, fetchLiveOrders, fetchLivePositions, fetchLiveSites, saveLiveOrderMedia, toOrderSummary, updateLiveCompany } from "@/lib/live";
-import type { LiveCompany } from "@/lib/live";
+import type { LiveCompany, LiveSite } from "@/lib/live";
 import type { OrderSummary } from "@/types/hrm";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { JobDescriptionView } from "@/components/modules/JobDescriptionView";
 import { LinkedVideo, playableVideo } from "@/components/modules/LinkedVideo";
 import { StatusPill } from "@/components/ui/badge";
-import { Field, Modal } from "@/components/ui/modal";
+import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { SearchableStaffSelect } from "@/components/ui/searchable-staff-select";
+import { SuggestInput } from "@/components/ui/suggest-input";
 import { QueryState } from "@/components/ui/query-state";
 import { ApiError, apiDelete, apiPatch, apiPost } from "@/lib/api";
 import { encodeOrderNote, readOrderCard } from "@/lib/order-card";
@@ -604,8 +605,14 @@ function newOrderCode(): string {
 const orderFieldClass = "w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#2563eb]";
 
 function companyCode(name: string): string {
-  const ascii = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-  return (ascii || "CTY").slice(0, 12);
+  const ascii = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  return `${(ascii || "CTY").slice(0, 8)}${Date.now().toString().slice(-4)}`;
+}
+
+function findCompany(companies: LiveCompany[], rawName: string): LiveCompany | undefined {
+  const key = rawName.trim().toLowerCase();
+  if (!key) return undefined;
+  return companies.find((item) => item.short_name.toLowerCase() === key || item.name.toLowerCase() === key);
 }
 
 async function ensureCompany(companies: LiveCompany[], rawName: string, contact: { name: string; phone: string }): Promise<LiveCompany> {
@@ -641,6 +648,124 @@ async function ensureSite(companyId: number, rawName: string): Promise<number> {
   return created.id;
 }
 
+function AddCompanyModal({
+  open,
+  initialName,
+  initialContactName,
+  initialContactTitle,
+  initialContactPhone,
+  initialSite,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  initialName: string;
+  initialContactName: string;
+  initialContactTitle: string;
+  initialContactPhone: string;
+  initialSite: string;
+  onClose: () => void;
+  onCreated: (result: { company: LiveCompany; site: LiveSite; contactTitle: string }) => void;
+}) {
+  const [code, setCode] = useState("");
+  const [shortName, setShortName] = useState("");
+  const [name, setName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactTitle, setContactTitle] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [siteName, setSiteName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      const typed = initialName.trim().replace(/\s+/g, " ");
+      setCode(companyCode(typed));
+      setShortName(typed.slice(0, 40));
+      setName(typed);
+      setContactName(initialContactName);
+      setContactTitle(initialContactTitle);
+      setContactPhone(initialContactPhone);
+      setSiteName(initialSite);
+      setError("");
+    }
+  }
+
+  const save = async () => {
+    if (!code.trim() || !shortName.trim() || !name.trim()) {
+      setError("Nhập mã, tên ngắn và tên công ty.");
+      return;
+    }
+    if (!contactName.trim()) {
+      setError("Nhập người liên hệ.");
+      return;
+    }
+    if (!siteName.trim()) {
+      setError("Nhập địa điểm.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const company = await createLiveCompany({
+        code: code.trim(),
+        short_name: shortName.trim(),
+        name: name.trim(),
+        contact_name: contactName.trim(),
+        contact_phone: contactPhone.trim() || null,
+      });
+      const site = await apiPost<LiveSite>(`/companies/${company.id}/sites`, {
+        name: siteName.trim(),
+        address: siteName.trim(),
+      });
+      onCreated({ company, site, contactTitle: contactTitle.trim() });
+      onClose();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Không thêm được công ty.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Thêm công ty"
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700">Hủy</button>
+          <button type="button" disabled={saving} onClick={() => void save()} className="rounded-lg bg-[#2563eb] px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60">
+            {saving ? "Đang lưu..." : "Lưu công ty"}
+          </button>
+        </>
+      }
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700 sm:col-span-2">{error}</p>}
+        <p className="text-[12.5px] text-slate-500 sm:col-span-2">Công ty mới được lưu vào trang Công ty, rồi điền lại vào đơn hàng.</p>
+        <Field label="Mã"><input value={code} onChange={(e) => setCode(e.target.value)} className={inputClass} /></Field>
+        <Field label="Tên ngắn"><input value={shortName} onChange={(e) => setShortName(e.target.value)} className={inputClass} /></Field>
+        <div className="sm:col-span-2">
+          <Field label="Tên công ty"><input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} /></Field>
+        </div>
+        <div className="sm:col-span-2 rounded-xl border border-slate-200 p-3">
+          <p className="mb-2 text-[12.5px] font-semibold text-slate-700">Người liên hệ trong công ty</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="Họ tên *"><input value={contactName} onChange={(e) => setContactName(e.target.value)} className={inputClass} /></Field>
+            <Field label="Chức danh"><input value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} className={inputClass} placeholder="Tổ trưởng, HR..." /></Field>
+            <Field label="Số điện thoại"><input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className={inputClass} /></Field>
+          </div>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Địa điểm *"><input value={siteName} onChange={(e) => setSiteName(e.target.value)} className={inputClass} placeholder="Nhập địa điểm làm việc" /></Field>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function CreateOrderModal({
   open,
   onClose,
@@ -650,10 +775,13 @@ function CreateOrderModal({
   onClose: () => void;
   onCreated: (code: string, draft: OrderDraft) => void;
 }) {
-  const { companies, periods, periodCode, staff } = useApp();
+  const { companies, periods, periodCode, staff, reloadCatalog } = useApp();
   const period = periods.find((item) => item.code === periodCode) ?? null;
   const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [addedCompanies, setAddedCompanies] = useState<LiveCompany[]>([]);
+  const [sites, setSites] = useState<LiveSite[]>([]);
+  const [addCompanyOpen, setAddCompanyOpen] = useState(false);
   const [siteName, setSiteName] = useState("");
   const [ownerId, setOwnerId] = useState<number | null>(null);
   const [target, setTarget] = useState("10");
@@ -672,6 +800,8 @@ function CreateOrderModal({
     if (!open) return;
     setName("");
     setCompanyName("");
+    setAddedCompanies([]);
+    setAddCompanyOpen(false);
     setSiteName("");
     setNote("");
     setVideoLink("");
@@ -686,6 +816,46 @@ function CreateOrderModal({
     setEndDate(period?.end_date ?? "");
   }, [open, period?.start_date, period?.end_date]);
 
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    fetchLiveSites()
+      .then((rows) => {
+        if (alive) setSites(rows);
+      })
+      .catch(() => {
+        if (alive) setSites([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [open]);
+
+  const knownCompanies = useMemo(() => {
+    const seen = new Set<number>();
+    const rows: LiveCompany[] = [];
+    for (const company of [...companies, ...addedCompanies]) {
+      if (seen.has(company.id)) continue;
+      seen.add(company.id);
+      rows.push(company);
+    }
+    return rows;
+  }, [companies, addedCompanies]);
+  const matchedCompany = findCompany(knownCompanies, companyName);
+  const companySuggestions = useMemo(
+    () => [...new Set(knownCompanies.map((company) => company.short_name).filter(Boolean))].sort((a, b) => a.localeCompare(b, "vi")),
+    [knownCompanies],
+  );
+
+  const applyCompany = (company: LiveCompany, siteRows: LiveSite[]) => {
+    setCompanyName(company.short_name);
+    setContactName(company.contact_name ?? "");
+    setContactPhone(company.contact_phone ?? "");
+    setContactTitle("");
+    const site = siteRows.find((item) => item.company_id === company.id);
+    setSiteName(site?.name ?? "");
+  };
+
   const submit = async () => {
     if (!name.trim()) {
       setError("Nhập tên đơn hàng.");
@@ -693,6 +863,10 @@ function CreateOrderModal({
     }
     if (!companyName.trim()) {
       setError("Nhập công ty.");
+      return;
+    }
+    if (!findCompany(knownCompanies, companyName)) {
+      setError("Công ty chưa có. Bấm Thêm Công ty để tạo, rồi tiếp tục đơn hàng.");
       return;
     }
     if (!siteName.trim()) {
@@ -717,7 +891,7 @@ function CreateOrderModal({
     const code = newOrderCode();
     const managerName = staff.find((person) => person.id === ownerId)?.full_name ?? "";
     try {
-      const company = await ensureCompany(companies, companyName, { name: contactName, phone: contactPhone });
+      const company = await ensureCompany(knownCompanies, companyName, { name: contactName, phone: contactPhone });
       const siteId = await ensureSite(company.id, siteName);
       const created = await apiPost<{ id: number }>("/orders", {
         code,
@@ -785,6 +959,7 @@ function CreateOrderModal({
   };
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -806,10 +981,36 @@ function CreateOrderModal({
           </Field>
         </div>
         <Field label="Công ty">
-          <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className={orderFieldClass} placeholder="Nhập tên công ty" />
+          <SuggestInput
+            value={companyName}
+            onChange={(value) => {
+              setCompanyName(value);
+              const found = findCompany(knownCompanies, value);
+              if (found) applyCompany(found, sites);
+            }}
+            suggestions={companySuggestions}
+            createLabel="Thêm Công ty"
+            onCreate={() => setAddCompanyOpen(true)}
+            placeholder="Chọn hoặc gõ công ty mới"
+          />
+          {companyName.trim() && !matchedCompany && (
+            <button
+              type="button"
+              onClick={() => setAddCompanyOpen(true)}
+              className="mt-1.5 rounded-lg bg-[#2563eb] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-[#1d4ed8]"
+            >
+              Thêm Công ty
+            </button>
+          )}
         </Field>
         <Field label="Địa điểm">
-          <input value={siteName} onChange={(e) => setSiteName(e.target.value)} className={orderFieldClass} placeholder="Nhập địa điểm làm việc" />
+          <SuggestInput
+            value={siteName}
+            onChange={setSiteName}
+            suggestions={matchedCompany ? sites.filter((site) => site.company_id === matchedCompany.id).map((site) => site.name) : []}
+            createLabel="Dùng địa điểm này"
+            placeholder="Địa điểm được điền từ công ty"
+          />
         </Field>
         <div className="sm:col-span-2">
           <Field label="Người phụ trách">
@@ -886,6 +1087,26 @@ function CreateOrderModal({
         </div>
       </div>
     </Modal>
+    <AddCompanyModal
+      open={addCompanyOpen}
+      initialName={companyName}
+      initialContactName={contactName}
+      initialContactTitle={contactTitle}
+      initialContactPhone={contactPhone}
+      initialSite={siteName}
+      onClose={() => setAddCompanyOpen(false)}
+      onCreated={(result) => {
+        setAddedCompanies((prev) => [...prev, result.company]);
+        setSites((prev) => [...prev, result.site]);
+        setCompanyName(result.company.short_name);
+        setContactName(result.company.contact_name ?? "");
+        setContactPhone(result.company.contact_phone ?? "");
+        setContactTitle(result.contactTitle);
+        setSiteName(result.site.name);
+        void reloadCatalog();
+      }}
+    />
+    </>
   );
 }
 

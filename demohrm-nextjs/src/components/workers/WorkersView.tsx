@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { useApp } from "@/lib/store";
@@ -18,6 +16,7 @@ import {
   fetchLiveWorkers,
   toWorker,
   updateLiveWorker,
+  uploadWorkerPortrait,
 } from "@/lib/live";
 import type { DuplicateHit, LiveCompany, LiveStaff } from "@/lib/live";
 import { maskCitizenId, workerStatusTone } from "@/lib/format";
@@ -29,6 +28,7 @@ import { DataTable, EmptyRow } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { QueryState } from "@/components/ui/query-state";
+import { CreateWorkerSchema, formatZodErrors } from "@/lib/validation";
 import type { Worker } from "@/types/hrm";
 
 const STATUSES = ["Đang làm", "Chờ đi làm", "Tạm nghỉ", "Nghỉ việc", "Không đi làm", "Đang tư vấn"];
@@ -294,13 +294,18 @@ function CreateWorkerModal({
   onCreated: () => void;
 }) {
   const { companies, staff, periodCode, reloadCatalog } = useApp();
+  const { access } = useSession();
   const [form, setForm] = useState({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "" });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [portraits, setPortraits] = useState<string[]>([]);
+  const [portraitFiles, setPortraitFiles] = useState<File[]>([]);
   const [orderCompanies, setOrderCompanies] = useState<string[]>([]);
   const [knownWorkers, setKnownWorkers] = useState<Worker[]>([]);
   const [step, setStep] = useState<"consult" | "close">("consult");
   const [created, setCreated] = useState<{ id: number; code: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [dupHits, setDupHits] = useState<DuplicateHit[] | null>(null);
@@ -313,8 +318,11 @@ function CreateWorkerModal({
       setCreated(null);
       setError("");
       setNotice("");
+      setFieldErrors({});
       setDupHits(null);
       setConfirmed(false);
+      setPortraits([]);
+      setPortraitFiles([]);
       setForm({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "" });
     }
   }
@@ -351,19 +359,69 @@ function CreateWorkerModal({
 
   const set = (k: keyof typeof form, v: string) => {
     setForm((p) => ({ ...p, [k]: v }));
+    setFieldErrors((prev) => ({ ...prev, [k]: "" }));
     setDupHits(null);
     setConfirmed(false);
   };
 
+  const readImageFile = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error);
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Không đọc được ảnh."));
+        img.onload = () => {
+          const max = 1200;
+          const scale = Math.min(1, max / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Không xử lý được ảnh."));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.8));
+        };
+        img.src = String(reader.result);
+      };
+      reader.readAsDataURL(file);
+    });
+
+  const addPortraitImages = useCallback(async (files: File[]) => {
+    const images = files.filter((file) => file.type.startsWith("image/"));
+    if (images.length === 0) return;
+    const urls = await Promise.all(images.map((file) => readImageFile(file)));
+    setPortraits((prev) => [...prev, ...urls]);
+    setPortraitFiles((prev) => [...prev, ...images]);
+    setNotice(`Đã thêm ${urls.length} ảnh.`);
+  }, []);
+
+  useEffect(() => {
+    const onPaste = (event: ClipboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+      const files = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
+      if (files.length === 0) return;
+      event.preventDefault();
+      void addPortraitImages(files);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [addPortraitImages]);
+
   const save = async () => {
-    if (!form.name.trim() || !form.phone.trim() || !form.citizenId.trim()) return;
-    if (!form.company.trim() || !form.sale.trim() || !form.manager.trim()) {
-      setError("Nhập công ty, sale và người phụ trách. Có thể chọn gợi ý hoặc gõ giá trị mới.");
+    const parsed = CreateWorkerSchema.safeParse(form);
+    if (!parsed.success) {
+      setFieldErrors(formatZodErrors(parsed.error));
       return;
     }
+    setFieldErrors({});
     const dob = isoDate(form.dob);
     if (dob === "invalid") {
-      setError("Ngày sinh theo dạng YYYY-MM-DD.");
+      setFieldErrors({ dob: "Ngày sinh theo dạng YYYY-MM-DD." });
       return;
     }
     if (!confirmed) {
@@ -419,6 +477,19 @@ function CreateWorkerModal({
         setNotice(`Đã thêm nhân sự mới. ${pins.join(". ")}`);
         await reloadCatalog();
       }
+      if (portraitFiles.length > 0) {
+        setUploadingPhoto(true);
+        try {
+          for (const file of portraitFiles) {
+            await uploadWorkerPortrait(createdRow.id, file);
+          }
+          setNotice((prev) => `${prev ? `${prev} ` : ""}Đã tải ${portraitFiles.length} ảnh hồ sơ.`);
+        } catch (e) {
+          setNotice((prev) => `${prev ? `${prev} ` : ""}Đã lưu hồ sơ nhưng tải ảnh thất bại: ${errorText(e, "không tải được ảnh.")}`);
+        } finally {
+          setUploadingPhoto(false);
+        }
+      }
       setCreated({ id: createdRow.id, code: createdRow.code });
       setStep("close");
       onCreated();
@@ -473,8 +544,8 @@ function CreateWorkerModal({
         step === "consult" ? (
           <>
             <Button variant="outline" onClick={onClose}>Hủy</Button>
-            <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>
-              {checking ? "Đang kiểm trùng..." : saving ? "Đang lưu..." : dupHits && dupHits.length > 0 ? "Vẫn lưu" : "Lưu hồ sơ"}
+            <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" disabled={saving || checking || uploadingPhoto} onClick={() => void save()}>
+              {checking ? "Đang kiểm trùng..." : saving ? "Đang lưu..." : uploadingPhoto ? "Đang tải ảnh..." : dupHits && dupHits.length > 0 ? "Vẫn lưu" : "Lưu hồ sơ"}
             </Button>
           </>
         ) : (
@@ -509,22 +580,106 @@ function CreateWorkerModal({
           Giai đoạn: <strong>Đang tư vấn</strong>. Công ty, loại hình, nguồn, sale và phụ trách có thể chọn gợi ý hoặc gõ giá trị mới.
         </div>
         <Field label="Mã NLĐ"><input className={inputClass} value="Tự động khi lưu" readOnly /></Field>
-        <Field label="Họ và tên *"><input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
-        <Field label="Số điện thoại *"><input className={inputClass} value={form.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
-        <Field label="CCCD *"><input className={inputClass} value={form.citizenId} onChange={(e) => set("citizenId", e.target.value)} /></Field>
-        <Field label="Ngày sinh"><input type="date" className={inputClass} value={form.dob} onChange={(e) => set("dob", e.target.value)} /></Field>
-        <Field label="Quê quán"><input className={inputClass} value={form.hometown} onChange={(e) => set("hometown", e.target.value)} /></Field>
-        <Field label="Công ty *"><SuggestInput value={form.company} onChange={(company) => set("company", company)} suggestions={companyNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ công ty mới" /></Field>
-        <Field label="Loại hình"><SuggestInput value={form.type} onChange={(type) => set("type", type)} suggestions={typeNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ loại hình mới" /></Field>
+        <Field label="Họ và tên *">
+          <input className={`${inputClass} ${fieldErrors.name ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.name} onChange={(e) => set("name", e.target.value)} />
+          {fieldErrors.name && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.name}</p>}
+        </Field>
+        <Field label="Số điện thoại *">
+          <input className={`${inputClass} ${fieldErrors.phone ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+          {fieldErrors.phone && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.phone}</p>}
+        </Field>
+        <Field label="CCCD *">
+          <input className={`${inputClass} ${fieldErrors.citizenId ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.citizenId} onChange={(e) => set("citizenId", e.target.value)} />
+          {fieldErrors.citizenId && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.citizenId}</p>}
+        </Field>
+        <Field label="Ngày sinh">
+          <input type="date" className={`${inputClass} ${fieldErrors.dob ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.dob} onChange={(e) => set("dob", e.target.value)} />
+          {fieldErrors.dob && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.dob}</p>}
+        </Field>
+        <Field label="Quê quán">
+          <input className={inputClass} value={form.hometown} onChange={(e) => set("hometown", e.target.value)} />
+        </Field>
+        <Field label="Công ty *">
+          <SuggestInput value={form.company} onChange={(company) => set("company", company)} suggestions={companyNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ công ty mới" />
+          {fieldErrors.company && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.company}</p>}
+        </Field>
+        <Field label="Loại hình">
+          <SuggestInput value={form.type} onChange={(type) => set("type", type)} suggestions={typeNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ loại hình mới" />
+        </Field>
         <Field label="Nguồn">
           <SuggestInput value={form.source} onChange={(source) => set("source", source)} suggestions={sources} createLabel="Thêm mới" placeholder="Chọn hoặc gõ nguồn mới" />
         </Field>
         <Field label="Sale *">
           <SuggestInput value={form.sale} onChange={(sale) => set("sale", sale)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ sale mới" />
+          {fieldErrors.sale && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.sale}</p>}
         </Field>
         <Field label="Phụ trách *">
           <SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" />
+          {fieldErrors.manager && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.manager}</p>}
         </Field>
+        <div className="col-span-2">
+          <span className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ (chân dung)</span>
+          {access.canViewCccd ? (
+            <div
+              className="flex min-h-[180px] flex-col rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 outline-none focus:border-[#0052cc]"
+              tabIndex={0}
+              onPaste={(event) => {
+                const files = Array.from(event.clipboardData.files).filter((file) => file.type.startsWith("image/"));
+                if (files.length === 0) return;
+                event.preventDefault();
+                event.stopPropagation();
+                void addPortraitImages(files);
+              }}
+            >
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h4 className="text-[13px] font-bold text-slate-800">Ảnh hồ sơ</h4>
+                <label className="cursor-pointer rounded-lg bg-[#0052cc] px-2.5 py-1 text-[12px] font-semibold text-white hover:bg-[#0747a6]">
+                  Tải ảnh từ máy
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                      const files = Array.from(event.target.files ?? []);
+                      event.target.value = "";
+                      void addPortraitImages(files);
+                    }}
+                  />
+                </label>
+              </div>
+              <p className="text-[12px] text-slate-500">Bấm vào cột này rồi nhấn Ctrl+V để dán ảnh, hoặc tải từ máy tính.</p>
+              {notice && <p className="mt-1 text-[12px] font-medium text-emerald-700">{notice}</p>}
+              {portraits.length === 0 ? (
+                <div className="mt-3 grid flex-1 place-items-center rounded-lg border border-dashed border-slate-200 bg-white text-[13px] text-slate-400">
+                  Chưa có ảnh
+                </div>
+              ) : (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {portraits.map((src, index) => (
+                    <div key={`${index}-${src.slice(0, 24)}`} className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt="" className="h-36 w-full rounded-lg object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPortraits((prev) => prev.filter((_, i) => i !== index));
+                          setPortraitFiles((prev) => prev.filter((_, i) => i !== index));
+                        }}
+                        className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-slate-900/80 text-white"
+                        aria-label="Xóa ảnh"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-700">Tài khoản không có quyền tải ảnh hồ sơ.</p>
+          )}
+        </div>
       </div>
       )}
     </Modal>

@@ -248,6 +248,33 @@ export function createLiveWorker(body: WorkerCreateBody): Promise<LiveWorkerRow>
   return apiPost<LiveWorkerRow>("/workers", body);
 }
 
+// ---- Giay to NLD (bucket worker-private, doc_type portrait | national_id) ----
+const WORKER_DOC_MIME = ["image/jpeg", "image/png", "image/webp"];
+
+export function requestWorkerDocUploadUrl(
+  workerId: number,
+  body: { mime: string; filename: string },
+): Promise<{ path: string; token: string; signedUrl: string }> {
+  return apiPost(`/workers/${workerId}/documents/upload-url`, body);
+}
+
+export function saveWorkerDocument(
+  workerId: number,
+  body: { doc_type: "portrait" | "national_id"; storage_path: string; mime: string },
+): Promise<{ id: number }> {
+  return apiPost(`/workers/${workerId}/documents`, body);
+}
+
+export async function uploadWorkerPortrait(workerId: number, file: File): Promise<void> {
+  if (!WORKER_DOC_MIME.includes(file.type)) {
+    throw new Error("Chỉ nhận ảnh JPEG, PNG hoặc WebP.");
+  }
+  const signed = await requestWorkerDocUploadUrl(workerId, { mime: file.type, filename: file.name || "portrait.jpg" });
+  const put = await fetch(signed.signedUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+  if (!put.ok) throw new Error("Tải ảnh lên kho lưu trữ thất bại.");
+  await saveWorkerDocument(workerId, { doc_type: "portrait", storage_path: signed.path, mime: file.type });
+}
+
 // ---- Kiem trung truoc khi luu (rule 11): exact = chan, suspect = canh bao van cho luu
 export interface DuplicateHit {
   matched_worker_id: number;

@@ -46,8 +46,26 @@ export async function POST(
     const name = typeof body["name"] === "string" ? body["name"].trim().replace(/\s+/g, " ") : "";
     if (!name || name.length > 120) return json({ error: "bad_request", message: "Nhập địa điểm, tối đa 120 ký tự." }, 400);
     const address = typeof body["address"] === "string" && body["address"].trim() ? body["address"].trim() : name;
-    const latitude = Number(body["latitude"]);
-    const longitude = Number(body["longitude"]);
+    let latitude = Number(body["latitude"]);
+    let longitude = Number(body["longitude"]);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || (latitude === 0 && longitude === 0)) {
+      // Khong co toa do that: ke thua tu 1 site cung cong ty da cau hinh, tranh site 0,0 gay tran so khoang cach cham cong.
+      const sibling = await getSupabase()
+        .from("work_sites")
+        .select("latitude,longitude")
+        .eq("company_id", id)
+        .order("id")
+        .limit(20);
+      if (!sibling.error) {
+        const good = ((sibling.data ?? []) as Array<{ latitude: number | null; longitude: number | null }>).find(
+          (s) => Number(s.latitude) !== 0 && Number(s.longitude) !== 0,
+        );
+        if (good) {
+          latitude = Number(good.latitude);
+          longitude = Number(good.longitude);
+        }
+      }
+    }
     const { data, error } = await getSupabase()
       .from("work_sites")
       .insert({

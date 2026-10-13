@@ -19,6 +19,7 @@ export function apiError(e: unknown): Response {
   }
   if (err.code === "23514") return Response.json({ error: "check_violation", message: "Dữ liệu không thỏa điều kiện." }, { status: 400 });
   if (err.code === "22P02") return Response.json({ error: "invalid", message: "Giá trị không nằm trong danh mục cho phép." }, { status: 400 });
+  if (err.code === "22003") return Response.json({ error: "numeric_overflow", message: "Dữ liệu số vượt giới hạn (tọa độ địa điểm hoặc khoảng cách chấm công). Kiểm tra tọa độ địa điểm làm việc." }, { status: 400 });
   if (err.code === "23P01") return Response.json({ error: "overlap", message: "Hai đợt làm việc chồng thời gian." }, { status: 409 });
   if (err.code === "23503") return Response.json({ error: "foreign_key", message: "Tham chiếu không tồn tại hoặc hồ sơ đang được dùng." }, { status: 400 });
   if (err.code === "PGRST116") return Response.json({ error: "not_found", message: "Không tìm thấy." }, { status: 404 });

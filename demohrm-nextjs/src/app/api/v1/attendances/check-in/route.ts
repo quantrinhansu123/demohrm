@@ -70,11 +70,18 @@ async function ensureWorker(staffId: number): Promise<number | null> {
   return inserted.data.id as number;
 }
 
+function hasCoords(site: { latitude: number | null; longitude: number | null } | null | undefined): boolean {
+  return !!site && Number(site.latitude) !== 0 && Number(site.longitude) !== 0;
+}
+
 async function openPlacement(workerId: number, staffId: number | null): Promise<{ id: number; work_site_id: number | null; shift_id: number | null } | null> {
   const sb = getSupabase();
-  const orders = await sb.from("orders").select("id,work_site_id").eq("status", "running").order("id", { ascending: false }).limit(20);
+  const orders = await sb.from("orders").select("id,work_site_id,site:work_sites(latitude,longitude)").eq("status", "running").order("id", { ascending: false }).limit(20);
   if (orders.error) throw orders.error;
-  const order = ((orders.data ?? []) as Array<{ id: number; work_site_id: number | null }>).find((item) => item.work_site_id) ?? (orders.data?.[0] as { id: number; work_site_id: number | null } | undefined);
+  const rows = ((orders.data ?? []) as Array<{ id: number; work_site_id: number | null; site: { latitude: number | null; longitude: number | null } | Array<{ latitude: number | null; longitude: number | null }> | null }>);
+  const siteOf = (row: (typeof rows)[number]) => (Array.isArray(row.site) ? row.site[0] : row.site);
+  // Uu tien don co dia diem da cau hinh toa do that (tranh site 0,0 gay tran so khoang cach cham cong).
+  const order = rows.find((item) => item.work_site_id && hasCoords(siteOf(item))) ?? rows.find((item) => item.work_site_id) ?? rows[0];
   if (!order) return null;
   const position = await sb.from("order_positions").select("id").eq("order_id", order.id).order("sort_order").limit(1).maybeSingle();
   if (position.error) throw position.error;

@@ -9,6 +9,7 @@ const WORKER_INSERT = [
   "code", "full_name", "phone", "date_of_birth", "gender", "hometown", "permanent_address",
   "national_id", "old_id_number", "employment_type", "status", "current_company_id",
   "current_position", "recruiter_id", "manager_id", "source_vendor_id", "note",
+  "consult_date", "start_work_date", "resign_date",
 ] as const;
 
 const PUBLIC_RETURN = "id,code,full_name,phone,hometown,employment_type,status,current_position,current_company_id,recruiter_id";
@@ -68,6 +69,9 @@ export async function GET(req: Request): Promise<Response> {
       const links = await getSupabase().from("workers").select("id,manager_id").in("id", ids);
       if (links.error && links.error.code !== "PGRST204" && links.error.code !== "42703") throw links.error;
       const byWorker = new Map((links.data ?? []).map((row) => [row.id as number, row.manager_id as number | null]));
+      const dates = await getSupabase().from("workers").select("id,consult_date,start_work_date,resign_date").in("id", ids);
+      if (dates.error && dates.error.code !== "PGRST204" && dates.error.code !== "42703") throw dates.error;
+      const dateById = new Map((dates.data ?? []).map((row) => [row.id as number, row]));
       const managerIds = [...new Set([...byWorker.values()].filter((id): id is number => typeof id === "number" && id > 0))];
       const people = managerIds.length > 0
         ? await getSupabase().from("staff").select("id,full_name").in("id", managerIds)
@@ -76,7 +80,15 @@ export async function GET(req: Request): Promise<Response> {
       const names = new Map((people.data ?? []).map((row) => [row.id as number, String(row.full_name)]));
       rows = rows.map((row) => {
         const managerId = byWorker.get(row["id"] as number) ?? null;
-        return { ...row, manager_id: managerId, manager_name: managerId ? names.get(managerId) ?? null : null };
+        const d = dateById.get(row["id"] as number);
+        return {
+          ...row,
+          manager_id: managerId,
+          manager_name: managerId ? names.get(managerId) ?? null : null,
+          consult_date: d?.consult_date ?? null,
+          start_work_date: d?.start_work_date ?? null,
+          resign_date: d?.resign_date ?? null,
+        };
       });
     }
     if (canViewCccd && rows.length > 0) {

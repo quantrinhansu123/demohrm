@@ -65,6 +65,18 @@ function isoDate(value: string): string | null | "invalid" {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "invalid";
 }
 
+function showDate(value?: string | null): string {
+  if (!value) return "—";
+  const [y, m, d] = value.slice(0, 10).split("-");
+  return y && m && d ? `${d}/${m}/${y}` : value;
+}
+
+function todayIso(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 async function ensureCompanyId(companies: LiveCompany[], name: string): Promise<number> {
   const trimmed = name.trim().replace(/\s+/g, " ");
   const found = companies.find((company) => company.short_name.toLowerCase() === trimmed.toLowerCase() || company.name.toLowerCase() === trimmed.toLowerCase());
@@ -183,7 +195,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
           <span className="ml-auto text-[13px] text-slate-500">Tổng số: <strong className="text-slate-900">{total}</strong></span>
         </div>
         <QueryState loading={loading} error={error}>
-          <DataTable headers={["Ảnh & Họ và tên", "Số ĐT", "Quê quán", "CCCD / Định danh", "Công ty & Vị trí", "Loại hình", "Sale", "Phụ trách", "Trạng thái", "Thao tác"]}>
+          <DataTable headers={["Ảnh & Họ và tên", "Số ĐT", "Quê quán", "CCCD / Định danh", "Công ty & Vị trí", "Loại hình", "Sale", "Phụ trách", "Ngày tư vấn", "Ngày vào làm", "Ngày nghỉ", "Trạng thái", "Thao tác"]}>
             {rows.map((w) => (
               <tr key={w.id}>
                 <td>
@@ -199,6 +211,9 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                 <td className="w-[1%] whitespace-nowrap"><StatusPill tone={w.type === "Thời vụ" ? "warning" : "info"}>{w.type}</StatusPill></td>
                 <td>{w.recruiter || "—"}</td>
                 <td>{w.manager || "—"}</td>
+                <td className="whitespace-nowrap">{showDate(w.consultDate)}</td>
+                <td className="whitespace-nowrap">{showDate(w.startWorkDate)}</td>
+                <td className="whitespace-nowrap">{showDate(w.resignDate)}</td>
                 <td className="w-[1%] whitespace-nowrap"><StatusPill tone={workerStatusTone(w.status)}>{w.status}</StatusPill></td>
                 <td>
                   <WorkerMenu
@@ -211,7 +226,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && <EmptyRow colSpan={10} text="Không tìm thấy hồ sơ phù hợp" />}
+            {rows.length === 0 && <EmptyRow colSpan={13} text="Không tìm thấy hồ sơ phù hợp" />}
           </DataTable>
           <div className="mt-3 flex items-center justify-end gap-2 text-[13px]">
             <Button variant="outline" size="xs" disabled={offset === 0} onClick={() => setOffset((n) => Math.max(0, n - PAGE))}>Trước</Button>
@@ -295,7 +310,7 @@ function CreateWorkerModal({
 }) {
   const { companies, staff, periodCode, reloadCatalog } = useApp();
   const { access } = useSession();
-  const [form, setForm] = useState({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "" });
+  const [form, setForm] = useState({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "", consultDate: todayIso(), startWorkDate: "" });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [portraits, setPortraits] = useState<string[]>([]);
   const [portraitFiles, setPortraitFiles] = useState<File[]>([]);
@@ -323,7 +338,7 @@ function CreateWorkerModal({
       setConfirmed(false);
       setPortraits([]);
       setPortraitFiles([]);
-      setForm({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "" });
+      setForm({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "", consultDate: todayIso(), startWorkDate: "" });
     }
   }
   useEffect(() => {
@@ -424,6 +439,12 @@ function CreateWorkerModal({
       setFieldErrors({ dob: "Ngày sinh theo dạng YYYY-MM-DD." });
       return;
     }
+    const consultDate = isoDate(form.consultDate);
+    const startWorkDate = isoDate(form.startWorkDate);
+    if (consultDate === "invalid" || startWorkDate === "invalid") {
+      setFieldErrors({ [consultDate === "invalid" ? "consultDate" : "startWorkDate"]: "Ngày theo dạng YYYY-MM-DD." });
+      return;
+    }
     if (!confirmed) {
       setChecking(true);
       setError("");
@@ -472,6 +493,8 @@ function CreateWorkerModal({
         manager_id: managerId,
         current_company_id: companyId,
         status: "candidate",
+        consult_date: consultDate,
+        start_work_date: startWorkDate,
       });
       if (pins.length > 0) {
         setNotice(`Đã thêm nhân sự mới. ${pins.join(". ")}`);
@@ -598,6 +621,14 @@ function CreateWorkerModal({
         </Field>
         <Field label="Quê quán">
           <input className={inputClass} value={form.hometown} onChange={(e) => set("hometown", e.target.value)} />
+        </Field>
+        <Field label="Ngày tư vấn">
+          <input type="date" className={`${inputClass} ${fieldErrors.consultDate ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.consultDate} onChange={(e) => set("consultDate", e.target.value)} />
+          {fieldErrors.consultDate && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.consultDate}</p>}
+        </Field>
+        <Field label="Ngày vào làm">
+          <input type="date" className={`${inputClass} ${fieldErrors.startWorkDate ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.startWorkDate} onChange={(e) => set("startWorkDate", e.target.value)} />
+          {fieldErrors.startWorkDate && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.startWorkDate}</p>}
         </Field>
         <Field label="Công ty *">
           <SuggestInput value={form.company} onChange={(company) => set("company", company)} suggestions={companyNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ công ty mới" />
@@ -776,6 +807,9 @@ function EditWorkerModal({
     status: worker.status,
     sale: worker.recruiter,
     manager: worker.manager === "—" ? "" : worker.manager,
+    consultDate: worker.consultDate ?? "",
+    startWorkDate: worker.startWorkDate ?? "",
+    resignDate: worker.resignDate ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -801,6 +835,13 @@ function EditWorkerModal({
       setError("Nhập sale và người phụ trách. Có thể chọn gợi ý hoặc gõ tên mới.");
       return;
     }
+    const consultDate = isoDate(form.consultDate);
+    const startWorkDate = isoDate(form.startWorkDate);
+    const resignDate = isoDate(form.resignDate);
+    if (consultDate === "invalid" || startWorkDate === "invalid" || resignDate === "invalid") {
+      setError("Ngày theo dạng YYYY-MM-DD.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -817,6 +858,9 @@ function EditWorkerModal({
         status: VI_STATUS[form.status] ?? form.status.trim(),
         recruiter_id: saleId,
         manager_id: managerId,
+        consult_date: consultDate,
+        start_work_date: startWorkDate,
+        resign_date: resignDate,
       });
       onSaved();
       if (pins.length > 0) {
@@ -860,6 +904,9 @@ function EditWorkerModal({
         <Field label="Trạng thái"><SuggestInput value={form.status} onChange={(status) => set("status", status)} suggestions={statusNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ trạng thái mới" /></Field>
         <Field label="Sale"><SuggestInput value={form.sale} onChange={(sale) => set("sale", sale)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ sale mới" /></Field>
         <Field label="Phụ trách *"><SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" /></Field>
+        <Field label="Ngày tư vấn"><input type="date" className={inputClass} value={form.consultDate} onChange={(e) => set("consultDate", e.target.value)} /></Field>
+        <Field label="Ngày vào làm"><input type="date" className={inputClass} value={form.startWorkDate} onChange={(e) => set("startWorkDate", e.target.value)} /></Field>
+        <Field label="Ngày nghỉ việc"><input type="date" className={inputClass} value={form.resignDate} onChange={(e) => set("resignDate", e.target.value)} /></Field>
       </div>
     </Modal>
   );

@@ -63,6 +63,9 @@ export interface Worker {
   advance: number;
   avatarColor: string;
   initials: string;
+  consultDate?: string;
+  startWorkDate?: string;
+  resignDate?: string;
   assignments?: WorkAssignment[];
 }
 

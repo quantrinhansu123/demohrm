@@ -7,6 +7,7 @@ import { apiError, json, readBody } from "@/lib/server/http";
 const WORKER_PATCH = [
   "full_name", "phone", "date_of_birth", "gender", "hometown", "permanent_address",
   "employment_type", "status", "current_company_id", "current_position", "recruiter_id", "manager_id", "note",
+  "consult_date", "start_work_date", "resign_date",
 ] as const;
 
 const PUBLIC_RETURN = "id,code,full_name,phone,hometown,employment_type,status,current_position,current_company_id,recruiter_id";

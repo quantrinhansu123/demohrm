@@ -148,6 +148,9 @@ export interface LiveWorkerRow {
   recruited_by: string | null;
   manager_id?: number | null;
   manager_name?: string | null;
+  consult_date?: string | null;
+  start_work_date?: string | null;
+  resign_date?: string | null;
   supervisor_name: string | null;
   supervisor_phone: string | null;
   assignment_count: number;
@@ -198,6 +201,9 @@ export function toWorker(row: LiveWorkerRow): Worker {
     advance: 0,
     avatarColor: AVATARS[Math.abs(row.id) % AVATARS.length] ?? "avatar-blue",
     initials: initialsOf(row.full_name),
+    consultDate: row.consult_date ?? "",
+    startWorkDate: row.start_work_date ?? "",
+    resignDate: row.resign_date ?? "",
   };
 }
 
@@ -242,6 +248,9 @@ export interface WorkerCreateBody {
   current_company_id: number;
   status: string;
   note?: string | null;
+  consult_date?: string | null;
+  start_work_date?: string | null;
+  resign_date?: string | null;
 }
 
 export function createLiveWorker(body: WorkerCreateBody): Promise<LiveWorkerRow> {
@@ -314,6 +323,9 @@ export function updateLiveWorker(id: number, body: {
   status: string;
   recruiter_id?: number;
   manager_id?: number;
+  consult_date?: string | null;
+  start_work_date?: string | null;
+  resign_date?: string | null;
 }): Promise<unknown> {
   return apiPatch(`/workers/${id}`, body);
 }

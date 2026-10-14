@@ -28,6 +28,11 @@ export interface LiveOrderRow {
   card_note?: string | null;
   video_url?: string | null;
   image_urls?: string[];
+  pinned_at?: string | null;
+}
+
+export function pinLiveOrder(orderId: number, pinned: boolean): Promise<{ id: number; pinned_at: string | null }> {
+  return apiPatch(`/orders/${orderId}/pin`, { pinned });
 }
 
 export interface LivePositionRow {
@@ -126,6 +131,7 @@ export function toOrderSummary(row: LiveOrderRow, positions: LivePositionRow[]):
     cardNote: row.card_note ?? null,
     videoUrl: row.video_url ?? "",
     imageUrls: row.image_urls ?? [],
+    pinnedAt: row.pinned_at ?? null,
   };
 }
 

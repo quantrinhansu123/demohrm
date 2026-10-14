@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Copy, MoreHorizontal, Plus } from "lucide-react";
+import { Copy, MoreHorizontal, Pin, Plus } from "lucide-react";
 import { useApp } from "@/lib/store";
-import { createLiveCompany, fetchLiveOrders, fetchLivePositions, fetchLiveSites, saveLiveOrderMedia, toOrderSummary, updateLiveCompany } from "@/lib/live";
+import { createLiveCompany, fetchLiveOrders, fetchLivePositions, fetchLiveSites, pinLiveOrder, saveLiveOrderMedia, toOrderSummary, updateLiveCompany } from "@/lib/live";
 import type { LiveCompany, LiveSite } from "@/lib/live";
 import type { OrderSummary } from "@/types/hrm";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
@@ -245,10 +245,39 @@ export function OrdersView() {
     }
   }, [orders, drafts]);
 
-  const visible = useMemo(
-    () => orders.filter((o) => o.title.toLowerCase().includes(query.toLowerCase().trim()) || o.code.toLowerCase().includes(query.toLowerCase().trim())),
-    [query, orders]
-  );
+  const visible = useMemo(() => {
+    const needle = query.toLowerCase().trim();
+    const rows = orders.filter((o) => o.title.toLowerCase().includes(needle) || o.code.toLowerCase().includes(needle));
+    // Đơn ghim lên đầu (ghim gần nhất trước); đơn còn lại giữ thứ tự cũ.
+    return rows
+      .map((o, i) => ({ o, i }))
+      .sort((a, b) => {
+        const pa = a.o.pinnedAt ?? "";
+        const pb = b.o.pinnedAt ?? "";
+        if (pa && pb) return pa < pb ? 1 : pa > pb ? -1 : a.i - b.i;
+        if (pa) return -1;
+        if (pb) return 1;
+        return a.i - b.i;
+      })
+      .map(({ o }) => o);
+  }, [query, orders]);
+  const pinnedCount = visible.filter((o) => o.pinnedAt).length;
+
+  const togglePin = async (order: OrderSummary) => {
+    if (!order.orderId) return;
+    const pinned = !order.pinnedAt;
+    const optimistic = pinned ? new Date().toISOString() : null;
+    const setPin = (value: string | null) =>
+      setOrders((rows) => rows.map((row) => (row.code === order.code ? { ...row, pinnedAt: value } : row)));
+    setPin(optimistic);
+    try {
+      const saved = await pinLiveOrder(order.orderId, pinned);
+      setPin(saved.pinned_at);
+    } catch (e) {
+      setPin(order.pinnedAt ?? null);
+      window.alert(e instanceof ApiError ? e.message : "Không ghim được đơn hàng.");
+    }
+  };
 
   const deleteOrder = async (order: OrderSummary) => {
     if (!order.orderId) return;
@@ -308,11 +337,13 @@ export function OrdersView() {
       />
       <QueryState loading={loading || !periodCode} error={error}>
         <div className="page-body flex flex-col gap-3 bg-[#f4f6f9]">
+          {pinnedCount > 0 && <p className="text-[12px] font-semibold text-slate-500">Đã ghim ({pinnedCount})</p>}
           {visible.map((o) => (
             <OrderDemandCard
               key={o.code}
               order={o}
               draft={drafts[o.code]}
+              onTogglePin={() => void togglePin(o)}
               onOpen={openOrder}
               onEdit={() => setEditing(o)}
               onDelete={() => void deleteOrder(o)}
@@ -354,9 +385,11 @@ function OrderDemandCard({
   onOpen,
   onEdit,
   onDelete,
+  onTogglePin,
 }: {
   order: OrderSummary;
   draft?: OrderDraft;
+  onTogglePin: () => void;
   onOpen: (order: OrderSummary, tab?: "desc" | "workers") => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -428,7 +461,7 @@ function OrderDemandCard({
   };
 
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+    <article className={`rounded-xl border bg-white p-3 shadow-sm ${order.pinnedAt ? "border-[#2563eb]/40 ring-1 ring-[#2563eb]/20" : "border-slate-200"}`}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
         <div className="w-full shrink-0 lg:w-[340px]">
           <PreviewMedia src={videoLink} images={images} onCopy={() => void copyShare()} copied={copied} onAdd={onEdit} />
@@ -441,7 +474,17 @@ function OrderDemandCard({
               <StatusPill tone="neutral">Thời vụ</StatusPill>
               {preview && <span className="text-[12px] font-semibold text-rose-600">3 thông tin chưa khớp</span>}
             </div>
-            <div className="relative shrink-0" ref={menuRef}>
+            <div className="relative flex shrink-0 items-center gap-1.5" ref={menuRef}>
+              <button
+                type="button"
+                onClick={onTogglePin}
+                className={`rounded-lg border p-1 ${order.pinnedAt ? "border-[#2563eb]/40 bg-blue-50 text-[#2563eb]" : "border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"}`}
+                aria-label={order.pinnedAt ? "Bỏ ghim đơn hàng" : "Ghim đơn hàng lên đầu"}
+                aria-pressed={!!order.pinnedAt}
+                title={order.pinnedAt ? "Bỏ ghim" : "Ghim lên đầu"}
+              >
+                <Pin className="h-4 w-4" fill={order.pinnedAt ? "currentColor" : "none"} />
+              </button>
               <button
                 type="button"
                 onClick={() => setMenuOpen((open) => !open)}
@@ -454,6 +497,7 @@ function OrderDemandCard({
               {menuOpen && (
                 <div className="absolute right-0 z-20 mt-1 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                   <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onOpen(order, "desc"); }}>Xem</button>
+                  <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onTogglePin(); }}>{order.pinnedAt ? "Bỏ ghim" : "Ghim"}</button>
                   <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onEdit(); }}>Sửa</button>
                   <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setMenuOpen(false); onDelete(); }}>Xóa</button>
                 </div>

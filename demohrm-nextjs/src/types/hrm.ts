@@ -239,6 +239,7 @@ export interface OrderSummary {
   cardNote?: string | null;
   videoUrl?: string;
   imageUrls?: string[];
+  pinnedAt?: string | null;
 }
 
 export interface CompanyRow {

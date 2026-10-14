@@ -74,15 +74,25 @@ export async function listImageUrls(orderIds: number[]): Promise<Map<number, str
   return map;
 }
 
+async function loadPinned(ids: number[]): Promise<Map<number, string | null>> {
+  const res = await getSupabase().from("orders").select("id,pinned_at").in("id", ids);
+  if (res.error) {
+    if (res.error.code === "42703" || res.error.code === "PGRST204") return new Map();
+    throw res.error;
+  }
+  return new Map((res.data ?? []).map((row) => [row.id as number, (row.pinned_at as string | null) ?? null]));
+}
+
 export async function attachOrderMedia<T extends { order_id: number }>(
   rows: T[],
-): Promise<Array<T & { card_note: string | null; video_url: string | null; image_urls: string[] }>> {
+): Promise<Array<T & { card_note: string | null; video_url: string | null; image_urls: string[]; pinned_at: string | null }>> {
   if (rows.length === 0) return [];
   const ids = rows.map((row) => row.order_id);
-  const [extras, images] = await Promise.all([loadOrderExtras(ids), listImageUrls(ids)]);
+  const [extras, images, pinned] = await Promise.all([loadOrderExtras(ids), listImageUrls(ids), loadPinned(ids)]);
   const byId = new Map(extras.map((row) => [row.id, row]));
   return rows.map((row) => ({
     ...row,
+    pinned_at: pinned.get(row.order_id) ?? null,
     card_note: byId.get(row.order_id)?.note ?? null,
     video_url: byId.get(row.order_id)?.video_url ?? null,
     image_urls: images.get(row.order_id) ?? [],

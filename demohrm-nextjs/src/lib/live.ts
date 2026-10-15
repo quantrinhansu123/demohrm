@@ -1,7 +1,8 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
 import type { ApiOptions } from "@/lib/api";
 import { initialsOf } from "@/lib/format";
-import type { OrderSummary, Worker, WorkerStatus, WorkerType, WorkAssignment } from "@/types/hrm";
+import { RESIGNED_STATUS, WORKER_STATUS_LABEL } from "@/lib/worker-status";
+import type { OrderSummary, Worker, WorkerType, WorkAssignment } from "@/types/hrm";
 
 // Cac dong tra ve tu BE (view v_* trong schema trangway).
 
@@ -163,14 +164,7 @@ export interface LiveWorkerRow {
   open_duplicate_alerts: number;
 }
 
-const EN_STATUS: Record<string, WorkerStatus> = {
-  working: "Đang làm",
-  waiting_start: "Chờ đi làm",
-  on_leave: "Tạm nghỉ",
-  resigned: "Nghỉ việc",
-  no_show: "Không đi làm",
-  candidate: "Đang tư vấn",
-};
+const EN_STATUS = WORKER_STATUS_LABEL;
 
 export const VI_STATUS: Record<string, string> = {
   "Đang làm": "working",
@@ -298,6 +292,12 @@ export interface DuplicateHit {
   field: string;
   level: "exact" | "suspect" | string;
   matched_value: string;
+  matched_status?: string | null;
+}
+
+// Chỉ tái tuyển / tạo mới được khi hồ sơ trùng đã Nghỉ việc.
+export function isRehirableDuplicate(hit: DuplicateHit): boolean {
+  return hit.matched_status === RESIGNED_STATUS;
 }
 
 export function checkLiveDuplicates(body: {
@@ -329,6 +329,7 @@ export function updateLiveWorker(id: number, body: {
   status: string;
   recruiter_id?: number;
   manager_id?: number;
+  current_company_id?: number;
   consult_date?: string | null;
   start_work_date?: string | null;
   resign_date?: string | null;

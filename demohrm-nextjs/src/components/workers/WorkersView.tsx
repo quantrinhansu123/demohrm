@@ -14,12 +14,14 @@ import {
   dupFieldLabel,
   fetchLiveOrders,
   fetchLiveWorkers,
+  isRehirableDuplicate,
   toWorker,
   updateLiveWorker,
   uploadWorkerPortrait,
 } from "@/lib/live";
 import type { DuplicateHit, LiveCompany, LiveStaff } from "@/lib/live";
 import { maskCitizenId, workerStatusTone } from "@/lib/format";
+import { workerStatusLabel } from "@/lib/worker-status";
 import { SuggestInput } from "@/components/ui/suggest-input";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { Avatar } from "@/components/ui/avatar";
@@ -75,6 +77,16 @@ function todayIso(): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+type ConsultDates = { consultDate: string | null; startWorkDate: string | null };
+
+function parseConsultDates(form: { consultDate: string; startWorkDate: string }): ConsultDates | { invalidField: "consultDate" | "startWorkDate" } {
+  const consultDate = isoDate(form.consultDate);
+  if (consultDate === "invalid") return { invalidField: "consultDate" };
+  const startWorkDate = isoDate(form.startWorkDate);
+  if (startWorkDate === "invalid") return { invalidField: "startWorkDate" };
+  return { consultDate, startWorkDate };
 }
 
 async function ensureCompanyId(companies: LiveCompany[], name: string): Promise<number> {
@@ -427,6 +439,24 @@ function CreateWorkerModal({
     return () => window.removeEventListener("paste", onPaste);
   }, [addPortraitImages]);
 
+  const rehirableHits = (dupHits ?? []).filter((h) => h.level === "exact" && isRehirableDuplicate(h));
+
+  // Công ty, sale, phụ trách: tạo mới nếu chưa có (dùng chung cho tạo hồ sơ và tái tuyển).
+  const resolveAssignees = async () => {
+    const pins: string[] = [];
+    const known = new Map<string, number>();
+    const companyId = await ensureCompanyId(companies, form.company);
+    const recruiterId = await ensureStaffId(staff, known, form.sale, "Sale", pins);
+    const managerId = await ensureStaffId(staff, known, form.manager, "Phụ trách", pins);
+    return { companyId, recruiterId, managerId, pins };
+  };
+
+  const announceNewStaff = async (pins: string[]) => {
+    if (pins.length === 0) return;
+    setNotice(`Đã thêm nhân sự mới. ${pins.join(". ")}`);
+    await reloadCatalog();
+  };
+
   const save = async () => {
     const parsed = CreateWorkerSchema.safeParse(form);
     if (!parsed.success) {
@@ -439,10 +469,9 @@ function CreateWorkerModal({
       setFieldErrors({ dob: "Ngày sinh theo dạng YYYY-MM-DD." });
       return;
     }
-    const consultDate = isoDate(form.consultDate);
-    const startWorkDate = isoDate(form.startWorkDate);
-    if (consultDate === "invalid" || startWorkDate === "invalid") {
-      setFieldErrors({ [consultDate === "invalid" ? "consultDate" : "startWorkDate"]: "Ngày theo dạng YYYY-MM-DD." });
+    const dates = parseConsultDates(form);
+    if ("invalidField" in dates) {
+      setFieldErrors({ [dates.invalidField]: "Ngày theo dạng YYYY-MM-DD." });
       return;
     }
     if (!confirmed) {
@@ -458,7 +487,21 @@ function CreateWorkerModal({
         const exact = hits.filter((h) => h.level === "exact");
         if (exact.length > 0) {
           setDupHits(hits);
-          setError(`Trùng hồ sơ (${exact.map((h) => `${dupFieldLabel(h.field)} với ${h.matched_code}`).join("; ")}).`);
+          const blocking = exact.filter((h) => !isRehirableDuplicate(h));
+          if (blocking.length > 0) {
+            setError(
+              `Trùng hồ sơ (${blocking
+                .map((h) => `${dupFieldLabel(h.field)} với ${h.matched_code} (${h.matched_name}, ${workerStatusLabel(h.matched_status)})`)
+                .join("; ")}). Hồ sơ này chưa nghỉ việc nên không tạo mới được.`,
+            );
+            return;
+          }
+          // Mọi hồ sơ trùng đã Nghỉ việc -> cho tạo mới hoặc tái tuyển ở lần bấm tiếp theo.
+          setConfirmed(true);
+          setError("");
+          setNotice(
+            `Phát hiện ${exact[0].matched_code} (${exact[0].matched_name}) đã Nghỉ việc. Bấm “Vẫn lưu” để tạo hồ sơ mới, hoặc “Tái tuyển dụng” để mở lại hồ sơ cũ.`,
+          );
           return;
         }
         if (hits.length > 0) {
@@ -476,11 +519,7 @@ function CreateWorkerModal({
     setSaving(true);
     setError("");
     try {
-      const pins: string[] = [];
-      const known = new Map<string, number>();
-      const companyId = await ensureCompanyId(companies, form.company);
-      const recruiterId = await ensureStaffId(staff, known, form.sale, "Sale", pins);
-      const managerId = await ensureStaffId(staff, known, form.manager, "Phụ trách", pins);
+      const { companyId, recruiterId, managerId, pins } = await resolveAssignees();
       const createdRow = await createLiveWorker({
         note: form.source.trim() ? `Nguồn: ${form.source.trim()}` : null,
         full_name: form.name.trim(),
@@ -493,13 +532,10 @@ function CreateWorkerModal({
         manager_id: managerId,
         current_company_id: companyId,
         status: "candidate",
-        consult_date: consultDate,
-        start_work_date: startWorkDate,
+        consult_date: dates.consultDate,
+        start_work_date: dates.startWorkDate,
       });
-      if (pins.length > 0) {
-        setNotice(`Đã thêm nhân sự mới. ${pins.join(". ")}`);
-        await reloadCatalog();
-      }
+      await announceNewStaff(pins);
       if (portraitFiles.length > 0) {
         setUploadingPhoto(true);
         try {
@@ -518,6 +554,44 @@ function CreateWorkerModal({
       onCreated();
     } catch (e) {
       setError(errorText(e, "Lưu thất bại."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const rehireExact = async () => {
+    const target = rehirableHits[0];
+    const dates = parseConsultDates(form);
+    if (!target) return;
+    if ("invalidField" in dates) {
+      setFieldErrors({ [dates.invalidField]: "Ngày theo dạng YYYY-MM-DD." });
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const { companyId, recruiterId, managerId, pins } = await resolveAssignees();
+      await updateLiveWorker(target.matched_worker_id, {
+        full_name: form.name.trim(),
+        phone: form.phone.trim(),
+        hometown: form.hometown.trim() || null,
+        current_position: "",
+        employment_type: VI_TYPE[form.type] ?? form.type.trim(),
+        status: "candidate",
+        recruiter_id: recruiterId,
+        manager_id: managerId,
+        current_company_id: companyId,
+        consult_date: dates.consultDate,
+        start_work_date: dates.startWorkDate,
+        resign_date: null,
+      });
+      await announceNewStaff(pins);
+      setNotice((prev) => `${prev ? `${prev} ` : ""}Đã mở lại hồ sơ ${target.matched_code} (${target.matched_name}) sang Đang tư vấn.`);
+      setCreated({ id: target.matched_worker_id, code: target.matched_code });
+      setStep("close");
+      onCreated();
+    } catch (e) {
+      setError(errorText(e, "Tái tuyển dụng thất bại."));
     } finally {
       setSaving(false);
     }
@@ -557,7 +631,6 @@ function CreateWorkerModal({
   const staffNames = uniq(staff.map((person) => person.full_name));
   const typeNames = uniq([...TYPES, ...knownWorkers.map((worker) => worker.type)]);
   const sources = uniq(["Trangway", ...companies.map((company) => company.short_name)]);
-
   return (
     <Modal
       open={open}
@@ -567,6 +640,11 @@ function CreateWorkerModal({
         step === "consult" ? (
           <>
             <Button variant="outline" onClick={onClose}>Hủy</Button>
+            {rehirableHits.length > 0 && confirmed && (
+              <Button variant="outline" disabled={saving || checking} onClick={() => void rehireExact()}>
+                {saving ? "Đang mở lại..." : `Tái tuyển ${rehirableHits[0].matched_code}`}
+              </Button>
+            )}
             <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" disabled={saving || checking || uploadingPhoto} onClick={() => void save()}>
               {checking ? "Đang kiểm trùng..." : saving ? "Đang lưu..." : uploadingPhoto ? "Đang tải ảnh..." : dupHits && dupHits.length > 0 ? "Vẫn lưu" : "Lưu hồ sơ"}
             </Button>

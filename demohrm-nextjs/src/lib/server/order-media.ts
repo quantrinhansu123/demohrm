@@ -38,19 +38,25 @@ export function storagePathFromUrl(url: string): string | null {
   }
 }
 
-type OrderExtra = { id: number; note: string | null; video_url: string | null };
+type OrderExtra = { id: number; note: string | null; video_url: string | null; pinned_at: string | null };
 
+const MISSING_COLUMN = new Set(["42703", "PGRST204"]);
+
+// Mot query lay note/video/ghim; thieu cot (chua chay migration) thi lui ve cot cu.
 async function loadOrderExtras(ids: number[]): Promise<OrderExtra[]> {
-  const withVideo = await getSupabase().from("orders").select("id,note,video_url").in("id", ids);
-  if (!withVideo.error) return (withVideo.data ?? []) as OrderExtra[];
-  if (withVideo.error.code !== "42703" && withVideo.error.code !== "PGRST204") throw withVideo.error;
-  const plain = await getSupabase().from("orders").select("id,note").in("id", ids);
-  if (plain.error) throw plain.error;
-  return (plain.data ?? []).map((row) => ({
-    id: row.id as number,
-    note: (row.note as string | null) ?? null,
-    video_url: null,
-  }));
+  for (const columns of ["id,note,video_url,pinned_at", "id,note,video_url", "id,note"]) {
+    const res = await getSupabase().from("orders").select(columns).in("id", ids);
+    if (!res.error) {
+      return ((res.data ?? []) as unknown as Array<Partial<OrderExtra> & { id: number }>).map((row) => ({
+        id: row.id,
+        note: row.note ?? null,
+        video_url: row.video_url ?? null,
+        pinned_at: row.pinned_at ?? null,
+      }));
+    }
+    if (!res.error.code || !MISSING_COLUMN.has(res.error.code)) throw res.error;
+  }
+  return [];
 }
 
 export async function listImageUrls(orderIds: number[]): Promise<Map<number, string[]>> {
@@ -74,25 +80,16 @@ export async function listImageUrls(orderIds: number[]): Promise<Map<number, str
   return map;
 }
 
-async function loadPinned(ids: number[]): Promise<Map<number, string | null>> {
-  const res = await getSupabase().from("orders").select("id,pinned_at").in("id", ids);
-  if (res.error) {
-    if (res.error.code === "42703" || res.error.code === "PGRST204") return new Map();
-    throw res.error;
-  }
-  return new Map((res.data ?? []).map((row) => [row.id as number, (row.pinned_at as string | null) ?? null]));
-}
-
 export async function attachOrderMedia<T extends { order_id: number }>(
   rows: T[],
 ): Promise<Array<T & { card_note: string | null; video_url: string | null; image_urls: string[]; pinned_at: string | null }>> {
   if (rows.length === 0) return [];
   const ids = rows.map((row) => row.order_id);
-  const [extras, images, pinned] = await Promise.all([loadOrderExtras(ids), listImageUrls(ids), loadPinned(ids)]);
+  const [extras, images] = await Promise.all([loadOrderExtras(ids), listImageUrls(ids)]);
   const byId = new Map(extras.map((row) => [row.id, row]));
   return rows.map((row) => ({
     ...row,
-    pinned_at: pinned.get(row.order_id) ?? null,
+    pinned_at: byId.get(row.order_id)?.pinned_at ?? null,
     card_note: byId.get(row.order_id)?.note ?? null,
     video_url: byId.get(row.order_id)?.video_url ?? null,
     image_urls: images.get(row.order_id) ?? [],

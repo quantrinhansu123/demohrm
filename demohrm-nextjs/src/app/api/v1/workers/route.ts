@@ -4,6 +4,7 @@ import { getAuth } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody, searchParams } from "@/lib/server/http";
 import { ROLE } from "@/lib/server/roles";
+import { findBlockingDuplicate } from "@/lib/server/worker-duplicates";
 
 const WORKER_INSERT = [
   "code", "full_name", "phone", "date_of_birth", "gender", "hometown", "permanent_address",
@@ -32,6 +33,26 @@ function clampPage(sp: URLSearchParams, fallback = 50, max = 200): { limit: numb
 
 function safeSearch(raw: unknown): string {
   return String(raw ?? "").replace(/[%_,.()]/g, "").trim().slice(0, 80);
+}
+
+type WorkerExtra = {
+  id: number;
+  manager_id: number | null;
+  consult_date?: string | null;
+  start_work_date?: string | null;
+  resign_date?: string | null;
+};
+
+const MISSING_COLUMN = new Set(["PGRST204", "42703"]);
+
+// Mot query lay manager + 3 ngay; thieu cot (chua chay migration) thi lui ve cot cu.
+async function loadWorkerExtras(ids: number[]): Promise<WorkerExtra[]> {
+  for (const columns of ["id,manager_id,consult_date,start_work_date,resign_date", "id,manager_id", "id"]) {
+    const res = await getSupabase().from("workers").select(columns).in("id", ids);
+    if (!res.error) return ((res.data ?? []) as unknown) as WorkerExtra[];
+    if (!res.error.code || !MISSING_COLUMN.has(res.error.code)) throw res.error;
+  }
+  return [];
 }
 
 async function nextWorkerCode(): Promise<string> {
@@ -66,12 +87,9 @@ export async function GET(req: Request): Promise<Response> {
     let rows = (data ?? []) as Array<Record<string, unknown>>;
     const ids = rows.map((row) => Number(row["id"])).filter((id) => Number.isInteger(id) && id > 0);
     if (ids.length > 0) {
-      const links = await getSupabase().from("workers").select("id,manager_id").in("id", ids);
-      if (links.error && links.error.code !== "PGRST204" && links.error.code !== "42703") throw links.error;
-      const byWorker = new Map((links.data ?? []).map((row) => [row.id as number, row.manager_id as number | null]));
-      const dates = await getSupabase().from("workers").select("id,consult_date,start_work_date,resign_date").in("id", ids);
-      if (dates.error && dates.error.code !== "PGRST204" && dates.error.code !== "42703") throw dates.error;
-      const dateById = new Map((dates.data ?? []).map((row) => [row.id as number, row]));
+      const extras = await loadWorkerExtras(ids);
+      const byWorker = new Map(extras.map((row) => [row.id, row.manager_id]));
+      const dateById = new Map(extras.map((row) => [row.id, row]));
       const managerIds = [...new Set([...byWorker.values()].filter((id): id is number => typeof id === "number" && id > 0))];
       const people = managerIds.length > 0
         ? await getSupabase().from("staff").select("id,full_name").in("id", managerIds)
@@ -105,14 +123,23 @@ export async function GET(req: Request): Promise<Response> {
 }
 
 // POST /api/v1/workers — Tao ho so NLD
+// Chan neu CCCD/SDT thuoc ho so chua Nghi viec (xem findBlockingDuplicate).
 export async function POST(req: Request): Promise<Response> {
   try {
     const ctx = getAuth(req);
     const body = pick(await readBody(req), WORKER_INSERT);
+    const blocking = await findBlockingDuplicate(body);
+    if (blocking) return json({ error: "duplicate", message: blocking.message }, 409);
     if (ctx.staffId) body["created_by"] = Number(ctx.staffId);
     if (!body["code"]) body["code"] = await nextWorkerCode();
     const { data, error } = await getSupabase().from("workers").insert(body).select(PUBLIC_RETURN).single();
-    if (error) throw error;
+    if (error) {
+      // Index duy nhat tung phan (supabase/drop-national-id-unique.sql) bat dong thoi tao trung.
+      if ((error as { code?: string }).code === "23505") {
+        return json({ error: "duplicate", message: "CCCD vừa được tạo ở hồ sơ khác. Tải lại và kiểm trùng." }, 409);
+      }
+      throw error;
+    }
     return json(data, 201);
   } catch (e) {
     return apiError(e);

@@ -25,7 +25,14 @@ export async function POST(req: Request): Promise<Response> {
       p_dob: strOrNull(b["date_of_birth"]),
     });
     if (error) throw error;
-    return json(data);
+    const hits = (data ?? []) as Array<{ matched_worker_id: number }>;
+    // Gan trang thai ho so cu de FE phan biet chan tao moi / cho tai tuyen (RESIGNED_STATUS).
+    const ids = [...new Set(hits.map((h) => Number(h.matched_worker_id)).filter((n) => Number.isInteger(n) && n > 0))];
+    if (ids.length === 0) return json(hits);
+    const { data: workers, error: statusError } = await getSupabase().from("workers").select("id,status").in("id", ids);
+    if (statusError) throw statusError;
+    const statusById = new Map((workers ?? []).map((w) => [w.id as number, w.status as string]));
+    return json(hits.map((h) => ({ ...h, matched_status: statusById.get(Number(h.matched_worker_id)) ?? null })));
   } catch (e) {
     return apiError(e);
   }

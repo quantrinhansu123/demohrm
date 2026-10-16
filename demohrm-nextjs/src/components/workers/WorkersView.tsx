@@ -457,65 +457,7 @@ function CreateWorkerModal({
     await reloadCatalog();
   };
 
-  const save = async () => {
-    const parsed = CreateWorkerSchema.safeParse(form);
-    if (!parsed.success) {
-      setFieldErrors(formatZodErrors(parsed.error));
-      return;
-    }
-    setFieldErrors({});
-    const dob = isoDate(form.dob);
-    if (dob === "invalid") {
-      setFieldErrors({ dob: "Ngày sinh theo dạng YYYY-MM-DD." });
-      return;
-    }
-    const dates = parseConsultDates(form);
-    if ("invalidField" in dates) {
-      setFieldErrors({ [dates.invalidField]: "Ngày theo dạng YYYY-MM-DD." });
-      return;
-    }
-    if (!confirmed) {
-      setChecking(true);
-      setError("");
-      try {
-        const hits = await checkLiveDuplicates({
-          national_id: form.citizenId.trim(),
-          phone: form.phone.trim(),
-          full_name: form.name.trim(),
-          date_of_birth: dob,
-        });
-        const exact = hits.filter((h) => h.level === "exact");
-        if (exact.length > 0) {
-          setDupHits(hits);
-          const blocking = exact.filter((h) => !isRehirableDuplicate(h));
-          if (blocking.length > 0) {
-            setError(
-              `Trùng hồ sơ (${blocking
-                .map((h) => `${dupFieldLabel(h.field)} với ${h.matched_code} (${h.matched_name}, ${workerStatusLabel(h.matched_status)})`)
-                .join("; ")}). Hồ sơ này chưa nghỉ việc nên không tạo mới được.`,
-            );
-            return;
-          }
-          // Mọi hồ sơ trùng đã Nghỉ việc -> cho tạo mới hoặc tái tuyển ở lần bấm tiếp theo.
-          setConfirmed(true);
-          setError("");
-          setNotice(
-            `Phát hiện ${exact[0].matched_code} (${exact[0].matched_name}) đã Nghỉ việc. Bấm “Vẫn lưu” để tạo hồ sơ mới, hoặc “Tái tuyển dụng” để mở lại hồ sơ cũ.`,
-          );
-          return;
-        }
-        if (hits.length > 0) {
-          setDupHits(hits);
-          setConfirmed(true);
-          return;
-        }
-      } catch (e) {
-        setError(errorText(e, "Kiểm trùng thất bại."));
-        return;
-      } finally {
-        setChecking(false);
-      }
-    }
+  const insertNewRecord = async (dob: string | null, dates: ConsultDates) => {
     setSaving(true);
     setError("");
     try {
@@ -557,6 +499,70 @@ function CreateWorkerModal({
     } finally {
       setSaving(false);
     }
+  };
+
+  const save = async () => {
+    const parsed = CreateWorkerSchema.safeParse(form);
+    if (!parsed.success) {
+      setFieldErrors(formatZodErrors(parsed.error));
+      return;
+    }
+    setFieldErrors({});
+    const dob = isoDate(form.dob);
+    if (dob === "invalid") {
+      setFieldErrors({ dob: "Ngày sinh theo dạng YYYY-MM-DD." });
+      return;
+    }
+    const dates = parseConsultDates(form);
+    if ("invalidField" in dates) {
+      setFieldErrors({ [dates.invalidField]: "Ngày theo dạng YYYY-MM-DD." });
+      return;
+    }
+    if (!confirmed) {
+      setChecking(true);
+      setError("");
+      try {
+        const hits = await checkLiveDuplicates({
+          national_id: form.citizenId.trim(),
+          phone: form.phone.trim(),
+          full_name: form.name.trim(),
+          date_of_birth: dob,
+        });
+        const exact = hits.filter((h) => h.level === "exact");
+        if (exact.length > 0) {
+          setDupHits(hits);
+          const blocking = exact.filter((h) => !isRehirableDuplicate(h));
+          if (blocking.length > 0) {
+            // Còn hồ sơ trùng CCCD/SĐT chưa nghỉ -> chặn cứng, không tự động cho nghỉ.
+            // Muốn tạo mới: mở từng hồ sơ liệt kê dưới đây, Sửa sang Nghỉ việc (nếu thực tế đã nghỉ), rồi tạo lại.
+            setError(
+              `Trùng hồ sơ (${blocking
+                .map((h) => `${dupFieldLabel(h.field)} với ${h.matched_code} (${h.matched_name}, ${workerStatusLabel(h.matched_status)})`)
+                .join("; ")}). Hồ sơ này chưa nghỉ việc nên không tạo mới được.`,
+            );
+            return;
+          }
+          // Mọi hồ sơ trùng đã Nghỉ việc -> cho tạo mới hoặc tái tuyển ở lần bấm tiếp theo.
+          setConfirmed(true);
+          setError("");
+          setNotice(
+            `Phát hiện ${exact[0].matched_code} (${exact[0].matched_name}) đã Nghỉ việc. Bấm “Vẫn lưu” để tạo hồ sơ mới, hoặc “Tái tuyển dụng” để mở lại hồ sơ cũ.`,
+          );
+          return;
+        }
+        if (hits.length > 0) {
+          setDupHits(hits);
+          setConfirmed(true);
+          return;
+        }
+      } catch (e) {
+        setError(errorText(e, "Kiểm trùng thất bại."));
+        return;
+      } finally {
+        setChecking(false);
+      }
+    }
+    await insertNewRecord(dob, dates);
   };
 
   const rehireExact = async () => {

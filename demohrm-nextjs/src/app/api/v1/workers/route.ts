@@ -55,6 +55,16 @@ async function loadWorkerExtras(ids: number[]): Promise<WorkerExtra[]> {
   return [];
 }
 
+const ACTIVE_UNIQUE_INDEX = "workers_national_id_active_unique";
+
+// 23505 sau khi da qua findBlockingDuplicate: hoac dong thoi tao trung (index tung phan),
+// hoac DB con rang buoc UNIQUE cu chua duoc go.
+function duplicateInsertMessage(dbMessage?: string): string {
+  if (dbMessage?.includes(ACTIVE_UNIQUE_INDEX)) return "CCCD vừa được tạo ở hồ sơ khác. Tải lại và kiểm trùng.";
+  const constraint = /unique constraint "([^"]+)"/.exec(dbMessage ?? "")?.[1] ?? "UNIQUE";
+  return `DB còn ràng buộc ${constraint} chặn CCCD/SĐT trùng. Chạy supabase/drop-national-id-unique.sql trong Supabase SQL editor.`;
+}
+
 async function nextWorkerCode(): Promise<string> {
   const { data, error } = await getSupabase().from("workers").select("code");
   if (error) throw error;
@@ -134,10 +144,8 @@ export async function POST(req: Request): Promise<Response> {
     if (!body["code"]) body["code"] = await nextWorkerCode();
     const { data, error } = await getSupabase().from("workers").insert(body).select(PUBLIC_RETURN).single();
     if (error) {
-      // Index duy nhat tung phan (supabase/drop-national-id-unique.sql) bat dong thoi tao trung.
-      if ((error as { code?: string }).code === "23505") {
-        return json({ error: "duplicate", message: "CCCD vừa được tạo ở hồ sơ khác. Tải lại và kiểm trùng." }, 409);
-      }
+      const err = error as { code?: string; message?: string };
+      if (err.code === "23505") return json({ error: "duplicate", message: duplicateInsertMessage(err.message) }, 409);
       throw error;
     }
     return json(data, 201);

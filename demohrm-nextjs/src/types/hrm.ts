@@ -15,6 +15,7 @@ export type ModuleId =
   | "attendance"
   | "timesheet"
   | "payroll"
+  | "advances"
   | "finance"
   | "commission"
   | "reports"

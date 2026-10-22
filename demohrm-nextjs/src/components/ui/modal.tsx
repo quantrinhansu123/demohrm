@@ -11,6 +11,8 @@ export function Modal({
   children,
   footer,
   wide,
+  closeOnBackdrop = true,
+  closeOnEscape = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -19,21 +21,23 @@ export function Modal({
   children: React.ReactNode;
   footer?: React.ReactNode;
   wide?: boolean;
+  closeOnBackdrop?: boolean;
+  closeOnEscape?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (closeOnEscape && e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, closeOnEscape]);
 
   if (!open) return null;
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
-      onClick={onClose}
+      onClick={closeOnBackdrop ? onClose : undefined}
       role="dialog"
       aria-modal="true"
     >
@@ -63,11 +67,13 @@ export function Modal({
 }
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  // Use div (not label): wrapping custom button/select controls in <label>
+  // can double-fire click in some browsers and instantly toggle the panel shut.
   return (
-    <label className="block">
+    <div className="block">
       <span className="mb-1 block text-[12.5px] font-medium text-slate-600">{label}</span>
       {children}
-    </label>
+    </div>
   );
 }
 

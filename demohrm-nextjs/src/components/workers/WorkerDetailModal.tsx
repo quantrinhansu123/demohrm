@@ -14,6 +14,7 @@ import {
 } from "@/lib/live";
 import type { LiveAdvance, LiveAssignmentRow } from "@/lib/live";
 import { formatVND, maskCitizenId } from "@/lib/format";
+import { todayInput } from "@/lib/cashbook";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusPill, statusToneForWorker } from "@/components/ui/badge";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
@@ -220,17 +221,15 @@ function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCcc
   );
 }
 
-function nowLocalInput(): string {
+function currentTimeInput(): string {
   const date = new Date();
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-function formatWhen(iso: string | null): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleString("vi-VN", { hour12: false });
+function formatAdvanceWhen(row: LiveAdvance): string {
+  const [year, month, day] = (row.advance_date || "").slice(0, 10).split("-");
+  const date = year && month && day ? `${day}/${month}/${year}` : row.advance_date || "—";
+  return `${date} ${(row.advance_time || "").slice(0, 5) || "—"}`;
 }
 
 export function WorkerDetailModal({
@@ -241,11 +240,12 @@ export function WorkerDetailModal({
   onClose: () => void;
 }) {
   const { access } = useSession();
-  const { periodCode, periods, staff } = useApp();
+  const { staff } = useApp();
   const [tab, setTab] = useState<"personal" | "job" | "payroll">("personal");
   const [showAddDot, setShowAddDot] = useState(false);
   const [newDot, setNewDot] = useState({ orderCode: "", position: "", startDate: new Date().toISOString().slice(0, 10) });
-  const [advAt, setAdvAt] = useState(nowLocalInput);
+  const [advDate, setAdvDate] = useState(todayInput);
+  const [advTime, setAdvTime] = useState(currentTimeInput);
   const [advAmount, setAdvAmount] = useState("");
   const [advReason, setAdvReason] = useState("");
   const [advStaffId, setAdvStaffId] = useState<number | null>(null);
@@ -332,8 +332,12 @@ export function WorkerDetailModal({
       setError("Nhập số tiền tạm ứng.");
       return;
     }
-    if (!advAt) {
-      setError("Chọn ngày giờ.");
+    if (!advDate) {
+      setError("Chọn ngày tạm ứng.");
+      return;
+    }
+    if (!advTime) {
+      setError("Chọn giờ tạm ứng.");
       return;
     }
     if (!advReason.trim()) {
@@ -344,36 +348,23 @@ export function WorkerDetailModal({
       setError("Chọn người tạm ứng.");
       return;
     }
-    if (!advPhoto) {
-      setError("Chụp ảnh bằng chứng.");
-      return;
-    }
-    const period = periods.find((p) => p.code === periodCode);
-    if (!period) {
-      setError("Chưa chọn kỳ lương.");
-      return;
-    }
-    const requestedAt = new Date(advAt);
-    if (Number.isNaN(requestedAt.getTime())) {
-      setError("Ngày giờ không hợp lệ.");
-      return;
-    }
     setBusy(true);
     setError("");
     try {
       await createLiveAdvance({
         worker_id: worker.id,
-        period_id: period.id,
         amount,
         reason: advReason.trim(),
-        requested_at: requestedAt.toISOString(),
+        advance_date: advDate,
+        advance_time: `${advTime}:00`,
         requested_by: advStaffId,
-        evidence: advPhoto,
+        evidence: advPhoto || undefined,
       });
       setAdvAmount("");
       setAdvReason("");
       setAdvPhoto("");
-      setAdvAt(nowLocalInput());
+      setAdvDate(todayInput());
+      setAdvTime(currentTimeInput());
       setAdvances(await fetchLiveAdvances(worker.id));
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Tạo tạm ứng thất bại.");
@@ -489,8 +480,11 @@ export function WorkerDetailModal({
       {tab === "payroll" && (
         <div className="mt-3 grid gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Ngày giờ *">
-              <input suppressHydrationWarning type="datetime-local" className={inputClass} value={advAt} onChange={(e) => setAdvAt(e.target.value)} />
+            <Field label="Ngày tạm ứng *">
+              <input suppressHydrationWarning type="date" className={inputClass} value={advDate} onChange={(e) => setAdvDate(e.target.value)} />
+            </Field>
+            <Field label="Giờ tạm ứng *">
+              <input suppressHydrationWarning type="time" className={inputClass} value={advTime} onChange={(e) => setAdvTime(e.target.value)} />
             </Field>
             <Field label="Số tiền *">
               <input suppressHydrationWarning value={advAmount} onChange={(e) => setAdvAmount(e.target.value)} inputMode="numeric" placeholder="Ví dụ: 500000" className={inputClass} />
@@ -502,7 +496,7 @@ export function WorkerDetailModal({
               <SearchableStaffSelect value={advStaffId} onChange={setAdvStaffId} staff={staff} placeholder="Chọn nhân sự" />
             </Field>
             <div className="sm:col-span-2">
-              <span className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh bằng chứng *</span>
+              <span className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh bằng chứng (không bắt buộc)</span>
               <div className="flex flex-wrap items-center gap-3">
                 <label className="cursor-pointer rounded-lg bg-[#0052cc] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-[#0747a6]">
                   Chụp ảnh
@@ -547,9 +541,9 @@ export function WorkerDetailModal({
                   <div className="grid h-16 w-16 place-items-center rounded-lg bg-slate-100 text-[11px] text-slate-400">Không ảnh</div>
                 )}
                 <div className="min-w-0 flex-1 text-[13px]">
-                  <div className="font-semibold text-slate-900">{formatWhen(row.requested_at)} · {formatVND(Number(row.amount) || 0)}</div>
+                  <div className="font-semibold text-slate-900">{formatAdvanceWhen(row)} · {formatVND(Number(row.amount) || 0)}</div>
                   <div className="text-slate-600">{row.reason || "—"}</div>
-                  <div className="text-[12px] text-slate-500">Người tạm ứng: {row.giver_name || "—"}</div>
+                  <div className="text-[12px] text-slate-500">Người đưa tiền: {row.giver_name || "—"} · {row.status}</div>
                 </div>
               </article>
             ))}

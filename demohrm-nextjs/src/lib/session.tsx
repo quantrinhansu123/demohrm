@@ -26,6 +26,7 @@ interface SessionState {
 
 const EMPTY_ACCESS: Access = {
   canViewFinance: false,
+  canViewAdvances: false,
   canViewCommission: false,
   canViewAudit: false,
   canViewCccd: false,

@@ -23,9 +23,37 @@ export function apiError(e: unknown): Response {
   if (err.code === "23P01") return Response.json({ error: "overlap", message: "Hai đợt làm việc chồng thời gian." }, { status: 409 });
   if (err.code === "23503") return Response.json({ error: "foreign_key", message: "Tham chiếu không tồn tại hoặc hồ sơ đang được dùng." }, { status: 400 });
   if (err.code === "PGRST116") return Response.json({ error: "not_found", message: "Không tìm thấy." }, { status: 404 });
+  if (err.code === "PGRST205") {
+    const table = /'([^']+)'/.exec(err.message ?? "")?.[1];
+    return Response.json(
+      {
+        error: "missing_table",
+        message: `Chưa chạy migration CSDL${table ? ` cho bảng ${table}` : ""}. Hãy chạy migration tương ứng trong thư mục supabase/.`,
+      },
+      { status: 400 },
+    );
+  }
+  if (err.code === "PGRST204" || err.code === "42703") {
+    const column =
+      /'([^']+)' column/.exec(err.message ?? "")?.[1] ??
+      /column ([^\s]+) does not exist/.exec(err.message ?? "")?.[1];
+    return Response.json(
+      {
+        error: "missing_column",
+        message: `CSDL thiếu cột${column ? ` ${column}` : ""}. Hãy chạy lại migration trong thư mục supabase/.`,
+      },
+      { status: 400 },
+    );
+  }
+  if (err.code === "42P01") {
+    return Response.json(
+      { error: "missing_table", message: "CSDL thiếu bảng. Hãy chạy migration trong thư mục supabase/." },
+      { status: 400 },
+    );
+  }
   if (err.code === "42501") {
     return Response.json(
-      { error: "internal", message: "Không có quyền truy cập schema trangway trên Supabase." },
+      { error: "permission", message: "Không có quyền ghi dữ liệu (RLS/GRANT). Hãy chạy lại migration trong thư mục supabase/." },
       { status: 500 },
     );
   }

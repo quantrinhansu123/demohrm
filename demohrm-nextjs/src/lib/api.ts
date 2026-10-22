@@ -91,6 +91,43 @@ export function apiDelete<T>(path: string, opts?: ApiOptions): Promise<T> {
   return request<T>(path, { method: "DELETE" }, opts);
 }
 
+export interface DownloadResult {
+  blob: Blob;
+  filename: string;
+}
+
+export async function apiDownload(path: string, opts?: ApiOptions): Promise<DownloadResult> {
+  if (!API_BASE) throw new ApiError(0, "Thiếu NEXT_PUBLIC_API_URL.", null);
+  const controller = new AbortController();
+  const timer = opts?.signal ? null : setTimeout(() => controller.abort(), opts?.timeoutMs ?? 120000);
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: "GET",
+      signal: opts?.signal ?? controller.signal,
+      headers: authHeader(),
+    });
+    if (!res.ok) {
+      let payload: unknown = null;
+      try {
+        payload = await res.json();
+      } catch {
+        payload = null;
+      }
+      if (res.status === 401 && typeof window !== "undefined") {
+        sessionStorage.removeItem(SESSION_KEY);
+        window.dispatchEvent(new Event("tw-unauthorized"));
+      }
+      throw new ApiError(res.status, errorMessage(res.status, payload), payload);
+    }
+    const disposition = res.headers.get("content-disposition") ?? "";
+    const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+    const filename = match?.[1] ? decodeURIComponent(match[1]) : "download";
+    return { blob: await res.blob(), filename };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function checkBeHealth(): Promise<boolean> {
   const url = BE_ROOT ? `${BE_ROOT}/health` : "/api/health";
   try {

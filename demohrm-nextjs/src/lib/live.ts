@@ -1,5 +1,5 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/api";
-import type { ApiOptions } from "@/lib/api";
+import { apiDelete, apiDownload, apiGet, apiPatch, apiPost } from "@/lib/api";
+import type { ApiOptions, DownloadResult } from "@/lib/api";
 import { initialsOf } from "@/lib/format";
 import { RESIGNED_STATUS, WORKER_STATUS_LABEL } from "@/lib/worker-status";
 import type { OrderSummary, Worker, WorkerType, WorkAssignment } from "@/types/hrm";
@@ -416,6 +416,10 @@ export function fetchLivePayroll(period: string, workerCode?: string): Promise<L
   return apiGet<LivePayrollRow[]>(`/payroll?${p.toString()}`);
 }
 
+export function generateLivePayroll(period: string): Promise<{ ok: boolean; result: unknown }> {
+  return apiPost(`/payroll/${encodeURIComponent(period)}/generate`, {}, { timeoutMs: 120000 });
+}
+
 // ---- Danh muc (de map id khi tao/sua) ----
 
 export interface LiveStaff {
@@ -539,30 +543,204 @@ export function fetchLivePeriods(): Promise<LivePeriod[]> {
 export interface LiveAdvance {
   id: number;
   code: string;
-  worker_id: number;
+  worker_id: number | null;
+  staff_id?: number | null;
+  subject_type?: "worker" | "staff" | string;
   amount: number;
   reason: string | null;
   status: string;
+  advance_date: string;
+  advance_time: string;
   requested_by: number | null;
-  requested_at: string | null;
+  approved_by?: number | null;
+  approved_at?: string | null;
+  paid_at?: string | null;
+  settled_at?: string | null;
+  settled_amount?: number | null;
+  note?: string | null;
+  cashbook_entry_id?: number | null;
+  legacy_salary_advance_id?: number | null;
+  updated_at?: string | null;
+  worker_name?: string | null;
+  worker_code?: string | null;
+  company_name?: string | null;
+  staff_name?: string | null;
   giver_name: string | null;
+  approver_name?: string | null;
   evidence_url: string | null;
 }
 
-export function fetchLiveAdvances(workerId: number): Promise<LiveAdvance[]> {
-  return apiGet(`/advances?worker_id=${workerId}`);
+export interface AdvanceFilter {
+  workerId?: number;
+  staffId?: number;
+  subjectType?: "worker" | "staff";
+  status?: string;
+  from?: string;
+  to?: string;
+  q?: string;
+  limit?: number;
 }
 
-export function createLiveAdvance(body: {
-  worker_id: number;
-  period_id: number;
+export function fetchLiveAdvances(arg?: number | AdvanceFilter): Promise<LiveAdvance[]> {
+  const p = new URLSearchParams();
+  if (typeof arg === "number") {
+    p.set("worker_id", String(arg));
+  } else if (arg) {
+    if (arg.workerId) p.set("worker_id", String(arg.workerId));
+    if (arg.staffId) p.set("staff_id", String(arg.staffId));
+    if (arg.subjectType) p.set("subject_type", arg.subjectType);
+    if (arg.status) p.set("status", arg.status);
+    if (arg.from) p.set("from", arg.from);
+    if (arg.to) p.set("to", arg.to);
+    if (arg.q) p.set("q", arg.q);
+    if (arg.limit) p.set("limit", String(arg.limit));
+  }
+  const qs = p.toString();
+  return apiGet(`/advances${qs ? `?${qs}` : ""}`);
+}
+
+export interface AdvanceWrite {
+  subject_type?: "worker" | "staff";
+  worker_id?: number | null;
+  staff_id?: number | null;
   amount: number;
   reason: string;
-  requested_at: string;
+  advance_date: string;
+  advance_time: string;
   requested_by: number;
-  evidence: string;
-}): Promise<LiveAdvance> {
+  note?: string | null;
+  evidence?: string;
+}
+
+export function createLiveAdvance(body: AdvanceWrite): Promise<LiveAdvance> {
   return apiPost("/advances", body, { timeoutMs: 60000 });
+}
+
+export function updateLiveAdvance(
+  id: number,
+  body: { amount?: number; reason?: string; advance_date?: string; advance_time?: string; note?: string | null },
+): Promise<LiveAdvance> {
+  return apiPatch(`/advances/${id}`, body);
+}
+
+export interface AdvanceExportFilter {
+  from: string;
+  to: string;
+  status?: string;
+  subjectType?: "worker" | "staff" | "";
+  q?: string;
+}
+
+export function downloadLiveAdvancesExcel(filter: AdvanceExportFilter): Promise<DownloadResult> {
+  const p = new URLSearchParams({ from: filter.from, to: filter.to });
+  if (filter.status) p.set("status", filter.status);
+  if (filter.subjectType) p.set("subject_type", filter.subjectType);
+  if (filter.q) p.set("q", filter.q);
+  return apiDownload(`/advances/export?${p.toString()}`);
+}
+
+export function cancelLiveAdvance(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/advances/${id}`);
+}
+
+export function approveLiveAdvance(id: number, status: "approved" | "rejected"): Promise<LiveAdvance> {
+  return apiPatch(`/advances/${id}/approve`, { status });
+}
+
+export function payLiveAdvance(id: number): Promise<{ ok: boolean; result: unknown }> {
+  return apiPatch(`/advances/${id}/pay`, {});
+}
+
+export function settleLiveAdvance(id: number, settled_amount?: number): Promise<LiveAdvance> {
+  return apiPatch(`/advances/${id}/settle`, { settled_amount });
+}
+
+// ---- Sổ chi hàng ngày ----
+
+export interface LiveCashbookEntry {
+  id: number;
+  entry_date: string;
+  content: string;
+  full_name: string | null;
+  company_name: string | null;
+  amount: number;
+  note: string | null;
+  group_code: string;
+  group_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CashbookFilter {
+  from?: string;
+  to?: string;
+  group?: string;
+  company?: string;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function fetchLiveCashbook(filter?: CashbookFilter): Promise<Page<LiveCashbookEntry>> {
+  const p = new URLSearchParams();
+  if (filter?.from) p.set("from", filter.from);
+  if (filter?.to) p.set("to", filter.to);
+  if (filter?.group) p.set("group", filter.group);
+  if (filter?.company) p.set("company", filter.company);
+  if (filter?.q) p.set("q", filter.q);
+  if (filter?.limit) p.set("limit", String(filter.limit));
+  if (filter?.offset) p.set("offset", String(filter.offset));
+  const qs = p.toString();
+  return apiGet(`/cashbook${qs ? `?${qs}` : ""}`);
+}
+
+export interface CashbookWrite {
+  entry_date: string;
+  content: string;
+  full_name?: string | null;
+  company_name?: string | null;
+  amount: number;
+  note?: string | null;
+  group_code: string;
+  group_name?: string | null;
+}
+
+export function createLiveCashbookEntry(body: CashbookWrite): Promise<LiveCashbookEntry> {
+  return apiPost("/cashbook", body);
+}
+
+export function updateLiveCashbookEntry(id: number, body: Partial<CashbookWrite>): Promise<LiveCashbookEntry> {
+  return apiPatch(`/cashbook/${id}`, body);
+}
+
+export function deleteLiveCashbookEntry(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/cashbook/${id}`);
+}
+
+export interface CashbookSummaryRow {
+  period: string;
+  total: number;
+  insurance: number;
+  office: number;
+  other: number;
+  count: number;
+}
+
+export interface CashbookSummary {
+  from: string;
+  to: string;
+  group_by: "day" | "month";
+  rows: CashbookSummaryRow[];
+  totals: CashbookSummaryRow;
+}
+
+export function fetchCashbookSummary(params: {
+  from: string;
+  to: string;
+  groupBy: "day" | "month";
+}): Promise<CashbookSummary> {
+  const p = new URLSearchParams({ from: params.from, to: params.to, group_by: params.groupBy });
+  return apiGet(`/cashbook/summary?${p.toString()}`);
 }
 
 export interface Page<T> {

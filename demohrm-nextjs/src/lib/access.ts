@@ -1,5 +1,6 @@
 export interface Access {
   canViewFinance: boolean;
+  canViewAdvances: boolean;
   canViewCommission: boolean;
   canViewAudit: boolean;
   canViewCccd: boolean;
@@ -9,6 +10,7 @@ export interface Access {
 }
 
 const FINANCE = ["director", "deputy_director", "accountant"];
+const ADVANCES = ["director", "deputy_director", "accountant", "recruiter"];
 const COMMISSION = ["director", "deputy_director"];
 const AUDIT = ["director", "deputy_director", "team_lead"];
 const CCCD = ["director", "deputy_director", "recruiter"];
@@ -19,6 +21,7 @@ const BOARD = ["director", "deputy_director"];
 export function accessFor(role: string): Access {
   return {
     canViewFinance: FINANCE.includes(role),
+    canViewAdvances: ADVANCES.includes(role),
     canViewCommission: COMMISSION.includes(role),
     canViewAudit: AUDIT.includes(role),
     canViewCccd: CCCD.includes(role),

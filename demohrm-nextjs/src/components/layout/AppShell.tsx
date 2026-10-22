@@ -24,6 +24,7 @@ const VendorsView = dynamic(() => import("@/components/modules/VendorsView").the
 const AttendanceView = dynamic(() => import("@/components/modules/AttendanceView").then((m) => m.AttendanceView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const TimesheetView = dynamic(() => import("@/components/modules/TimesheetView").then((m) => m.TimesheetView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const PayrollView = dynamic(() => import("@/components/modules/PayrollView").then((m) => m.PayrollView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
+const AdvancesView = dynamic(() => import("@/components/modules/AdvancesView").then((m) => m.AdvancesView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const FinanceView = dynamic(() => import("@/components/modules/FinanceView").then((m) => m.FinanceView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const CommissionView = dynamic(() => import("@/components/modules/CommissionView").then((m) => m.CommissionView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
 const ReportsView = dynamic(() => import("@/components/modules/ReportsView").then((m) => m.ReportsView), { ssr: false, loading: () => <p className="p-6 text-[13px] text-slate-500">Đang mở màn hình...</p> });
@@ -78,6 +79,7 @@ function Shell() {
           {currentModule === "attendance" && <AttendanceView />}
           {currentModule === "timesheet" && <TimesheetView />}
           {currentModule === "payroll" && <PayrollView />}
+          {currentModule === "advances" && <AdvancesView />}
           {currentModule === "finance" && <FinanceView />}
           {currentModule === "commission" && <CommissionView />}
           {currentModule === "reports" && <ReportsView />}

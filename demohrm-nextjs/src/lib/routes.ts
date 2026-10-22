@@ -11,6 +11,7 @@ export const MODULE_SLUG: Record<ModuleId, string> = {
   attendance: "cham-cong",
   timesheet: "bang-cong",
   payroll: "luong",
+  advances: "tam-ung",
   finance: "tai-chinh",
   commission: "hoa-hong",
   reports: "bao-cao",

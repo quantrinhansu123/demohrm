@@ -30,7 +30,8 @@ const mainNav: { id: ModuleId; label: string; icon: typeof DashboardIcon }[] = [
   { id: "companies", label: "Công ty", icon: CompaniesIcon },
   { id: "attendance", label: "Chấm công (GPS)", icon: AttendanceIcon },
   { id: "timesheet", label: "Bảng công", icon: TimesheetIcon },
-  { id: "payroll", label: "Lương & Tạm ứng", icon: PayrollIcon },
+  { id: "payroll", label: "Lương", icon: PayrollIcon },
+  { id: "advances", label: "Tạm ứng", icon: PayrollIcon },
   { id: "finance", label: "Tài chính (Thu/Chi)", icon: FinanceIcon },
   { id: "commission", label: "Hoa hồng dự kiến", icon: CommissionIcon },
   { id: "reports", label: "Báo cáo & Thống kê", icon: ReportsIcon },
@@ -44,6 +45,7 @@ export function Sidebar() {
 
   const visibleNav = mainNav.filter((n) => {
     if (n.id === "finance" && !access.canViewFinance) return false;
+    if (n.id === "advances" && !access.canViewAdvances) return false;
     if (n.id === "commission" && !access.canViewCommission) return false;
     if (n.id === "audit" && !access.canViewAudit) return false;
     if (navQuery.trim() && !n.label.toLowerCase().includes(navQuery.trim().toLowerCase())) return false;

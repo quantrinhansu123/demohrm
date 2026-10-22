@@ -11,6 +11,7 @@ interface Props {
   staff: LiveStaff[];
   placeholder?: string;
   inputId?: string;
+  disabled?: boolean;
 }
 
 function labelOf(person: LiveStaff): string {
@@ -22,7 +23,7 @@ function matchQuery(person: LiveStaff, q: string): boolean {
   return q.split(/\s+/).filter(Boolean).every((part) => hay.includes(part));
 }
 
-export function SearchableStaffSelect({ value, onChange, staff, placeholder, inputId }: Props) {
+export function SearchableStaffSelect({ value, onChange, staff, placeholder, inputId, disabled }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -53,23 +54,34 @@ export function SearchableStaffSelect({ value, onChange, staff, placeholder, inp
     });
   };
 
+  const openPanel = () => {
+    updatePos();
+    setQuery("");
+    setHighlight(0);
+    setOpen(true);
+  };
+
   useEffect(() => {
     if (!open) return;
     updatePos();
-    setHighlight(0);
-    const t = setTimeout(() => inputRef.current?.focus(), 0);
+    // Delay focus so modal scroll-into-view (if any) settles before we attach listeners
+    const t = setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 0);
     const onScroll = (event: Event) => {
       const target = event.target;
       if (target instanceof Node && panelRef.current?.contains(target)) return;
-      setOpen(false);
+      // Reposition instead of closing — focus inside a scrollable modal used to
+      // fire a capture-phase scroll and instantly dismiss the panel (flash).
+      updatePos();
     };
     const onResize = () => updatePos();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
     };
     window.addEventListener("resize", onResize);
     window.addEventListener("keydown", onKey);
-    // Đóng khi scroll (kể cả scroll trong modal) để không lệch vị trí
     window.addEventListener("scroll", onScroll, true);
     return () => {
       clearTimeout(t);
@@ -105,17 +117,23 @@ export function SearchableStaffSelect({ value, onChange, staff, placeholder, inp
         ref={buttonRef}
         id={inputId}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          if (open) setOpen(false);
+          else openPanel();
+        }}
         className={cn(
           "flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-[13.5px] text-slate-900 outline-none",
-          "focus:border-[#0052cc] focus:ring-2 focus:ring-[#0052cc]/20"
+          "focus:border-[#0052cc] focus:ring-2 focus:ring-[#0052cc]/20",
+          disabled && "cursor-not-allowed bg-slate-50 text-slate-500"
         )}
       >
         <span className={cn("truncate", !selected && "text-slate-400")}>
           {selected ? labelOf(selected) : (placeholder ?? "— Chọn người phụ trách —")}
         </span>
         <span className="flex shrink-0 items-center gap-1">
-          {selected && (
+          {selected && !disabled && (
             <span
               role="button"
               tabIndex={0}

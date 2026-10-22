@@ -16,6 +16,7 @@ import {
   cashbookGroupDisplay,
   cashbookGroupTone,
   formatCashbookDate,
+  isAdvanceCashbookEntry,
   monthRangeInput,
   todayInput,
   weekRangeInput,
@@ -70,7 +71,12 @@ export function FinanceView() {
         limit: LIMIT,
         offset,
       }),
-      fetchCashbookSummary({ from: range.from, to: range.to, groupBy }),
+      fetchCashbookSummary({
+        from: range.from,
+        to: range.to,
+        groupBy,
+        group: group || undefined,
+      }),
     ])
       .then(([page, sum]) => {
         if (!alive) return;
@@ -83,8 +89,8 @@ export function FinanceView() {
         if (!alive) return;
         const message = e instanceof ApiError ? e.message : "Không tải được sổ chi.";
         setError(
-          /cashbook|relation|schema cache|does not exist/i.test(message)
-            ? "Chưa tạo bảng sổ chi trên Supabase. Hãy chạy migration supabase/cashbook_entries.sql."
+          /cashbook|relation|schema cache|does not exist|source_type/i.test(message)
+            ? "Chưa cập nhật sổ chi trên Supabase. Hãy chạy lại supabase/cashbook_entries.sql và supabase/fn_pay_advance.sql."
             : message,
         );
       })
@@ -111,7 +117,6 @@ export function FinanceView() {
     amount: string;
     note: string;
     group_code: string;
-    group_name: string;
   }) => {
     const body = {
       entry_date: form.entry_date,
@@ -121,7 +126,6 @@ export function FinanceView() {
       amount: Number(form.amount),
       note: form.note.trim() || null,
       group_code: form.group_code,
-      group_name: form.group_code === "other" ? form.group_name.trim() || null : null,
     };
     if (editing) {
       await updateLiveCashbookEntry(editing.id, body);
@@ -154,7 +158,7 @@ export function FinanceView() {
     <section className="flex h-full flex-col">
       <ModuleHeader
         title="Tài chính"
-        sub="Sổ chi hàng ngày: bảo hiểm, văn phòng và chi khác"
+        sub="Sổ chi hàng ngày: lương tuần và chi văn phòng"
         actions={
           <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => { setEditing(null); setModalOpen(true); }}>
             + Thêm khoản chi
@@ -180,11 +184,10 @@ export function FinanceView() {
             </button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-3">
             <KpiCard title="TỔNG CHI" value={formatVND(totals?.total ?? 0)} valueClassName="text-rose-600" sub={`${totals?.count ?? 0} khoản chi`} />
-            <KpiCard title="BẢO HIỂM (BH)" value={formatVND(totals?.insurance ?? 0)} valueClassName="text-sky-600" sub="Bảo hiểm đã chi" />
-            <KpiCard title="VĂN PHÒNG" value={formatVND(totals?.office ?? 0)} valueClassName="text-amber-600" sub="Chi phí văn phòng" />
-            <KpiCard title="KHÁC" value={formatVND(totals?.other ?? 0)} valueClassName="text-slate-700" sub="Chi phí khác" />
+            <KpiCard title="LƯƠNG TUẦN" value={formatVND(totals?.weekly_wage ?? 0)} valueClassName="text-sky-600" sub="Chi lương tuần" />
+            <KpiCard title="CHI VĂN PHÒNG" value={formatVND(totals?.office ?? 0)} valueClassName="text-amber-600" sub="Chi phí văn phòng" />
           </div>
 
           <div className="mt-4 rounded-xl border bg-white p-3 shadow-sm">
@@ -253,11 +256,16 @@ export function FinanceView() {
           {tab === "entries" ? (
             <div className="mt-4">
               <DataTable headers={["Ngày", "Nhóm", "Nội dung", "Người nhận", "Công ty", "Số tiền", "Ghi chú", "Thao tác"]}>
-                {rows.map((row) => (
+                {rows.map((row) => {
+                  const locked = isAdvanceCashbookEntry(row);
+                  return (
                   <tr key={row.id}>
                     <td className="whitespace-nowrap">{formatCashbookDate(row.entry_date)}</td>
                     <td>
-                      <StatusPill tone={cashbookGroupTone(row.group_code)}>{cashbookGroupDisplay(row.group_code, row.group_name)}</StatusPill>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <StatusPill tone={cashbookGroupTone(row.group_code)}>{cashbookGroupDisplay(row.group_code, row.group_name)}</StatusPill>
+                        {locked && <StatusPill tone="neutral">Tạm ứng</StatusPill>}
+                      </div>
                     </td>
                     <td className="min-w-[220px]">{row.content}</td>
                     <td>{row.full_name || "—"}</td>
@@ -267,14 +275,19 @@ export function FinanceView() {
                     <td className="whitespace-nowrap">
                       <RowActions
                         label="Thao tác khoản chi"
-                        items={[
-                          { label: "Sửa", onClick: () => { setEditing(row); setModalOpen(true); } },
-                          { label: "Xóa", tone: "danger", onClick: () => { setDeleteTarget(row); setDeleteError(""); } },
-                        ]}
+                        items={
+                          locked
+                            ? [{ label: "Xem", onClick: () => { setEditing(row); setModalOpen(true); } }]
+                            : [
+                                { label: "Sửa", onClick: () => { setEditing(row); setModalOpen(true); } },
+                                { label: "Xóa", tone: "danger", onClick: () => { setDeleteTarget(row); setDeleteError(""); } },
+                              ]
+                        }
                       />
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {rows.length === 0 && <EmptyRow colSpan={8} text="Chưa có khoản chi nào trong khoảng thời gian này" />}
               </DataTable>
               <div className="mt-3 flex items-center justify-between text-[12.5px] text-slate-500">
@@ -295,24 +308,22 @@ export function FinanceView() {
                   <Button variant={groupBy === "month" ? "default" : "outline"} size="sm" onClick={() => setGroupBy("month")}>Theo tháng</Button>
                 </div>
               </div>
-              <DataTable headers={["Kỳ", "Bảo hiểm", "Văn phòng", "Khác", "Tổng chi", "Số khoản"]}>
+              <DataTable headers={["Kỳ", "Lương tuần", "Chi văn phòng", "Tổng chi", "Số khoản"]}>
                 {(summary?.rows ?? []).map((row) => (
                   <tr key={row.period}>
                     <td className="whitespace-nowrap font-semibold">{groupBy === "day" ? formatCashbookDate(row.period) : row.period.split("-").reverse().join("/")}</td>
-                    <td className="whitespace-nowrap">{formatVND(row.insurance)}</td>
+                    <td className="whitespace-nowrap">{formatVND(row.weekly_wage)}</td>
                     <td className="whitespace-nowrap">{formatVND(row.office)}</td>
-                    <td className="whitespace-nowrap">{formatVND(row.other)}</td>
                     <td className="whitespace-nowrap"><strong className="text-rose-600">{formatVND(row.total)}</strong></td>
                     <td>{row.count}</td>
                   </tr>
                 ))}
-                {(summary?.rows ?? []).length === 0 && <EmptyRow colSpan={6} text="Chưa có dữ liệu tổng hợp" />}
+                {(summary?.rows ?? []).length === 0 && <EmptyRow colSpan={5} text="Chưa có dữ liệu tổng hợp" />}
                 {summary && summary.rows.length > 0 && (
                   <tr className="bg-slate-50 font-semibold">
                     <td>TỔNG CỘNG</td>
-                    <td className="whitespace-nowrap">{formatVND(summary.totals.insurance)}</td>
+                    <td className="whitespace-nowrap">{formatVND(summary.totals.weekly_wage)}</td>
                     <td className="whitespace-nowrap">{formatVND(summary.totals.office)}</td>
-                    <td className="whitespace-nowrap">{formatVND(summary.totals.other)}</td>
                     <td className="whitespace-nowrap text-rose-600">{formatVND(summary.totals.total)}</td>
                     <td>{summary.totals.count}</td>
                   </tr>

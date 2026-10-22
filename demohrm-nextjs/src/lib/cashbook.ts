@@ -1,26 +1,33 @@
 export const CASHBOOK_GROUPS = [
-  { value: "insurance", label: "Bảo hiểm (BH)" },
-  { value: "office", label: "Chi văn phòng (VP)" },
-  { value: "other", label: "Khác" },
+  { value: "weekly_wage", label: "Lương tuần" },
+  { value: "office", label: "Chi văn phòng" },
 ] as const;
 
-export const CASHBOOK_ENTRY_GROUPS = CASHBOOK_GROUPS;
+export type CashbookGroupCode = (typeof CASHBOOK_GROUPS)[number]["value"];
+
+export function normalizeCashbookGroup(code: string): CashbookGroupCode {
+  return code === "weekly_wage" || code === "advance" ? "weekly_wage" : "office";
+}
 
 export function cashbookGroupLabel(code: string): string {
-  if (code === "advance") return "Khác";
-  return CASHBOOK_GROUPS.find((group) => group.value === code)?.label ?? code;
+  return CASHBOOK_GROUPS.find((group) => group.value === normalizeCashbookGroup(code))?.label ?? code;
 }
 
 export function cashbookGroupDisplay(code: string, name?: string | null): string {
-  if (code === "advance") return "Khác";
-  if (code === "other" && name) return name;
-  return cashbookGroupLabel(code);
+  const label = cashbookGroupLabel(code);
+  const detail = name?.trim();
+  if (detail && normalizeCashbookGroup(code) === "office" && detail !== label) {
+    return `${label} · ${detail}`;
+  }
+  return label;
 }
 
 export function cashbookGroupTone(code: string): "info" | "warning" | "success" | "neutral" {
-  if (code === "insurance") return "info";
-  if (code === "office") return "warning";
-  return "neutral";
+  return normalizeCashbookGroup(code) === "weekly_wage" ? "info" : "warning";
+}
+
+export function isAdvanceCashbookEntry(row: { source_type?: string | null }): boolean {
+  return row.source_type === "advance";
 }
 
 export function todayInput(): string {

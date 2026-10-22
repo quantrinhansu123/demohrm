@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import type { LiveCashbookEntry } from "@/lib/live";
-import { CASHBOOK_ENTRY_GROUPS, cashbookGroupLabel, todayInput } from "@/lib/cashbook";
+import { CASHBOOK_GROUPS, isAdvanceCashbookEntry, normalizeCashbookGroup, todayInput } from "@/lib/cashbook";
 import { Button } from "@/components/ui/button";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { SuggestInput } from "@/components/ui/suggest-input";
@@ -16,7 +16,6 @@ interface CashbookForm {
   amount: string;
   note: string;
   group_code: string;
-  group_name: string;
 }
 
 function emptyForm(): CashbookForm {
@@ -28,7 +27,6 @@ function emptyForm(): CashbookForm {
     amount: "",
     note: "",
     group_code: "office",
-    group_name: "",
   };
 }
 
@@ -40,8 +38,7 @@ function formFromEntry(entry: LiveCashbookEntry): CashbookForm {
     company_name: entry.company_name ?? "",
     amount: String(Math.round(Number(entry.amount) || 0)),
     note: entry.note ?? "",
-    group_code: entry.group_code,
-    group_name: entry.group_name ?? "",
+    group_code: normalizeCashbookGroup(entry.group_code),
   };
 }
 
@@ -61,6 +58,7 @@ export function CashbookEntryModal({
   const [form, setForm] = useState<CashbookForm>(entry ? formFromEntry(entry) : emptyForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const locked = Boolean(entry && isAdvanceCashbookEntry(entry));
 
   useEffect(() => {
     if (!open) return;
@@ -73,6 +71,10 @@ export function CashbookEntryModal({
   };
 
   const save = async () => {
+    if (locked) {
+      setError("Khoản chi từ tạm ứng không được sửa trên sổ chi.");
+      return;
+    }
     if (!form.entry_date) {
       setError("Chọn ngày chi.");
       return;
@@ -86,15 +88,10 @@ export function CashbookEntryModal({
       setError("Nhập số tiền lớn hơn 0.");
       return;
     }
-    const groupName = form.group_name.trim();
-    if (form.group_code === "other" && !groupName) {
-      setError("Nhập tên nhóm chi khác.");
-      return;
-    }
     setSaving(true);
     setError("");
     try {
-      await onSave({ ...form, group_name: form.group_code === "other" ? groupName : "", amount: String(amount) });
+      await onSave({ ...form, amount: String(amount) });
       onClose();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Lưu khoản chi thất bại.");
@@ -112,52 +109,44 @@ export function CashbookEntryModal({
       closeOnEscape={false}
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>
-            {saving ? "Đang lưu..." : "Lưu"}
-          </Button>
+          <Button variant="outline" onClick={onClose}>{locked ? "Đóng" : "Hủy"}</Button>
+          {!locked && (
+            <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>
+              {saving ? "Đang lưu..." : "Lưu"}
+            </Button>
+          )}
         </>
       }
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
+      {locked && (
+        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800">
+          Đây là khoản chi tự sinh từ tạm ứng — chỉ xem trên sổ chi. Chỉnh sửa/hủy trên màn Tạm ứng.
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Ngày chi *">
-          <input type="date" className={inputClass} value={form.entry_date} onChange={(e) => set("entry_date", e.target.value)} />
+          <input type="date" className={inputClass} value={form.entry_date} disabled={locked} onChange={(e) => set("entry_date", e.target.value)} />
         </Field>
         <Field label="Nhóm chi *">
           <select
             className={inputClass}
             value={form.group_code}
-            disabled={form.group_code === "advance"}
+            disabled={locked}
             onChange={(e) => set("group_code", e.target.value)}
           >
-            {form.group_code === "advance" && (
-              <option value="advance">{cashbookGroupLabel("advance")} (tự động)</option>
-            )}
-            {CASHBOOK_ENTRY_GROUPS.map((group) => (
+            {CASHBOOK_GROUPS.map((group) => (
               <option key={group.value} value={group.value}>{group.label}</option>
             ))}
           </select>
         </Field>
-        {form.group_code === "other" && (
-          <div className="col-span-2">
-            <Field label="Tên nhóm chi *">
-              <input
-                className={inputClass}
-                value={form.group_name}
-                onChange={(e) => set("group_name", e.target.value)}
-                placeholder="VD: Mua vật tư, sửa chữa, tiếp khách..."
-              />
-            </Field>
-          </div>
-        )}
         <div className="col-span-2">
           <Field label="Nội dung *">
-            <input className={inputClass} value={form.content} onChange={(e) => set("content", e.target.value)} placeholder="VD: Chi bảo hiểm tháng 10, ghế 6 cái, tiền ăn trưa..." />
+            <input className={inputClass} value={form.content} disabled={locked} onChange={(e) => set("content", e.target.value)} placeholder="VD: Chi lương tuần, ghế văn phòng, tiền ăn trưa..." />
           </Field>
         </div>
         <Field label="Họ tên người nhận">
-          <input className={inputClass} value={form.full_name} onChange={(e) => set("full_name", e.target.value)} placeholder="VD: Dương Văn Hải" />
+          <input className={inputClass} value={form.full_name} disabled={locked} onChange={(e) => set("full_name", e.target.value)} placeholder="VD: Dương Văn Hải" />
         </Field>
         <Field label="Công ty">
           <SuggestInput
@@ -166,13 +155,14 @@ export function CashbookEntryModal({
             suggestions={companies}
             createLabel="Thêm mới"
             placeholder="Chọn hoặc gõ tên công ty"
+            disabled={locked}
           />
         </Field>
         <Field label="Số tiền *">
-          <input className={inputClass} inputMode="numeric" value={form.amount} onChange={(e) => set("amount", e.target.value)} placeholder="VD: 1110000" />
+          <input className={inputClass} inputMode="numeric" value={form.amount} disabled={locked} onChange={(e) => set("amount", e.target.value)} placeholder="VD: 1110000" />
         </Field>
         <Field label="Ghi chú">
-          <input className={inputClass} value={form.note} onChange={(e) => set("note", e.target.value)} placeholder="Ghi chú thêm" />
+          <input className={inputClass} value={form.note} disabled={locked} onChange={(e) => set("note", e.target.value)} placeholder="Ghi chú thêm" />
         </Field>
       </div>
     </Modal>

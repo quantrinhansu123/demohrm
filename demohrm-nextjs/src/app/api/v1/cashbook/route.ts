@@ -6,9 +6,10 @@ import { apiError, json, readBody, searchParams } from "@/lib/server/http";
 import { ROLE } from "@/lib/server/roles";
 import {
   CASHBOOK_COLUMNS,
+  applyCashbookGroupFilter,
   cashbookDate,
   cashbookPayload,
-  isCashbookGroup,
+  cashbookSearchTerm,
 } from "@/lib/server/cashbook";
 
 function clampPage(sp: URLSearchParams, fallback = 200, max = 500): { limit: number; offset: number } {
@@ -37,14 +38,12 @@ export async function GET(req: Request): Promise<Response> {
     if (from) q = q.gte("entry_date", from);
     if (to) q = q.lte("entry_date", to);
 
-    const group = sp.get("group");
-    if (group === "other") q = q.in("group_code", ["other", "advance"]);
-    else if (group && isCashbookGroup(group)) q = q.eq("group_code", group);
+    q = applyCashbookGroupFilter(q, sp.get("group"));
 
-    const company = sp.get("company")?.trim();
+    const company = cashbookSearchTerm(sp.get("company"));
     if (company) q = q.ilike("company_name", `%${company}%`);
 
-    const search = sp.get("q")?.trim();
+    const search = cashbookSearchTerm(sp.get("q"));
     if (search) {
       q = q.or(
         `content.ilike.%${search}%,full_name.ilike.%${search}%,company_name.ilike.%${search}%,note.ilike.%${search}%`,

@@ -15,6 +15,7 @@ export function SuggestInput({
   placeholder,
   createLabel,
   onCreate,
+  disabled,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -22,6 +23,7 @@ export function SuggestInput({
   placeholder?: string;
   createLabel: string;
   onCreate?: (value: string) => void;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const query = value.trim().toLowerCase();
@@ -30,6 +32,7 @@ export function SuggestInput({
   const canCreate = tidy(value).length > 0 && !exact;
 
   const choose = (next: string) => {
+    if (disabled) return;
     onChange(tidy(next));
     setOpen(false);
   };
@@ -40,12 +43,15 @@ export function SuggestInput({
         <input
           value={value}
           placeholder={placeholder}
+          disabled={disabled}
           className={inputClass}
           onChange={(e) => {
             onChange(e.target.value);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            if (!disabled) setOpen(true);
+          }}
           onBlur={() => {
             onChange(exact ?? tidy(value));
             window.setTimeout(() => setOpen(false), 120);
@@ -61,14 +67,15 @@ export function SuggestInput({
           type="button"
           aria-label="Mở gợi ý"
           aria-expanded={open}
-          className="flex w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
+          disabled={disabled}
+          className="flex w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setOpen((current) => !current)}
         >
           <ChevronDown className="h-4 w-4" />
         </button>
       </div>
-      {open && (
+      {open && !disabled && (
         <ul className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-sm">
           {matches.map((item) => (
             <li key={item}>

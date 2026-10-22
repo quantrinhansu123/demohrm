@@ -667,6 +667,8 @@ export interface LiveCashbookEntry {
   note: string | null;
   group_code: string;
   group_name: string | null;
+  source_type?: string | null;
+  source_id?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -702,7 +704,6 @@ export interface CashbookWrite {
   amount: number;
   note?: string | null;
   group_code: string;
-  group_name?: string | null;
 }
 
 export function createLiveCashbookEntry(body: CashbookWrite): Promise<LiveCashbookEntry> {
@@ -720,9 +721,8 @@ export function deleteLiveCashbookEntry(id: number): Promise<{ ok: boolean }> {
 export interface CashbookSummaryRow {
   period: string;
   total: number;
-  insurance: number;
+  weekly_wage: number;
   office: number;
-  other: number;
   count: number;
 }
 
@@ -738,8 +738,10 @@ export function fetchCashbookSummary(params: {
   from: string;
   to: string;
   groupBy: "day" | "month";
+  group?: string;
 }): Promise<CashbookSummary> {
   const p = new URLSearchParams({ from: params.from, to: params.to, group_by: params.groupBy });
+  if (params.group) p.set("group", params.group);
   return apiGet(`/cashbook/summary?${p.toString()}`);
 }
 

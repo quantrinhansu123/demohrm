@@ -51,7 +51,7 @@ begin
   end if;
 
   insert into trangway.cashbook_entries
-    (entry_date, content, full_name, company_name, amount, note, group_code)
+    (entry_date, content, full_name, company_name, amount, note, group_code, source_type, source_id)
   values
     (v_advance.advance_date,
      'Tạm ứng ' || v_advance.code || ' - ' || coalesce(v_advance.reason, ''),
@@ -59,7 +59,9 @@ begin
      v_company,
      v_advance.amount,
      v_advance.reason,
-     'advance')
+     'weekly_wage',
+     'advance',
+     v_advance.id)
   returning id into v_cashbook_id;
 
   update trangway.advances
@@ -79,5 +81,7 @@ begin
 end;
 $$;
 
+revoke all on function trangway.fn_pay_advance(bigint, bigint) from public;
+-- Production nên dùng SUPABASE_SERVICE_ROLE_KEY; anon giữ cho môi trường chưa cấu hình service role.
 grant execute on function trangway.fn_pay_advance(bigint, bigint)
-  to anon, authenticated, service_role;
+  to service_role, authenticated, anon;

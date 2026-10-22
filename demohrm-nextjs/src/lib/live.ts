@@ -143,6 +143,7 @@ export interface LiveWorkerRow {
   code: string;
   full_name: string;
   phone: string;
+  phone_hidden?: boolean;
   hometown: string | null;
   national_id_masked: string | null;
   national_id_full?: string | null;
@@ -155,6 +156,7 @@ export interface LiveWorkerRow {
   recruited_by: string | null;
   manager_id?: number | null;
   manager_name?: string | null;
+  created_by?: number | null;
   consult_date?: string | null;
   start_work_date?: string | null;
   resign_date?: string | null;
@@ -187,6 +189,7 @@ export function toWorker(row: LiveWorkerRow): Worker {
     code: row.code,
     name: row.full_name,
     phone: row.phone ?? "",
+    phoneHidden: Boolean(row.phone_hidden),
     hometown: row.hometown ?? "",
     citizenId: row.national_id_full ?? row.national_id_masked ?? "",
     company: row.company ?? "—",
@@ -204,6 +207,9 @@ export function toWorker(row: LiveWorkerRow): Worker {
     consultDate: row.consult_date ?? "",
     startWorkDate: row.start_work_date ?? "",
     resignDate: row.resign_date ?? "",
+    recruiterId: row.recruiter_id,
+    managerId: row.manager_id ?? null,
+    createdBy: row.created_by ?? null,
   };
 }
 
@@ -322,7 +328,7 @@ export function dupFieldLabel(field: string): string {
 
 export function updateLiveWorker(id: number, body: {
   full_name: string;
-  phone: string;
+  phone?: string;
   hometown: string | null;
   current_position: string;
   employment_type: string;

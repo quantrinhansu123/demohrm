@@ -22,7 +22,7 @@ export async function POST(
     try {
       requireRole(auth, ...ROLE.staffPinReset);
     } catch {
-      throw new ForbiddenError("Chỉ Ban giám đốc được đặt lại mật khẩu.");
+      throw new ForbiddenError("Chỉ Giám đốc, Phó giám đốc, Kỹ thuật hoặc HCNS được đặt lại mật khẩu.");
     }
     const id = positiveInt((await ctx.params)["id"]);
     if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
@@ -43,7 +43,7 @@ export async function POST(
       action: "RESET_PIN",
       table: "staff",
       recordId: id,
-      detail: `BGĐ đặt lại PIN cho nhân sự #${id}`,
+      detail: `Đặt lại PIN cho nhân sự #${id}`,
     });
     return json({ ok: true });
   } catch (e) {

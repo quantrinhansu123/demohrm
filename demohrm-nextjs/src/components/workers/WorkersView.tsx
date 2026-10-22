@@ -882,6 +882,7 @@ function EditWorkerModal({
 }) {
   const { staff, reloadCatalog } = useApp();
   const [knownWorkers, setKnownWorkers] = useState<Worker[]>([]);
+  const canEditPhone = !worker.phoneHidden;
   const [form, setForm] = useState({
     name: worker.name,
     phone: worker.phone,
@@ -935,7 +936,7 @@ function EditWorkerModal({
       const managerId = await ensureStaffId(staff, known, form.manager, "Phụ trách", pins);
       await updateLiveWorker(worker.id, {
         full_name: form.name.trim(),
-        phone: form.phone.trim(),
+        ...(canEditPhone ? { phone: form.phone.trim() } : {}),
         hometown: form.hometown.trim() || null,
         current_position: form.position.trim(),
         employment_type: VI_TYPE[form.type] ?? form.type.trim(),
@@ -981,7 +982,22 @@ function EditWorkerModal({
       {notice && <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{notice}</p>}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Họ và tên"><input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
-        <Field label="Số điện thoại"><input className={inputClass} value={form.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
+        <Field label="Số điện thoại">
+          <input
+            className={inputClass}
+            value={form.phone}
+            readOnly={!canEditPhone}
+            onChange={(e) => {
+              if (!canEditPhone) return;
+              set("phone", e.target.value);
+            }}
+          />
+        </Field>
+        {!canEditPhone && (
+          <p className="col-span-2 rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-700">
+            Số điện thoại đang bị che — bạn không có quyền xem/sửa SĐT hồ sơ này.
+          </p>
+        )}
         <Field label="Quê quán"><input className={inputClass} value={form.hometown} onChange={(e) => set("hometown", e.target.value)} /></Field>
         <Field label="Vị trí"><SuggestInput value={form.position} onChange={(position) => set("position", position)} suggestions={positions} createLabel="Thêm mới" placeholder="Chọn hoặc gõ vị trí mới" /></Field>
         <Field label="Loại hình"><SuggestInput value={form.type} onChange={(type) => set("type", type)} suggestions={typeNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ loại hình mới" /></Field>

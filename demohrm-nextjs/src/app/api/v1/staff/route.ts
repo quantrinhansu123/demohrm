@@ -2,10 +2,11 @@ export const runtime = "nodejs";
 
 import { resolveDepartment, staffTitle } from "@/lib/departments";
 import { initialsOf } from "@/lib/format";
-import { getAuth, writeAudit } from "@/lib/server/authctx";
+import { getAuth, requireRole, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
-import { apiError, json, readBody } from "@/lib/server/http";
+import { ForbiddenError, apiError, json, readBody } from "@/lib/server/http";
 import { hashPin } from "@/lib/server/pin";
+import { ROLE } from "@/lib/server/roles";
 
 const DIRECTORY_COLUMNS = "id,code,full_name,initials,email,phone,role,title,status";
 const CATALOG_COLUMNS = "id,code,full_name,role,title,status";
@@ -55,15 +56,23 @@ function nextStaffNumber(codes: string[]): number {
   return max;
 }
 
-// POST /api/v1/staff — Them mot nhan su.
+// POST /api/v1/staff — Them mot nhan su (GD/PGĐ/Kỹ thuật/HCNS).
 export async function POST(req: Request): Promise<Response> {
   try {
     const ctx = getAuth(req);
+    try {
+      requireRole(ctx, ...ROLE.accountManage);
+    } catch {
+      throw new ForbiddenError("Chỉ Giám đốc, Phó giám đốc, Kỹ thuật hoặc HCNS được tạo tài khoản.");
+    }
     const body = await readBody(req);
-    const department = resolveDepartment(typeof body["department"] === "string" ? body["department"] : "");
-    if (!department) return json({ error: "bad_request", message: "Nhập phòng ban, tối đa 60 ký tự." }, 400);
     const position = typeof body["position"] === "string" ? body["position"].trim().replace(/\s+/g, " ") : "";
     if (position.length > 80) return json({ error: "bad_request", message: "Vị trí tối đa 80 ký tự." }, 400);
+    const department = resolveDepartment(
+      typeof body["department"] === "string" ? body["department"] : "",
+      position,
+    );
+    if (!department) return json({ error: "bad_request", message: "Nhập phòng ban, tối đa 60 ký tự." }, 400);
     const fullName = typeof body["full_name"] === "string" ? body["full_name"].trim().replace(/\s+/g, " ") : "";
     if (!fullName) return json({ error: "bad_request", message: "Nhập họ tên." }, 400);
     if (fullName.length > 80) return json({ error: "bad_request", message: "Họ tên tối đa 80 ký tự." }, 400);

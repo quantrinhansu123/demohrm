@@ -34,9 +34,12 @@ export async function PATCH(
     const body = await readBody(req);
     const fullName = cleanText(body["full_name"], 80);
     if (!fullName) return json({ error: "bad_request", message: "Nhập họ tên." }, 400);
-    const department = resolveDepartment(typeof body["department"] === "string" ? body["department"] : "");
-    if (!department) return json({ error: "bad_request", message: "Nhập phòng ban, tối đa 60 ký tự." }, 400);
     const position = cleanText(body["position"], 80);
+    const department = resolveDepartment(
+      typeof body["department"] === "string" ? body["department"] : "",
+      position,
+    );
+    if (!department) return json({ error: "bad_request", message: "Nhập phòng ban, tối đa 60 ký tự." }, 400);
     const status = body["status"] === "inactive" ? "inactive" : "active";
     const email = cleanText(body["email"], 120);
     if (email && !email.includes("@")) return json({ error: "bad_request", message: "Email không hợp lệ." }, 400);

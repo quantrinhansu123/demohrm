@@ -50,6 +50,8 @@ export interface Worker {
   code: string;
   name: string;
   phone: string;
+  /** true khi API đã che SĐT vì thiếu quyền */
+  phoneHidden?: boolean;
   hometown: string;
   citizenId: string;
   company: string;
@@ -68,6 +70,9 @@ export interface Worker {
   startWorkDate?: string;
   resignDate?: string;
   assignments?: WorkAssignment[];
+  recruiterId?: number | null;
+  managerId?: number | null;
+  createdBy?: number | null;
 }
 
 export interface Attendance {

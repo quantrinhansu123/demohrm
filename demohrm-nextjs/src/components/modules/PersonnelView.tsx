@@ -62,6 +62,7 @@ function formFromPerson(person: LivePersonnel): PersonnelForm {
 export function PersonnelView() {
   const { access } = useSession();
   const canDelete = access.canDeletePersonnel;
+  const canManageAccounts = access.canManageAccounts;
   const [rows, setRows] = useState<LivePersonnel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -222,9 +223,9 @@ export function PersonnelView() {
               placeholder="Tìm tên, mã, SĐT..."
               className="rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] outline-none focus:border-[#0052cc]"
             />}
-            {pane === "people" && (
+            {pane === "people" && canManageAccounts && (
               <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setCreating(true)}>
-                + Thêm
+                + Thêm tài khoản
               </Button>
             )}
           </>
@@ -238,7 +239,7 @@ export function PersonnelView() {
                 <tr key={worker.id}>
                   <td>{worker.code}</td>
                   <td><strong>{worker.name}</strong></td>
-                  <td>{worker.phone || "—"}</td>
+                  <td><code className="text-[13px]">{worker.phone || "—"}</code>{worker.phoneHidden ? " · ẩn" : ""}</td>
                   <td>{worker.company || "—"}</td>
                   <td>{worker.recruiter || "—"}</td>
                   <td>{worker.status}</td>

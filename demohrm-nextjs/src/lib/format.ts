@@ -7,6 +7,16 @@ export function maskCitizenId(cccd: string, hasPermission: boolean): string {
   return `${cccd.substring(0, 6)}******`;
 }
 
+/** Ẩn SĐT công nhân khi không đủ quyền (giữ 3 số cuối). */
+export function maskPhone(phone: string, hasPermission: boolean): string {
+  if (hasPermission) return phone;
+  const raw = phone.trim();
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length < 4) return "***";
+  return `***${digits.slice(-3)}`;
+}
+
 export function workerStatusTone(status: string): "success" | "warning" | "info" | "danger" {
   if (status === "Chờ đi làm") return "warning";
   if (status === "Tạm nghỉ" || status === "Đang tư vấn" || status === "Ứng viên") return "info";

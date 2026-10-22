@@ -98,6 +98,7 @@ function readImageFile(file: File): Promise<string> {
 
 function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCccd: boolean }) {
   const { companies } = useApp();
+  const canViewPhone = !worker.phoneHidden;
   const sourceOptions = ["Trangway", ...companies.map((company) => company.short_name).filter((name) => name && name.toLowerCase() !== "trangway")];
   const [form, setForm] = useState<ProfileDraft>(() => loadProfile(worker, canViewCccd));
   const [hint, setHint] = useState("");
@@ -139,7 +140,17 @@ function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCcc
       <div className="flex flex-col gap-2">
         <h4 className="text-[13px] font-bold text-slate-800">Nội dung hồ sơ</h4>
         <Field label="Họ và tên"><input className={inputClass} value={form.name} onChange={(e) => save({ ...form, name: e.target.value })} /></Field>
-        <Field label="Số điện thoại"><input className={inputClass} value={form.phone} onChange={(e) => save({ ...form, phone: e.target.value })} /></Field>
+        <Field label="Số điện thoại">
+          <input
+            className={inputClass}
+            value={form.phone}
+            readOnly={!canViewPhone}
+            onChange={(e) => {
+              if (!canViewPhone) return;
+              save({ ...form, phone: e.target.value });
+            }}
+          />
+        </Field>
         <Field label="Số CCCD">
           <input className={inputClass} value={form.citizenId} onChange={(e) => save({ ...form, citizenId: e.target.value })} readOnly={!canViewCccd} />
         </Field>
@@ -159,6 +170,9 @@ function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCcc
         <Field label="Ghi chú">
           <textarea className={inputClass} rows={4} value={form.note} onChange={(e) => save({ ...form, note: e.target.value })} placeholder="Gõ nội dung hồ sơ..." />
         </Field>
+        {!canViewPhone && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-700">Số điện thoại đang bị che — chỉ người nhập hồ sơ, người phụ trách, HCNS hoặc ban lãnh đạo/kỹ thuật được xem.</p>
+        )}
         {!canViewCccd && (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-700">Số CCCD đang bị che vì tài khoản không có quyền xem.</p>
         )}

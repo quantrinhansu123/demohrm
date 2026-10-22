@@ -4,6 +4,7 @@ import { getAuth } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody, searchParams } from "@/lib/server/http";
 import { ROLE } from "@/lib/server/roles";
+import { applyWorkerPhonePrivacy } from "@/lib/server/worker-privacy";
 import { findBlockingDuplicate } from "@/lib/server/worker-duplicates";
 
 const WORKER_INSERT = [
@@ -38,6 +39,7 @@ function safeSearch(raw: unknown): string {
 type WorkerExtra = {
   id: number;
   manager_id: number | null;
+  created_by?: number | null;
   consult_date?: string | null;
   start_work_date?: string | null;
   resign_date?: string | null;
@@ -45,9 +47,15 @@ type WorkerExtra = {
 
 const MISSING_COLUMN = new Set(["PGRST204", "42703"]);
 
-// Mot query lay manager + 3 ngay; thieu cot (chua chay migration) thi lui ve cot cu.
+// Mot query lay manager + created_by + 3 ngay; thieu cot (chua chay migration) thi lui ve cot cu.
 async function loadWorkerExtras(ids: number[]): Promise<WorkerExtra[]> {
-  for (const columns of ["id,manager_id,consult_date,start_work_date,resign_date", "id,manager_id", "id"]) {
+  for (const columns of [
+    "id,manager_id,created_by,consult_date,start_work_date,resign_date",
+    "id,manager_id,created_by",
+    "id,manager_id,consult_date,start_work_date,resign_date",
+    "id,manager_id",
+    "id",
+  ]) {
     const res = await getSupabase().from("workers").select(columns).in("id", ids);
     if (!res.error) return ((res.data ?? []) as unknown) as WorkerExtra[];
     if (!res.error.code || !MISSING_COLUMN.has(res.error.code)) throw res.error;
@@ -112,6 +120,7 @@ export async function GET(req: Request): Promise<Response> {
         return {
           ...row,
           manager_id: managerId,
+          created_by: d?.created_by ?? null,
           manager_name: managerId ? names.get(managerId) ?? null : null,
           consult_date: d?.consult_date ?? null,
           start_work_date: d?.start_work_date ?? null,
@@ -126,6 +135,7 @@ export async function GET(req: Request): Promise<Response> {
       const map = new Map(((full ?? []) as Array<{ id: number; national_id: string }>).map((w) => [w.id, w.national_id]));
       rows = rows.map((r) => ({ ...r, national_id_full: map.get(r["id"] as number) ?? null }));
     }
+    rows = rows.map((row) => applyWorkerPhonePrivacy(row, ctx.staffRole, ctx.staffId));
     return json({ rows, total: count ?? rows.length, limit, offset });
   } catch (e) {
     return apiError(e);

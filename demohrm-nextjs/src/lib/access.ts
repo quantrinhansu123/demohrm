@@ -7,16 +7,23 @@ export interface Access {
   canClosePeriod: boolean;
   canDeletePersonnel: boolean;
   canResetStaffPin: boolean;
+  /** Tạo / quản lý tài khoản nhân sự (ID + mật khẩu) */
+  canManageAccounts: boolean;
+  /** Xem mọi SĐT công nhân (không cần là người nhập/phụ trách) */
+  canViewAllWorkerPhones: boolean;
 }
 
-const FINANCE = ["director", "deputy_director", "accountant"];
-const ADVANCES = ["director", "deputy_director", "accountant", "recruiter"];
-const COMMISSION = ["director", "deputy_director"];
-const AUDIT = ["director", "deputy_director", "team_lead"];
-const CCCD = ["director", "deputy_director", "recruiter"];
-const CLOSE = ["director", "deputy_director", "accountant"];
-// Ban giám đốc = director + deputy_director
-const BOARD = ["director", "deputy_director"];
+const BOARD: readonly string[] = ["director", "deputy_director"];
+const ELEVATED: readonly string[] = ["director", "deputy_director", "tech"];
+
+const FINANCE: readonly string[] = [...ELEVATED, "accountant"];
+const ADVANCES: readonly string[] = [...ELEVATED, "accountant", "recruiter"];
+const COMMISSION: readonly string[] = [...BOARD];
+const AUDIT: readonly string[] = [...ELEVATED, "team_lead"];
+const CCCD: readonly string[] = [...ELEVATED, "admin", "recruiter"];
+const CLOSE: readonly string[] = [...ELEVATED, "accountant"];
+const ACCOUNT_MANAGE: readonly string[] = [...ELEVATED, "admin"];
+const WORKER_PHONE_FULL: readonly string[] = [...ELEVATED, "admin"];
 
 export function accessFor(role: string): Access {
   return {
@@ -27,13 +34,16 @@ export function accessFor(role: string): Access {
     canViewCccd: CCCD.includes(role),
     canClosePeriod: CLOSE.includes(role),
     canDeletePersonnel: BOARD.includes(role),
-    canResetStaffPin: BOARD.includes(role),
+    canResetStaffPin: ACCOUNT_MANAGE.includes(role),
+    canManageAccounts: ACCOUNT_MANAGE.includes(role),
+    canViewAllWorkerPhones: WORKER_PHONE_FULL.includes(role),
   };
 }
 
 const LABELS: Record<string, string> = {
   director: "Giám đốc",
   deputy_director: "Phó giám đốc",
+  tech: "Kỹ thuật",
   accountant: "Kế toán",
   recruiter: "Tuyển dụng",
   team_lead: "Trưởng nhóm",

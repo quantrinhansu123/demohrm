@@ -1,13 +1,14 @@
 export const DEPARTMENTS = [
   { label: "Ban lãnh đạo", role: "director" },
   { label: "Hành chính nhân sự", role: "admin" },
+  { label: "Kỹ thuật", role: "tech" },
   { label: "Quản lý team", role: "team_lead" },
   { label: "Nhân viên", role: "recruiter" },
   { label: "CTV", role: "recruiter" },
 ] as const;
 
 export const ORG_BANDS: { title: string; labels: string[] }[] = [
-  { title: "Ban lãnh đạo · Hành chính nhân sự", labels: ["Ban lãnh đạo", "Hành chính nhân sự"] },
+  { title: "Ban lãnh đạo · Hành chính · Kỹ thuật", labels: ["Ban lãnh đạo", "Hành chính nhân sự", "Kỹ thuật"] },
   { title: "Quản lý team", labels: ["Quản lý team"] },
   { title: "Nhân viên / CTV / Vendor", labels: ["Nhân viên", "CTV"] },
 ];
@@ -29,6 +30,7 @@ export type DepartmentLabel = (typeof DEPARTMENTS)[number]["label"];
 const ROLE_DEPARTMENT: Record<string, string> = {
   director: "Ban lãnh đạo",
   deputy_director: "Ban lãnh đạo",
+  tech: "Kỹ thuật",
   team_lead: "Quản lý team",
   accountant: "Hành chính nhân sự",
   admin: "Hành chính nhân sự",
@@ -52,11 +54,15 @@ export function departmentSpec(label: string): (typeof DEPARTMENTS)[number] | nu
   return DEPARTMENTS.find((d) => d.label === label) ?? null;
 }
 
-export function resolveDepartment(label: string): { label: string; role: string } | null {
+export function resolveDepartment(label: string, position = ""): { label: string; role: string } | null {
   const name = label.trim().replace(/\s+/g, " ");
   if (!name || name.length > 60 || name.includes("·")) return null;
   const spec = departmentSpec(name);
-  return { label: spec?.label ?? name, role: spec?.role ?? "coordinator" };
+  const job = position.trim().replace(/\s+/g, " ");
+  let role = spec?.role ?? "coordinator";
+  // Ban lãnh đạo + vị trí Phó giám đốc → role deputy_director
+  if (role === "director" && /phó\s*giám\s*đốc/i.test(job)) role = "deputy_director";
+  return { label: spec?.label ?? name, role };
 }
 
 export function departmentOf(person: { title?: string | null; role: string }): string | null {

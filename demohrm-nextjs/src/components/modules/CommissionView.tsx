@@ -8,11 +8,10 @@ import {
   createLiveCommission,
   deleteLiveCommission,
   fetchLiveCommissions,
-  fetchLiveOrders,
   fetchLiveWorkers,
   updateLiveCommission,
 } from "@/lib/live";
-import type { LiveCommission, LiveOrderRow, LiveWorkerRow } from "@/lib/live";
+import type { LiveCommission, LiveWorkerRow } from "@/lib/live";
 import { formatVND, maskCitizenId } from "@/lib/format";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { KpiCard } from "@/components/ui/kpi-card";
@@ -31,25 +30,43 @@ function companyKey(value: unknown): string {
   return String(value ?? "").trim().toLocaleLowerCase("vi");
 }
 
-function buildWorkerCounts(orders: LiveOrderRow[]): {
-  byShortName: Map<string, number>;
-  byFullName: Map<string, number>;
-} {
-  const byShortName = new Map<string, number>();
-  const byFullName = new Map<string, number>();
-  for (const order of orders) {
-    const quantity = num(order.working_qty);
-    const shortKey = companyKey(order.company);
-    const fullKey = companyKey(order.company_name);
-    if (shortKey) byShortName.set(shortKey, (byShortName.get(shortKey) ?? 0) + quantity);
-    if (fullKey) byFullName.set(fullKey, (byFullName.get(fullKey) ?? 0) + quantity);
+function buildWorkerCounts(
+  workers: LiveWorkerRow[],
+  companies: Array<{ short_name: string; name?: string | null }>,
+): Map<string, number> {
+  const byCompany = new Map<string, number>();
+  for (const worker of workers) {
+    const key = companyKey(worker.company);
+    if (!key) continue;
+    byCompany.set(key, (byCompany.get(key) ?? 0) + 1);
   }
-  return { byShortName, byFullName };
+  // Alias full name → same count as short_name for form preview lookup
+  for (const company of companies) {
+    const shortKey = companyKey(company.short_name);
+    const fullKey = companyKey(company.name);
+    const count = byCompany.get(shortKey) ?? byCompany.get(fullKey);
+    if (count == null) continue;
+    if (shortKey) byCompany.set(shortKey, count);
+    if (fullKey) byCompany.set(fullKey, count);
+  }
+  return byCompany;
 }
 
-function workerCountFor(counts: ReturnType<typeof buildWorkerCounts>, companyName: string): number {
-  const key = companyKey(companyName);
-  return counts.byFullName.get(key) ?? counts.byShortName.get(key) ?? 0;
+function workerCountFor(counts: Map<string, number>, companyName: string): number {
+  return counts.get(companyKey(companyName)) ?? 0;
+}
+
+async function fetchAllWorkingWorkers(): Promise<LiveWorkerRow[]> {
+  const limit = 200;
+  const first = await fetchLiveWorkers({ statusEn: "working", limit, offset: 0 });
+  const rows = [...first.rows];
+  const total = first.total ?? rows.length;
+  for (let offset = limit; offset < total && offset < 5000; offset += limit) {
+    const page = await fetchLiveWorkers({ statusEn: "working", limit, offset });
+    rows.push(...page.rows);
+    if (page.rows.length < limit) break;
+  }
+  return rows;
 }
 
 interface CommissionForm {
@@ -73,7 +90,7 @@ export function CommissionView() {
   const { access } = useSession();
   const canDelete = access.canDelete;
   const [rows, setRows] = useState<LiveCommission[]>([]);
-  const [orders, setOrders] = useState<LiveOrderRow[]>([]);
+  const [workingWorkers, setWorkingWorkers] = useState<LiveWorkerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
@@ -85,12 +102,12 @@ export function CommissionView() {
     if (!periodCode) return;
     setLoading(true);
     try {
-      const [commissionRows, orderRows] = await Promise.all([
+      const [commissionRows, workers] = await Promise.all([
         fetchLiveCommissions(periodCode),
-        fetchLiveOrders(periodCode),
+        fetchAllWorkingWorkers(),
       ]);
       setRows(commissionRows);
-      setOrders(orderRows);
+      setWorkingWorkers(workers);
       setError("");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Không tải được hoa hồng.");
@@ -103,15 +120,18 @@ export function CommissionView() {
     void reload();
   }, [reload]);
 
-  const counts = useMemo(() => buildWorkerCounts(orders), [orders]);
+  const counts = useMemo(() => buildWorkerCounts(workingWorkers, companies), [workingWorkers, companies]);
   const suggestions = useMemo(() => {
     const names = new Set<string>();
-    for (const order of orders) {
-      if (order.company?.trim()) names.add(order.company.trim());
-      if (order.company_name?.trim()) names.add(order.company_name.trim());
+    for (const company of companies) {
+      if (company.short_name?.trim()) names.add(company.short_name.trim());
+      if (company.name?.trim()) names.add(company.name.trim());
+    }
+    for (const worker of workingWorkers) {
+      if (worker.company?.trim()) names.add(worker.company.trim());
     }
     return [...names].sort((a, b) => a.localeCompare(b, "vi"));
-  }, [orders]);
+  }, [companies, workingWorkers]);
 
   const total = rows.reduce((s, r) => s + num(r.commission_amount), 0);
   const workers = rows.reduce((s, r) => s + num(r.worker_count), 0);
@@ -322,7 +342,7 @@ function CommissionFormModal({
   periodName: string;
   initial: CommissionForm;
   suggestions: string[];
-  counts: ReturnType<typeof buildWorkerCounts>;
+  counts: Map<string, number>;
   onClose: () => void;
   onSave: (form: CommissionForm) => Promise<void>;
 }) {
@@ -405,7 +425,9 @@ function CommissionFormModal({
             <span>Hoa hồng dự kiến</span>
             <strong className="text-violet-700">{formatVND(preview)}</strong>
           </div>
-          <p className="mt-2 text-[12px] text-slate-500">Tính theo tổng công nhân trong đơn hàng của kỳ {periodName}.</p>
+          <p className="mt-2 text-[12px] text-slate-500">
+            Tính theo NLĐ đang làm tại công ty (cùng nguồn với nút Xem) · kỳ cấu hình {periodName}.
+          </p>
         </div>
       </div>
     </Modal>

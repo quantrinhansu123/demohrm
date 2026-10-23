@@ -1,8 +1,9 @@
 export const runtime = "nodejs";
 
-import { getAuth } from "@/lib/server/authctx";
+import { getAuth, requireRole } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody } from "@/lib/server/http";
+import { ROLE } from "@/lib/server/roles";
 import { applyWorkerPhonePrivacy, canViewWorkerPhone } from "@/lib/server/worker-privacy";
 
 const WORKER_PATCH = [
@@ -87,7 +88,8 @@ export async function DELETE(
   ctx: { params: Promise<Record<string, string>> },
 ): Promise<Response> {
   try {
-    getAuth(req);
+    const auth = getAuth(req);
+    requireRole(auth, ...ROLE.deleteRecords);
     const p = await ctx.params;
     const id = positiveInt(p["id"]);
     if (!id) {

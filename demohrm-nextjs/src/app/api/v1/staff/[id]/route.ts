@@ -90,9 +90,9 @@ export async function DELETE(
   try {
     const auth = getAuth(req);
     try {
-      requireRole(auth, ...ROLE.personnelDelete);
+      requireRole(auth, ...ROLE.deleteRecords);
     } catch {
-      throw new ForbiddenError("Chỉ Ban giám đốc được xóa nhân sự.");
+      throw new ForbiddenError("Chỉ Ban lãnh đạo và Kỹ thuật được xóa nhân sự.");
     }
     const id = positiveInt((await ctx.params)["id"]);
     if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);

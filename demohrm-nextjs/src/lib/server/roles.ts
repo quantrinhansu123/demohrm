@@ -1,7 +1,6 @@
 import "server-only";
 
 /** Ban lãnh đạo + Kỹ thuật: quyền cao nhất (xem hệ thống / tài chính / tài khoản). */
-export const BOARD = ["director", "deputy_director"] as const;
 export const ELEVATED = ["director", "deputy_director", "tech"] as const;
 
 /**
@@ -12,11 +11,14 @@ export const ELEVATED = ["director", "deputy_director", "tech"] as const;
  */
 export const ROLE = {
   finance: [...ELEVATED, "accountant"],
-  commission: [...BOARD],
+  commission: [...ELEVATED],
   audit: [...ELEVATED, "team_lead"],
   cccd: [...ELEVATED, "admin", "recruiter"],
   closePeriod: [...ELEVATED, "accountant"],
-  personnelDelete: [...BOARD],
+  /** Xóa bản ghi: chỉ Ban lãnh đạo + Kỹ thuật */
+  deleteRecords: [...ELEVATED],
+  /** @deprecated Dùng deleteRecords */
+  personnelDelete: [...ELEVATED],
   /** Tạo tài khoản + đặt lại PIN: GD/PGĐ/Kỹ thuật/HCNS */
   accountManage: [...ELEVATED, "admin"],
   staffPinReset: [...ELEVATED, "admin"],

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { useApp } from "@/lib/store";
+import { useSession } from "@/lib/session";
 import {
   createLiveCashbookEntry,
   deleteLiveCashbookEntry,
@@ -39,6 +40,8 @@ const LIMIT = 50;
 
 export function FinanceView() {
   const { companies } = useApp();
+  const { access } = useSession();
+  const canDelete = access.canDelete;
   const companyNames = [...new Set(companies.map((company) => company.short_name).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const [tab, setTab] = useState<Tab>("entries");
   const [range, setRange] = useState(monthRangeInput());
@@ -280,7 +283,9 @@ export function FinanceView() {
                             ? [{ label: "Xem", onClick: () => { setEditing(row); setModalOpen(true); } }]
                             : [
                                 { label: "Sửa", onClick: () => { setEditing(row); setModalOpen(true); } },
-                                { label: "Xóa", tone: "danger", onClick: () => { setDeleteTarget(row); setDeleteError(""); } },
+                                ...(canDelete
+                                  ? [{ label: "Xóa", tone: "danger" as const, onClick: () => { setDeleteTarget(row); setDeleteError(""); } }]
+                                  : []),
                               ]
                         }
                       />

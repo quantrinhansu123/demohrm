@@ -56,7 +56,8 @@ function formatDayTime(row: LiveAdvance): string {
 
 export function AdvancesView() {
   const { staff } = useApp();
-  const { staff: currentStaff } = useSession();
+  const { staff: currentStaff, access } = useSession();
+  const canDelete = access.canDelete;
   const [range, setRange] = useState(monthRangeInput());
   const [status, setStatus] = useState("");
   const [subjectType, setSubjectType] = useState("");
@@ -309,7 +310,7 @@ export function AdvancesView() {
                 if (row.status === "paid") {
                   actions.push({ label: "Quyết toán", disabled: busy, onClick: () => void act(row, "settle") });
                 }
-                if (row.status === "requested" || row.status === "approved") {
+                if (canDelete && (row.status === "requested" || row.status === "approved")) {
                   actions.push({ label: "Hủy phiếu", tone: "danger", disabled: busy, onClick: () => void act(row, "cancel") });
                 }
                 return (

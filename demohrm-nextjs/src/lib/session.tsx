@@ -31,6 +31,7 @@ const EMPTY_ACCESS: Access = {
   canViewAudit: false,
   canViewCccd: false,
   canClosePeriod: false,
+  canDelete: false,
   canDeletePersonnel: false,
   canResetStaffPin: false,
   canManageAccounts: false,

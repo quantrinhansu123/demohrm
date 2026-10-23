@@ -69,7 +69,7 @@ export async function DELETE(
 ): Promise<Response> {
   try {
     const auth = getAuth(req);
-    requireRole(auth, ...ROLE.finance);
+    requireRole(auth, ...ROLE.deleteRecords);
     const params = await ctx.params;
     const id = positiveInt(params["id"] ?? "");
     if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);

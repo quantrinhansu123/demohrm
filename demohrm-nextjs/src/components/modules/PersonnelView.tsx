@@ -61,7 +61,7 @@ function formFromPerson(person: LivePersonnel): PersonnelForm {
 
 export function PersonnelView() {
   const { access } = useSession();
-  const canDelete = access.canDeletePersonnel;
+  const canDelete = access.canDelete;
   const canManageAccounts = access.canManageAccounts;
   const [rows, setRows] = useState<LivePersonnel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -192,7 +192,7 @@ export function PersonnelView() {
 
   const handleDelete = async (person: LivePersonnel) => {
     if (!canDelete) {
-      window.alert("Chỉ Ban giám đốc được xóa nhân sự.");
+      window.alert("Chỉ Ban lãnh đạo và Kỹ thuật được xóa nhân sự.");
       return;
     }
     if (!window.confirm(`Xóa ${person.full_name} (${person.code}) khỏi danh sách nhân sự?`)) return;
@@ -410,7 +410,7 @@ function PersonnelCard({
           {canDelete ? (
             <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(person); }}>Xóa</button>
           ) : (
-            <span className="block w-full px-3 py-1.5 text-left text-[12px] text-slate-400" title="Chỉ Ban giám đốc được xóa nhân sự.">Xóa (BGĐ)</span>
+            <span className="block w-full px-3 py-1.5 text-left text-[12px] text-slate-400" title="Chỉ Ban lãnh đạo và Kỹ thuật được xóa nhân sự.">Xóa (BGĐ/KT)</span>
           )}
         </div>
       )}
@@ -710,7 +710,7 @@ function PersonnelDetailModal({
             {canDelete ? (
               <Button variant="destructive" onClick={() => onDelete(person)}>Xóa</Button>
             ) : (
-              <span className="mr-auto text-[12px] text-slate-400" title="Chỉ Ban giám đốc được xóa nhân sự.">Xóa (BGĐ)</span>
+              <span className="mr-auto text-[12px] text-slate-400" title="Chỉ Ban lãnh đạo và Kỹ thuật được xóa nhân sự.">Xóa (BGĐ/KT)</span>
             )}
             <Button variant="outline" onClick={handleClose}>Đóng</Button>
             {canResetPin && (

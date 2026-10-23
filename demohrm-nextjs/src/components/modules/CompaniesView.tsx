@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useSession } from "@/lib/session";
 import { ApiError } from "@/lib/api";
 import { createLiveCompany, deleteLiveCompany, fetchLiveOrders, fetchLiveSites, fetchLiveWorkers, toWorker, updateLiveCompany } from "@/lib/live";
 import type { CompanyWrite, LiveCompany, LiveOrderRow, LiveSite } from "@/lib/live";
@@ -56,6 +57,8 @@ function toWrite(form: CompanyForm): CompanyWrite {
 
 export function CompaniesView() {
   const { companies, periodCode, reloadCatalog } = useApp();
+  const { access } = useSession();
+  const canDelete = access.canDelete;
   const [orders, setOrders] = useState<LiveOrderRow[]>([]);
   const [sites, setSites] = useState<LiveSite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -129,7 +132,7 @@ export function CompaniesView() {
                   <td>{mine.reduce((s, o) => s + o.target_qty, 0)}</td>
                   <td>{c.bill_rate_per_day ?? "—"}</td>
                   <td>
-                    <CompanyMenu company={c} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
+                    <CompanyMenu company={c} canDelete={canDelete} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
                   </td>
                 </tr>
               );
@@ -154,6 +157,7 @@ export function CompaniesView() {
         company={viewing}
         site={viewing ? sites.find((s) => s.company_id === viewing.id) : undefined}
         orders={viewing ? orders.filter((order) => order.company === viewing.short_name) : []}
+        canDelete={canDelete}
         onClose={() => setViewing(null)}
         onEdit={(company) => {
           setViewing(null);
@@ -167,11 +171,13 @@ export function CompaniesView() {
 
 function CompanyMenu({
   company,
+  canDelete,
   onView,
   onEdit,
   onDelete,
 }: {
   company: LiveCompany;
+  canDelete: boolean;
   onView: (company: LiveCompany) => void;
   onEdit: (company: LiveCompany) => void;
   onDelete: (company: LiveCompany) => void;
@@ -212,7 +218,9 @@ function CompanyMenu({
         <div ref={menuRef} className="fixed z-50 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg" style={{ top: menuPos.top, left: menuPos.left }}>
           <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onView(company); }}>Xem</button>
           <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(company); }}>Sửa</button>
-          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); void onDelete(company); }}>Xóa</button>
+          {canDelete && (
+            <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); void onDelete(company); }}>Xóa</button>
+          )}
         </div>
       )}
     </div>
@@ -326,6 +334,7 @@ function CompanyDetailModal({
   company,
   site,
   orders,
+  canDelete,
   onClose,
   onEdit,
   onDelete,
@@ -333,6 +342,7 @@ function CompanyDetailModal({
   company: LiveCompany | null;
   site?: LiveSite;
   orders: LiveOrderRow[];
+  canDelete: boolean;
   onClose: () => void;
   onEdit: (company: LiveCompany) => void;
   onDelete: (company: LiveCompany) => void;
@@ -381,7 +391,7 @@ function CompanyDetailModal({
       footer={
         company ? (
           <>
-            <Button variant="destructive" onClick={() => onDelete(company)}>Xóa</Button>
+            {canDelete && <Button variant="destructive" onClick={() => onDelete(company)}>Xóa</Button>}
             <Button variant="outline" onClick={onClose}>Đóng</Button>
             <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => onEdit(company)}>Sửa</Button>
           </>

@@ -1,9 +1,10 @@
 export const runtime = "nodejs";
 
-import { getAuth } from "@/lib/server/authctx";
+import { getAuth, requireRole } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { companyPayload } from "@/lib/server/company";
 import { apiError, json, readBody } from "@/lib/server/http";
+import { ROLE } from "@/lib/server/roles";
 
 const COMPANY_COLS = "id,code,short_name,name,hotline,contact_name,contact_phone,bill_rate_per_day,status";
 
@@ -52,7 +53,8 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   try {
-    getAuth(req);
+    const auth = getAuth(req);
+    requireRole(auth, ...ROLE.deleteRecords);
     const id = positiveInt((await ctx.params).id);
     if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
     const { error } = await getSupabase().from("companies").delete().eq("id", id);

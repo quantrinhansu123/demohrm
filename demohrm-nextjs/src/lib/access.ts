@@ -5,6 +5,9 @@ export interface Access {
   canViewAudit: boolean;
   canViewCccd: boolean;
   canClosePeriod: boolean;
+  /** Xóa bản ghi (nhân sự, công nhân, công ty, đơn hàng, vendor, tài chính, tạm ứng) */
+  canDelete: boolean;
+  /** @deprecated Dùng canDelete */
   canDeletePersonnel: boolean;
   canResetStaffPin: boolean;
   /** Tạo / quản lý tài khoản nhân sự (ID + mật khẩu) */
@@ -13,12 +16,11 @@ export interface Access {
   canViewAllWorkerPhones: boolean;
 }
 
-const BOARD: readonly string[] = ["director", "deputy_director"];
 const ELEVATED: readonly string[] = ["director", "deputy_director", "tech"];
 
 const FINANCE: readonly string[] = [...ELEVATED, "accountant"];
 const ADVANCES: readonly string[] = [...ELEVATED, "accountant", "recruiter"];
-const COMMISSION: readonly string[] = [...BOARD];
+const COMMISSION: readonly string[] = [...ELEVATED];
 const AUDIT: readonly string[] = [...ELEVATED, "team_lead"];
 const CCCD: readonly string[] = [...ELEVATED, "admin", "recruiter"];
 const CLOSE: readonly string[] = [...ELEVATED, "accountant"];
@@ -33,7 +35,8 @@ export function accessFor(role: string): Access {
     canViewAudit: AUDIT.includes(role),
     canViewCccd: CCCD.includes(role),
     canClosePeriod: CLOSE.includes(role),
-    canDeletePersonnel: BOARD.includes(role),
+    canDelete: ELEVATED.includes(role),
+    canDeletePersonnel: ELEVATED.includes(role),
     canResetStaffPin: ACCOUNT_MANAGE.includes(role),
     canManageAccounts: ACCOUNT_MANAGE.includes(role),
     canViewAllWorkerPhones: WORKER_PHONE_FULL.includes(role),

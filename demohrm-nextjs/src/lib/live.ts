@@ -826,17 +826,36 @@ export function fetchLiveFinance(): Promise<Page<LiveFinanceTx>> {
 }
 
 export interface LiveCommission {
+  id: number;
+  company_name: string;
+  unit_price: number | string;
   period_code: string;
-  code: string;
-  full_name: string;
-  company: string | null;
-  work_days: number | string;
-  rate_per_day: number | string;
+  worker_count: number | string;
   commission_amount: number | string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CommissionWrite {
+  company_name: string;
+  unit_price: number;
+  period_code: string;
 }
 
 export function fetchLiveCommissions(period: string): Promise<LiveCommission[]> {
-  return apiGet(`/commissions?period=${encodeURIComponent(period)}`);
+  return apiGet<LiveCommission[]>(`/commissions?period=${encodeURIComponent(period)}`, { timeoutMs: 60000 });
+}
+
+export function createLiveCommission(body: CommissionWrite): Promise<LiveCommission> {
+  return apiPost("/commissions", body);
+}
+
+export function updateLiveCommission(id: number, body: Partial<CommissionWrite>): Promise<LiveCommission> {
+  return apiPatch(`/commissions/${id}`, body);
+}
+
+export function deleteLiveCommission(id: number): Promise<{ ok: boolean }> {
+  return apiDelete(`/commissions/${id}`);
 }
 
 export interface LiveAudit {

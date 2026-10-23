@@ -1,9 +1,10 @@
 export const runtime = "nodejs";
 
-import { getAuth } from "@/lib/server/authctx";
+import { getAuth, requireRole } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { removeOrderMedia } from "@/lib/server/order-media";
 import { apiError, json, readBody } from "@/lib/server/http";
+import { ROLE } from "@/lib/server/roles";
 
 // GET /api/v1/orders/:id — Chi tiet don
 export async function GET(
@@ -66,7 +67,8 @@ export async function DELETE(
   ctx: { params: Promise<Record<string, string>> },
 ): Promise<Response> {
   try {
-    getAuth(req);
+    const auth = getAuth(req);
+    requireRole(auth, ...ROLE.deleteRecords);
     const id = Number((await ctx.params)["id"]);
     if (!Number.isInteger(id) || id <= 0) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
     await removeOrderMedia(id);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Copy, MoreHorizontal, Pin, Plus } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useSession } from "@/lib/session";
 import { createLiveCompany, fetchLiveOrders, fetchLivePositions, fetchLiveSites, pinLiveOrder, saveLiveOrderMedia, toOrderSummary, updateLiveCompany } from "@/lib/live";
 import type { LiveCompany, LiveSite } from "@/lib/live";
 import type { OrderSummary } from "@/types/hrm";
@@ -151,6 +152,8 @@ function loadDrafts(): Record<string, OrderDraft> {
 
 export function OrdersView() {
   const { periodCode, periods } = useApp();
+  const { access } = useSession();
+  const canDelete = access.canDelete;
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<OrderSummary | null>(null);
   const [selectedTab, setSelectedTab] = useState<"desc" | "workers">("desc");
@@ -343,6 +346,7 @@ export function OrdersView() {
               key={o.code}
               order={o}
               draft={drafts[o.code]}
+              canDelete={canDelete}
               onTogglePin={() => void togglePin(o)}
               onOpen={openOrder}
               onEdit={() => setEditing(o)}
@@ -382,6 +386,7 @@ export function OrdersView() {
 function OrderDemandCard({
   order,
   draft,
+  canDelete,
   onOpen,
   onEdit,
   onDelete,
@@ -389,6 +394,7 @@ function OrderDemandCard({
 }: {
   order: OrderSummary;
   draft?: OrderDraft;
+  canDelete: boolean;
   onTogglePin: () => void;
   onOpen: (order: OrderSummary, tab?: "desc" | "workers") => void;
   onEdit: () => void;
@@ -499,7 +505,9 @@ function OrderDemandCard({
                   <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onOpen(order, "desc"); }}>Xem</button>
                   <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onTogglePin(); }}>{order.pinnedAt ? "Bỏ ghim" : "Ghim"}</button>
                   <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onEdit(); }}>Sửa</button>
-                  <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setMenuOpen(false); onDelete(); }}>Xóa</button>
+                  {canDelete && (
+                    <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setMenuOpen(false); onDelete(); }}>Xóa</button>
+                  )}
                 </div>
               )}
             </div>

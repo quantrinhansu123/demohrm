@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError } from "@/lib/api";
+import { useSession } from "@/lib/session";
 import { createLiveVendor, deleteLiveVendor, fetchLiveVendorQuotas, fetchLiveVendors, updateLiveVendor } from "@/lib/live";
 import type { LiveVendor, LiveVendorQuota, VendorWriteBody } from "@/lib/live";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
@@ -94,6 +95,8 @@ function toBody(form: VendorForm): VendorWriteBody {
 }
 
 export function VendorsView() {
+  const { access } = useSession();
+  const canDelete = access.canDelete;
   const [vendors, setVendors] = useState<LiveVendor[]>([]);
   const [quotas, setQuotas] = useState<LiveVendorQuota[]>([]);
   const [loading, setLoading] = useState(true);
@@ -191,7 +194,7 @@ export function VendorsView() {
                   <div className="flex gap-1">
                     <Button variant="outline" size="xs" onClick={() => setViewing(v)}>Xem</Button>
                     <Button variant="outline" size="xs" onClick={() => setEditing(v)}>Sửa</Button>
-                    <Button variant="destructive" size="xs" onClick={() => void handleDelete(v)}>Xóa</Button>
+                    {canDelete && <Button variant="destructive" size="xs" onClick={() => void handleDelete(v)}>Xóa</Button>}
                   </div>
                 </td>
               </tr>
@@ -234,6 +237,7 @@ export function VendorsView() {
       />
       <VendorDetailModal
         vendor={viewing}
+        canDelete={canDelete}
         onClose={() => setViewing(null)}
         onEdit={(vendor) => {
           setViewing(null);
@@ -335,11 +339,13 @@ function VendorFormModal({
 
 function VendorDetailModal({
   vendor,
+  canDelete,
   onClose,
   onEdit,
   onDelete,
 }: {
   vendor: LiveVendor | null;
+  canDelete: boolean;
   onClose: () => void;
   onEdit: (vendor: LiveVendor) => void;
   onDelete: (vendor: LiveVendor) => void;
@@ -353,7 +359,7 @@ function VendorDetailModal({
       footer={
         vendor ? (
           <>
-            <Button variant="destructive" onClick={() => onDelete(vendor)}>Xóa</Button>
+            {canDelete && <Button variant="destructive" onClick={() => onDelete(vendor)}>Xóa</Button>}
             <Button variant="outline" onClick={onClose}>Đóng</Button>
             <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => onEdit(vendor)}>Sửa</Button>
           </>

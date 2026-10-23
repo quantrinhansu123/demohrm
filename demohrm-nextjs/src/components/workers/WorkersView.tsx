@@ -119,6 +119,7 @@ async function ensureStaffId(staff: LiveStaff[], known: Map<string, number>, nam
 export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => void }) {
   const { companies } = useApp();
   const { access } = useSession();
+  const canDelete = access.canDelete;
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
   const [company, setCompany] = useState("");
@@ -230,6 +231,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                 <td>
                   <WorkerMenu
                     worker={w}
+                    canDelete={canDelete}
                     onView={onViewDetail}
                     onCloseDeal={setClosing}
                     onEdit={setEditing}
@@ -256,12 +258,14 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
 
 function WorkerMenu({
   worker,
+  canDelete,
   onView,
   onCloseDeal,
   onEdit,
   onDelete,
 }: {
   worker: Worker;
+  canDelete: boolean;
   onView: (worker: Worker) => void;
   onCloseDeal: (worker: Worker) => void;
   onEdit: (worker: Worker) => void;
@@ -306,7 +310,9 @@ function WorkerMenu({
             <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onCloseDeal(worker); }}>Chốt</button>
           )}
           <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(worker); }}>Sửa</button>
-          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); void onDelete(worker); }}>Xóa</button>
+          {canDelete && (
+            <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); void onDelete(worker); }}>Xóa</button>
+          )}
         </div>
       )}
     </div>

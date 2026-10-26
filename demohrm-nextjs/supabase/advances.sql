@@ -9,6 +9,7 @@ create table if not exists trangway.advances (
   reason                    varchar(300) not null,
   status                    varchar(20) not null default 'requested',
   advance_date              date not null,
+  advance_month             varchar(7) not null,
   advance_time              time not null,
   requested_by              bigint references trangway.staff(id),
   approved_by               bigint references trangway.staff(id),
@@ -23,6 +24,7 @@ create table if not exists trangway.advances (
   created_at                timestamptz not null default now(),
   updated_at                timestamptz not null default now(),
   constraint advances_amount_chk check (amount > 0),
+  constraint advances_month_chk check (advance_month ~ '^\d{4}-(0[1-9]|1[0-2])$'),
   constraint advances_status_chk check (
     status in ('requested', 'approved', 'paid', 'settled', 'rejected', 'cancelled')
   ),
@@ -43,8 +45,14 @@ grant usage, select on sequence trangway.advances_id_seq
 create index if not exists idx_advances_date
   on trangway.advances (advance_date, advance_time);
 
+create index if not exists idx_advances_month
+  on trangway.advances (advance_month);
+
 create index if not exists idx_advances_status_date
   on trangway.advances (status, advance_date);
+
+create index if not exists idx_advances_status_month
+  on trangway.advances (status, advance_month);
 
 create index if not exists idx_advances_worker_date
   on trangway.advances (worker_id, advance_date);

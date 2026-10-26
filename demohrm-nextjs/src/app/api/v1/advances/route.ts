@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { randomBytes } from "crypto";
 
-import { assertAdvanceMonthOpen } from "@/lib/server/advance-months";
+import { parseMonthCode } from "@/lib/server/advance-months";
 import { getAuth, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody, searchParams } from "@/lib/server/http";
@@ -12,7 +12,7 @@ const DATA_URL = /^data:(image\/(?:jpeg|png|webp));base64,([a-z0-9+/=\r\n]+)$/i;
 const MAX_IMAGE_BYTES = 5_000_000;
 
 const COLUMNS =
-  "id,code,subject_type,worker_id,staff_id,amount,reason,status,advance_date,advance_time,requested_by,approved_by,approved_at,paid_at,settled_at,settled_amount,evidence_path,note,cashbook_entry_id,legacy_salary_advance_id,created_at,updated_at";
+  "id,code,subject_type,worker_id,staff_id,amount,reason,status,advance_date,advance_month,advance_time,requested_by,approved_by,approved_at,paid_at,settled_at,settled_amount,evidence_path,note,cashbook_entry_id,legacy_salary_advance_id,created_at,updated_at";
 
 interface AdvanceRow {
   id: number;
@@ -209,6 +209,7 @@ export async function GET(req: Request): Promise<Response> {
     const staffId = positiveInt(sp.get("staff_id"));
     const subjectType = sp.get("subject_type");
     const status = sp.get("status");
+    const month = parseMonthCode(sp.get("month"));
     const from = advanceDate(sp.get("from"));
     const to = advanceDate(sp.get("to"));
     const search = sp.get("q")?.trim();
@@ -227,8 +228,9 @@ export async function GET(req: Request): Promise<Response> {
     if (staffId) q = q.eq("staff_id", staffId);
     if (subjectType === "staff" || subjectType === "worker") q = q.eq("subject_type", subjectType);
     if (status) q = q.eq("status", status);
-    if (from) q = q.gte("advance_date", from);
-    if (to) q = q.lte("advance_date", to);
+    if (month) q = q.eq("advance_month", month);
+    if (!month && from) q = q.gte("advance_date", from);
+    if (!month && to) q = q.lte("advance_date", to);
     if (search) {
       const [workersRes, staffRes] = await Promise.all([
         getSupabase().from("workers").select("id").or(`full_name.ilike.%${search}%,code.ilike.%${search}%`).limit(1000),
@@ -284,8 +286,10 @@ export async function POST(req: Request): Promise<Response> {
     }
     if (!date) return json({ error: "invalid", message: "Ngày tạm ứng không hợp lệ." }, 400);
     if (!time) return json({ error: "invalid", message: "Giờ tạm ứng không hợp lệ." }, 400);
-    const monthLocked = await assertAdvanceMonthOpen(date);
-    if (monthLocked) return monthLocked;
+    const month =
+      parseMonthCode(raw["advance_month"]) ??
+      parseMonthCode(typeof date === "string" ? date.slice(0, 7) : null);
+    if (!month) return json({ error: "invalid", message: "Tháng tạm ứng không hợp lệ (YYYY-MM)." }, 400);
     if (!reason) return json({ error: "invalid", message: "Nhập lý do tạm ứng." }, 400);
     if (reason.length > 300) return json({ error: "invalid", message: "Lý do tối đa 300 ký tự." }, 400);
     if (!giverId) return json({ error: "invalid", message: "Chọn người đưa tiền tạm ứng." }, 400);
@@ -309,12 +313,24 @@ export async function POST(req: Request): Promise<Response> {
         note: note || null,
         status: "requested",
         advance_date: date,
+        advance_month: month,
         advance_time: time,
         requested_by: giverId,
       })
       .select(COLUMNS)
       .single();
-    if (error) throw error;
+    if (error) {
+      if ((error as { code?: string }).code === "PGRST204" || /advance_month/i.test(error.message ?? "")) {
+        return json(
+          {
+            error: "missing_migration",
+            message: "Chưa có cột tháng tạm ứng. Hãy chạy supabase/advance_month_column.sql.",
+          },
+          400,
+        );
+      }
+      throw error;
+    }
 
     const created = data as unknown as AdvanceRow;
     if (image) {

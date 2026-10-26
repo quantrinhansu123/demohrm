@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ApiError } from "@/lib/api";
-import { monthBounds } from "@/lib/advance-months";
 import { fetchLiveAdvances } from "@/lib/live";
 import type { LiveAdvance } from "@/lib/live";
 import { formatVND } from "@/lib/format";
@@ -81,12 +80,10 @@ export function AdvanceMonthPreviewModal({
 
   useEffect(() => {
     if (!open || !monthCode) return;
-    const range = monthBounds(monthCode);
-    if (!range) return;
     let alive = true;
     setLoading(true);
     setError("");
-    fetchLiveAdvances({ from: range.from, to: range.to, limit: 500 })
+    fetchLiveAdvances({ month: monthCode, limit: 500 })
       .then((data) => {
         if (!alive) return;
         setRows(data);

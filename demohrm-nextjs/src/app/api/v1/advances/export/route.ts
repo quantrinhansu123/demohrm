@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import ExcelJS from "exceljs";
 
-import { monthBounds, parseMonthCode } from "@/lib/server/advance-months";
+import { parseMonthCode } from "@/lib/server/advance-months";
 import { getAuth } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, searchParams } from "@/lib/server/http";
@@ -74,15 +74,16 @@ export async function GET(req: Request): Promise<Response> {
     getAuth(req);
     const sp = searchParams(req);
     const month = parseMonthCode(sp.get("month"));
-    const monthRange = month ? monthBounds(month) : null;
-    const from = monthRange?.from ?? advanceDate(sp.get("from"));
-    const to = monthRange?.to ?? advanceDate(sp.get("to"));
-    if (!from || !to) {
-      return json({ error: "invalid", message: "Chọn tháng hoặc khoảng ngày trước khi xuất Excel." }, 400);
+    const from = advanceDate(sp.get("from"));
+    const to = advanceDate(sp.get("to"));
+    if (!month && (!from || !to)) {
+      return json({ error: "invalid", message: "Chọn tháng tạm ứng hoặc khoảng ngày trước khi xuất Excel." }, 400);
     }
-    if (to < from) return json({ error: "invalid", message: "Đến ngày phải sau hoặc bằng từ ngày." }, 400);
-    if (dayCount(from, to) > MAX_DAYS) {
-      return json({ error: "invalid", message: "Khoảng xuất tối đa 366 ngày." }, 400);
+    if (!month && from && to) {
+      if (to < from) return json({ error: "invalid", message: "Đến ngày phải sau hoặc bằng từ ngày." }, 400);
+      if (dayCount(from, to) > MAX_DAYS) {
+        return json({ error: "invalid", message: "Khoảng xuất tối đa 366 ngày." }, 400);
+      }
     }
 
     const status = sp.get("status")?.trim() ?? "";
@@ -92,14 +93,16 @@ export async function GET(req: Request): Promise<Response> {
     let query = getSupabase()
       .from("advances")
       .select(
-        "id,code,subject_type,worker_id,staff_id,amount,reason,status,advance_date,advance_time,requested_by,approved_by,paid_at,settled_at,settled_amount,note",
+        "id,code,subject_type,worker_id,staff_id,amount,reason,status,advance_date,advance_month,advance_time,requested_by,approved_by,paid_at,settled_at,settled_amount,note",
       )
-      .gte("advance_date", from)
-      .lte("advance_date", to)
       .order("advance_date", { ascending: true })
       .order("advance_time", { ascending: true })
       .order("id", { ascending: true })
       .limit(MAX_ROWS + 1);
+    if (month) query = query.eq("advance_month", month);
+    else {
+      query = query.gte("advance_date", from!).lte("advance_date", to!);
+    }
 
     if (status) query = query.eq("status", status);
     if (subjectType === "worker" || subjectType === "staff") query = query.eq("subject_type", subjectType);
@@ -186,7 +189,9 @@ export async function GET(req: Request): Promise<Response> {
 
     sheet.mergeCells(2, 1, 2, lastColumn);
     const subtitle = sheet.getCell(2, 1);
-    subtitle.value = `Từ ${formatDay(from)} đến ${formatDay(to)}${status ? ` · Trạng thái: ${STATUS_LABEL[status] ?? status}` : ""}${search ? ` · Từ khóa: ${search}` : ""}`;
+    subtitle.value = month
+      ? `Tháng tạm ứng ${month}${status ? ` · Trạng thái: ${STATUS_LABEL[status] ?? status}` : ""}${search ? ` · Từ khóa: ${search}` : ""}`
+      : `Từ ${formatDay(from!)} đến ${formatDay(to!)}${status ? ` · Trạng thái: ${STATUS_LABEL[status] ?? status}` : ""}${search ? ` · Từ khóa: ${search}` : ""}`;
     subtitle.font = { italic: true, size: 10, color: { argb: "FF64748B" } };
     subtitle.alignment = { horizontal: "center", vertical: "middle" };
 

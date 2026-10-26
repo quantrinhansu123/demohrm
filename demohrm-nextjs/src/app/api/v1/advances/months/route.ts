@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 
-import { currentMonthCode, monthCodeFromDate } from "@/lib/server/advance-months";
+import { currentMonthCode, monthCodeFromDate, parseMonthCode } from "@/lib/server/advance-months";
 import { getAuth } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json } from "@/lib/server/http";
@@ -12,8 +12,9 @@ interface CloseRow {
   note: string | null;
 }
 
-interface AdvanceDateRow {
-  advance_date: string;
+interface AdvanceMonthStatRow {
+  advance_month?: string | null;
+  advance_date?: string | null;
   status: string;
   amount: number | string;
 }
@@ -27,17 +28,30 @@ export async function GET(req: Request): Promise<Response> {
         .from("advance_month_closes")
         .select("month_code,closed_at,closed_by,note")
         .order("month_code", { ascending: false }),
-      getSupabase().from("advances").select("advance_date,status,amount").limit(20000),
+      getSupabase().from("advances").select("advance_month,advance_date,status,amount").limit(20000),
     ]);
     if (closesRes.error) throw closesRes.error;
-    if (advancesRes.error) throw advancesRes.error;
+    if (advancesRes.error) {
+      if (/advance_month/i.test(advancesRes.error.message ?? "")) {
+        return json(
+          {
+            error: "missing_migration",
+            message: "Chưa có cột tháng tạm ứng. Hãy chạy supabase/advance_month_column.sql.",
+          },
+          400,
+        );
+      }
+      throw advancesRes.error;
+    }
 
     const closedRows = (closesRes.data ?? []) as CloseRow[];
     const closedMap = new Map(closedRows.map((row) => [String(row.month_code), row]));
 
     const stats = new Map<string, { count: number; amount: number; open_count: number }>();
-    for (const row of (advancesRes.data ?? []) as AdvanceDateRow[]) {
-      const month = monthCodeFromDate(String(row.advance_date ?? ""));
+    for (const row of (advancesRes.data ?? []) as AdvanceMonthStatRow[]) {
+      const month =
+        parseMonthCode(row.advance_month) ??
+        monthCodeFromDate(String(row.advance_date ?? ""));
       if (!month) continue;
       const current = stats.get(month) ?? { count: 0, amount: 0, open_count: 0 };
       current.count += 1;

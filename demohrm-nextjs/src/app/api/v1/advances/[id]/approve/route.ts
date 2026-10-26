@@ -1,6 +1,5 @@
 ﻿export const runtime = "nodejs";
 
-import { assertAdvanceMonthOpen } from "@/lib/server/advance-months";
 import { getAuth, requireRole, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody } from "@/lib/server/http";
@@ -36,8 +35,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<Record<string, 
     if (current.data.status !== "requested") {
       return json({ error: "invalid", message: "Chỉ duyệt hoặc từ chối phiếu đang chờ duyệt." }, 400);
     }
-    const monthLocked = await assertAdvanceMonthOpen(String(current.data.advance_date));
-    if (monthLocked) return monthLocked;
 
     const { data, error } = await getSupabase()
       .from("advances")

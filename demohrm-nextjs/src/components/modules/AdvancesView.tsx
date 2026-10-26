@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ApiError } from "@/lib/api";
-import { currentMonthCode, monthBounds, monthCodeFromDate, nextMonthCode } from "@/lib/advance-months";
-import { monthRangeInput } from "@/lib/cashbook";
+import { currentMonthCode, monthCodeFromDate, nextMonthCode } from "@/lib/advance-months";
 import {
   approveLiveAdvance,
   cancelLiveAdvance,
@@ -86,7 +85,7 @@ export function AdvancesView() {
   const [monthsFilter, setMonthsFilter] = useState("");
   const [monthRows, setMonthRows] = useState<AdvanceMonthRow[]>([]);
   const [closedMonths, setClosedMonths] = useState<Set<string>>(new Set());
-  const [range, setRange] = useState(monthRangeInput);
+  const [filterMonth, setFilterMonth] = useState(currentMonthCode);
   const [status, setStatus] = useState("");
   const [subjectType, setSubjectType] = useState("");
   const [search, setSearch] = useState("");
@@ -105,11 +104,6 @@ export function AdvancesView() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<LiveAdvance | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
-
-  const isRowMonthClosed = (advanceDate: string | null | undefined) => {
-    const code = advanceDate ? monthCodeFromDate(advanceDate) : null;
-    return Boolean(code && closedMonths.has(code));
-  };
 
   useEffect(() => {
     let alive = true;
@@ -152,11 +146,10 @@ export function AdvancesView() {
 
   useEffect(() => {
     let alive = true;
-    if (!range.from || !range.to) return;
+    if (!filterMonth) return;
     setLoading(true);
     fetchLiveAdvances({
-      from: range.from,
-      to: range.to,
+      month: filterMonth,
       status: status || undefined,
       subjectType: subjectType === "staff" || subjectType === "worker" ? subjectType : undefined,
       q: query || undefined,
@@ -171,9 +164,11 @@ export function AdvancesView() {
         if (!alive) return;
         const message = e instanceof ApiError ? e.message : "Không tải được danh sách tạm ứng.";
         setError(
-          /advances|subject_type|does not exist|schema cache/i.test(message)
-            ? "Chưa chạy migration tạm ứng. Hãy chạy supabase/cashbook_entries.sql, supabase/advances.sql và supabase/fn_pay_advance.sql."
-            : message,
+          /advance_month|missing_migration/i.test(message)
+            ? "Chưa chạy migration tháng tạm ứng. Hãy chạy supabase/advance_month_column.sql."
+            : /advances|subject_type|does not exist|schema cache/i.test(message)
+              ? "Chưa chạy migration tạm ứng. Hãy chạy supabase/cashbook_entries.sql, supabase/advances.sql và supabase/fn_pay_advance.sql."
+              : message,
         );
       })
       .finally(() => {
@@ -182,7 +177,7 @@ export function AdvancesView() {
     return () => {
       alive = false;
     };
-  }, [range.from, range.to, status, subjectType, query, reloadKey]);
+  }, [filterMonth, status, subjectType, query, reloadKey]);
 
   const reload = () => setReloadKey((value) => value + 1);
 
@@ -226,11 +221,6 @@ export function AdvancesView() {
   );
 
   const act = async (row: LiveAdvance, action: "approve" | "reject" | "pay" | "settle" | "cancel") => {
-    const rowMonth = monthCodeFromDate(row.advance_date) ?? "";
-    if (isRowMonthClosed(row.advance_date)) {
-      setError(`Tháng ${rowMonth} đã đóng. Chỉ được xem.`);
-      return;
-    }
     const deletingSettled = action === "cancel" && row.status === "settled";
     const confirmText =
       action === "approve"
@@ -274,21 +264,20 @@ export function AdvancesView() {
   };
 
   const exportExcelRange = async () => {
-    if (!range.from || !range.to) {
-      setError("Chọn khoảng ngày trước khi xuất Excel.");
+    if (!filterMonth) {
+      setError("Chọn tháng tạm ứng trước khi xuất Excel.");
       return;
     }
     setExporting(true);
     setError("");
     try {
       const { blob, filename } = await downloadLiveAdvancesExcel({
-        from: range.from,
-        to: range.to,
+        month: filterMonth,
         status: status || undefined,
         subjectType: subjectType === "staff" || subjectType === "worker" ? subjectType : "",
         q: query || undefined,
       });
-      downloadBlob(blob, filename || `tam-ung_${range.from}_${range.to}.xlsx`);
+      downloadBlob(blob, filename || `tam-ung_${filterMonth}.xlsx`);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Xuất Excel thất bại.");
     } finally {
@@ -317,7 +306,7 @@ export function AdvancesView() {
     if (!canClose || closedMonths.has(monthCode)) return;
     if (
       !window.confirm(
-        `Kết thúc tháng ${monthCode}?\n\nSau khi đóng, tháng này chỉ xem. Không thêm / sửa / xóa phiếu thuộc tháng đã đóng.`,
+        `Kết thúc tháng ${monthCode}?\n\nĐánh dấu tháng đã chốt để theo dõi. Vẫn có thể thêm / sửa / xóa phiếu nếu cần.`,
       )
     ) {
       return;
@@ -327,10 +316,7 @@ export function AdvancesView() {
     try {
       const result = await closeLiveAdvanceMonth(monthCode);
       const next = result.next_month || nextMonthCode(monthCode);
-      if (next) {
-        const bounds = monthBounds(next);
-        if (bounds) setRange(bounds);
-      }
+      if (next) setFilterMonth(next);
       reload();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Kết thúc tháng thất bại.");
@@ -341,7 +327,7 @@ export function AdvancesView() {
 
   const reopenMonth = async (monthCode: string) => {
     if (!canClose || !closedMonths.has(monthCode)) return;
-    if (!window.confirm(`Mở lại tháng ${monthCode}?\n\nSau khi mở, có thể thêm / sửa / xóa phiếu trong tháng này.`)) {
+    if (!window.confirm(`Mở lại tháng ${monthCode}?`)) {
       return;
     }
     setReopeningMonth(monthCode);
@@ -466,8 +452,8 @@ export function AdvancesView() {
               {monthsFilter ? (
                 <div className="grid gap-4 md:grid-cols-3">
                   <KpiCard title="THÁNG" value={<>{formatMonthLabel(monthsFilter)}</>} sub={`Tháng ${formatMonthLabel(monthsFilter)}`} />
-                  <KpiCard title="ĐANG MỞ" value={<>{openMonthCount}</>} valueClassName="text-emerald-600" sub="Thêm / sửa / xóa được" />
-                  <KpiCard title="ĐÃ ĐÓNG" value={<>{closedMonthCount}</>} valueClassName="text-slate-600" sub="Chỉ xem" />
+                  <KpiCard title="ĐANG MỞ" value={<>{openMonthCount}</>} valueClassName="text-emerald-600" sub="Chưa chốt tháng" />
+                  <KpiCard title="ĐÃ ĐÓNG" value={<>{closedMonthCount}</>} valueClassName="text-slate-600" sub="Đã chốt (vẫn sửa được)" />
                 </div>
               ) : null}
 
@@ -555,7 +541,7 @@ export function AdvancesView() {
               </div>
               {monthsFilter ? (
                 <p className="mt-2 text-[12px] text-slate-500">
-                  Tháng mở: thêm / sửa / xóa phiếu. Tháng đóng: chỉ xem — có thể mở lại hoặc xóa kết thúc tháng.
+                  Chốt tháng để theo dõi. Vẫn thêm / sửa / xóa phiếu theo cột Tháng tạm ứng khi cần.
                 </p>
               ) : null}
             </>
@@ -571,22 +557,8 @@ export function AdvancesView() {
               <div className="mt-4 rounded-xl border bg-white p-3 shadow-sm">
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
-                    <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Từ ngày</span>
-                    <input
-                      type="date"
-                      value={range.from}
-                      onChange={(e) => setRange((prev) => ({ ...prev, from: e.target.value }))}
-                      className="rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
-                    />
-                  </div>
-                  <div>
-                    <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Đến ngày</span>
-                    <input
-                      type="date"
-                      value={range.to}
-                      onChange={(e) => setRange((prev) => ({ ...prev, to: e.target.value }))}
-                      className="rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
-                    />
+                    <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Tháng tạm ứng</span>
+                    <MonthYearPicker value={filterMonth} onChange={setFilterMonth} placeholder="mm/yyyy" />
                   </div>
                   <div>
                     <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Trạng thái</span>
@@ -630,7 +602,7 @@ export function AdvancesView() {
                   </div>
                 </div>
                 <p className="mt-2 text-[12.5px] text-slate-500">
-                  Phiếu thuộc tháng đã đóng chỉ xem. Thêm / sửa / xóa chỉ áp dụng cho tháng đang mở.
+                  Lọc theo <strong>Tháng tạm ứng</strong> (kế toán). Ngày chi có thể thuộc tháng khác.
                 </p>
               </div>
 
@@ -639,39 +611,40 @@ export function AdvancesView() {
               )}
 
               <div className="mt-4">
-                <DataTable headers={["Mã phiếu", "Ngày / giờ", "Người nhận", "Lý do", "Số tiền", "Trạng thái", "Người đưa tiền", "Bằng chứng", "Thao tác"]}>
+                <DataTable headers={["Mã phiếu", "Tháng", "Ngày / giờ", "Người nhận", "Lý do", "Số tiền", "Trạng thái", "Người đưa tiền", "Bằng chứng", "Thao tác"]}>
                   {rows.map((row) => {
                     const personName = row.subject_type === "staff" ? row.staff_name : row.worker_name;
                     const personCode = row.subject_type === "staff" ? null : row.worker_code;
                     const busy = busyId === row.id;
-                    const rowClosed = isRowMonthClosed(row.advance_date);
+                    const monthLabel = formatMonthLabel(
+                      row.advance_month || monthCodeFromDate(row.advance_date) || "",
+                    );
                     const actions: RowActionItem[] = [];
-                    if (!rowClosed) {
-                      if (row.status === "requested") {
-                        actions.push(
-                          { label: "Duyệt", tone: "success", disabled: busy, onClick: () => void act(row, "approve") },
-                          { label: "Từ chối", tone: "danger", disabled: busy, onClick: () => void act(row, "reject") },
-                          { label: "Sửa", disabled: busy, onClick: () => { setEditing(row); setModalOpen(true); } },
-                        );
-                      }
-                      if (row.status === "approved") {
-                        actions.push({ label: "Chi tiền", tone: "success", disabled: busy, onClick: () => void act(row, "pay") });
-                      }
-                      if (row.status === "paid") {
-                        actions.push({ label: "Quyết toán", disabled: busy, onClick: () => void act(row, "settle") });
-                      }
-                      if (canDelete && (row.status === "requested" || row.status === "approved" || row.status === "settled")) {
-                        actions.push({
-                          label: row.status === "settled" ? "Xóa phiếu" : "Hủy phiếu",
-                          tone: "danger",
-                          disabled: busy,
-                          onClick: () => void act(row, "cancel"),
-                        });
-                      }
+                    if (row.status === "requested") {
+                      actions.push(
+                        { label: "Duyệt", tone: "success", disabled: busy, onClick: () => void act(row, "approve") },
+                        { label: "Từ chối", tone: "danger", disabled: busy, onClick: () => void act(row, "reject") },
+                        { label: "Sửa", disabled: busy, onClick: () => { setEditing(row); setModalOpen(true); } },
+                      );
+                    }
+                    if (row.status === "approved") {
+                      actions.push({ label: "Chi tiền", tone: "success", disabled: busy, onClick: () => void act(row, "pay") });
+                    }
+                    if (row.status === "paid") {
+                      actions.push({ label: "Quyết toán", disabled: busy, onClick: () => void act(row, "settle") });
+                    }
+                    if (canDelete && (row.status === "requested" || row.status === "approved" || row.status === "settled")) {
+                      actions.push({
+                        label: row.status === "settled" ? "Xóa phiếu" : "Hủy phiếu",
+                        tone: "danger",
+                        disabled: busy,
+                        onClick: () => void act(row, "cancel"),
+                      });
                     }
                     return (
                       <tr key={row.id}>
                         <td className="whitespace-nowrap"><code>{row.code}</code></td>
+                        <td className="whitespace-nowrap">{monthLabel || "—"}</td>
                         <td className="whitespace-nowrap">{formatDayTime(row)}</td>
                         <td>
                           <div className="font-semibold text-slate-800">{personName || "—"}</div>
@@ -700,17 +673,17 @@ export function AdvancesView() {
                           {actions.length > 0 ? (
                             <RowActions items={actions} label="Thao tác phiếu tạm ứng" />
                           ) : (
-                            <span className="text-[12px] text-slate-400">{rowClosed ? "Chỉ xem" : "—"}</span>
+                            <span className="text-[12px] text-slate-400">—</span>
                           )}
                         </td>
                       </tr>
                     );
                   })}
-                  {rows.length === 0 && <EmptyRow colSpan={9} text="Chưa có phiếu tạm ứng trong khoảng ngày này" />}
+                  {rows.length === 0 && <EmptyRow colSpan={10} text="Chưa có phiếu tạm ứng trong tháng này" />}
                 </DataTable>
               </div>
               <p className="mt-2 text-[12px] text-slate-500">
-                Đang hiển thị {rows.length} phiếu từ {range.from} đến {range.to}. Bộ lọc tối đa 500 phiếu gần nhất.
+                Đang hiển thị {rows.length} phiếu tháng {formatMonthLabel(filterMonth)}. Bộ lọc tối đa 500 phiếu.
               </p>
             </>
           )}
@@ -724,7 +697,6 @@ export function AdvancesView() {
         workers={workers}
         staff={staff}
         currentStaffId={currentStaff?.id ?? null}
-        closedMonths={closedMonths}
         onClose={() => setModalOpen(false)}
         onSaved={reload}
       />

@@ -1,13 +1,13 @@
 export const runtime = "nodejs";
 
-import { assertAdvanceMonthOpen } from "@/lib/server/advance-months";
+import { parseMonthCode } from "@/lib/server/advance-months";
 import { getAuth, requireRole, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody } from "@/lib/server/http";
 import { ROLE } from "@/lib/server/roles";
 
 const COLUMNS =
-  "id,code,subject_type,worker_id,staff_id,amount,reason,status,advance_date,advance_time,requested_by,note,updated_at";
+  "id,code,subject_type,worker_id,staff_id,amount,reason,status,advance_date,advance_month,advance_time,requested_by,note,updated_at";
 
 function positiveInt(value: string): number | null {
   const n = Number(value);
@@ -53,7 +53,7 @@ export async function PATCH(
 
     const current = await getSupabase()
       .from("advances")
-      .select("id,code,status,advance_date")
+      .select("id,code,status,advance_date,advance_month")
       .eq("id", id)
       .maybeSingle();
     if (current.error) throw current.error;
@@ -61,8 +61,6 @@ export async function PATCH(
     if (current.data.status !== "requested") {
       return json({ error: "invalid", message: "Chỉ sửa được phiếu đang chờ duyệt." }, 400);
     }
-    const currentLocked = await assertAdvanceMonthOpen(String(current.data.advance_date));
-    if (currentLocked) return currentLocked;
 
     const body = await readBody(req);
     const patch: Record<string, unknown> = {};
@@ -81,9 +79,12 @@ export async function PATCH(
     if (body["advance_date"] !== undefined) {
       const date = advanceDate(body["advance_date"]);
       if (!date) return json({ error: "invalid", message: "Ngày tạm ứng không hợp lệ." }, 400);
-      const targetLocked = await assertAdvanceMonthOpen(date);
-      if (targetLocked) return targetLocked;
       patch["advance_date"] = date;
+    }
+    if (body["advance_month"] !== undefined) {
+      const month = parseMonthCode(body["advance_month"]);
+      if (!month) return json({ error: "invalid", message: "Tháng tạm ứng không hợp lệ (YYYY-MM)." }, 400);
+      patch["advance_month"] = month;
     }
     if (body["advance_time"] !== undefined) {
       const time = advanceTime(body["advance_time"]);
@@ -103,7 +104,18 @@ export async function PATCH(
       .eq("id", id)
       .select(COLUMNS)
       .single();
-    if (error) throw error;
+    if (error) {
+      if ((error as { code?: string }).code === "PGRST204" || /advance_month/i.test(error.message ?? "")) {
+        return json(
+          {
+            error: "missing_migration",
+            message: "Chưa có cột tháng tạm ứng. Hãy chạy supabase/advance_month_column.sql.",
+          },
+          400,
+        );
+      }
+      throw error;
+    }
 
     await writeAudit(auth, {
       action: "UPDATE",
@@ -137,7 +149,6 @@ export async function DELETE(
     if (!current.data) return json({ error: "not_found", message: "Không tìm thấy phiếu tạm ứng." }, 404);
 
     const status = String(current.data.status);
-    // Ban lãnh đạo / Kỹ thuật được xóa phiếu đã quyết toán khi tháng còn mở.
     const directorDeleteSettled = status === "settled";
     if (status === "paid") {
       return json({ error: "invalid", message: "Không thể hủy phiếu đã chi. Hãy quyết toán trước hoặc liên hệ quản trị." }, 400);
@@ -148,8 +159,6 @@ export async function DELETE(
     if (!directorDeleteSettled && status !== "requested" && status !== "approved") {
       return json({ error: "invalid", message: "Không thể hủy phiếu ở trạng thái hiện tại." }, 400);
     }
-    const monthLocked = await assertAdvanceMonthOpen(String(current.data.advance_date));
-    if (monthLocked) return monthLocked;
 
     const { error } = await getSupabase()
       .from("advances")

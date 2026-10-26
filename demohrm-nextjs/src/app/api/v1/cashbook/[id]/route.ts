@@ -1,6 +1,5 @@
 export const runtime = "nodejs";
 
-import { assertAdvanceMonthOpen } from "@/lib/server/advance-months";
 import { getAuth, requireRole, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody } from "@/lib/server/http";
@@ -33,11 +32,8 @@ async function unlinkAdvanceCashbook(entryId: number, sourceId: number | null) {
     advance = byLink.data;
   }
   if (!advance) {
-    return { advance: null as null, monthLocked: null as Response | null };
+    return { advance: null as null };
   }
-
-  const monthLocked = await assertAdvanceMonthOpen(String(advance.advance_date));
-  if (monthLocked) return { advance, monthLocked };
 
   const paidOrSettled = advance.status === "paid" || advance.status === "settled";
   const { error } = await getSupabase()
@@ -56,7 +52,7 @@ async function unlinkAdvanceCashbook(entryId: number, sourceId: number | null) {
     })
     .eq("id", advance.id);
   if (error) throw error;
-  return { advance, monthLocked: null as Response | null };
+  return { advance };
 }
 
 export async function PATCH(
@@ -126,18 +122,8 @@ export async function DELETE(
     let advanceCode: string | null = null;
     if (fromAdvance) {
       const sourceId = current.data.source_id == null ? null : Number(current.data.source_id);
-      const { advance, monthLocked } = await unlinkAdvanceCashbook(
-        id,
-        Number.isFinite(sourceId) ? sourceId : null,
-      );
-      if (monthLocked) return monthLocked;
-      // Không tìm thấy phiếu: vẫn cho xóa dòng sổ mồ côi nếu tháng theo ngày chi còn mở.
-      if (!advance) {
-        const orphanLocked = await assertAdvanceMonthOpen(String(current.data.entry_date));
-        if (orphanLocked) return orphanLocked;
-      } else {
-        advanceCode = String(advance.code);
-      }
+      const { advance } = await unlinkAdvanceCashbook(id, Number.isFinite(sourceId) ? sourceId : null);
+      if (advance) advanceCode = String(advance.code);
     }
 
     let del = getSupabase().from("cashbook_entries").delete().eq("id", id);

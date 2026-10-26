@@ -1,6 +1,5 @@
 export const runtime = "nodejs";
 
-import { assertAdvanceMonthOpen } from "@/lib/server/advance-months";
 import { getAuth, requireRole, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json } from "@/lib/server/http";
@@ -26,9 +25,6 @@ export async function PATCH(
       .maybeSingle();
     if (current.error) throw current.error;
     if (!current.data) return json({ error: "not_found", message: "Không tìm thấy phiếu tạm ứng." }, 404);
-    const monthLocked = await assertAdvanceMonthOpen(String(current.data.advance_date));
-    if (monthLocked) return monthLocked;
-
     const { data, error } = await getSupabase().rpc("fn_pay_advance", {
       p_advance_id: id,
       p_staff_id: Number(auth.staffId),

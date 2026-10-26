@@ -14,7 +14,9 @@ import {
 } from "@/lib/live";
 import type { LiveAdvance, LiveAssignmentRow } from "@/lib/live";
 import { formatVND, maskCitizenId } from "@/lib/format";
+import { currentMonthCode } from "@/lib/advance-months";
 import { todayInput } from "@/lib/cashbook";
+import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusPill, statusToneForWorker } from "@/components/ui/badge";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
@@ -260,6 +262,7 @@ export function WorkerDetailModal({
   const [showAddDot, setShowAddDot] = useState(false);
   const [newDot, setNewDot] = useState({ orderCode: "", position: "", startDate: new Date().toISOString().slice(0, 10) });
   const [advDate, setAdvDate] = useState(todayInput);
+  const [advMonth, setAdvMonth] = useState(currentMonthCode);
   const [advTime, setAdvTime] = useState(currentTimeInput);
   const [advAmount, setAdvAmount] = useState("");
   const [advReason, setAdvReason] = useState("");
@@ -347,6 +350,10 @@ export function WorkerDetailModal({
       setError("Nhập số tiền tạm ứng.");
       return;
     }
+    if (!advMonth) {
+      setError("Chọn tháng tạm ứng.");
+      return;
+    }
     if (!advDate) {
       setError("Chọn ngày tạm ứng.");
       return;
@@ -371,6 +378,7 @@ export function WorkerDetailModal({
         amount,
         reason: advReason.trim(),
         advance_date: advDate,
+        advance_month: advMonth,
         advance_time: `${advTime}:00`,
         requested_by: advStaffId,
         evidence: advPhoto || undefined,
@@ -379,6 +387,7 @@ export function WorkerDetailModal({
       setAdvReason("");
       setAdvPhoto("");
       setAdvDate(todayInput());
+      setAdvMonth(currentMonthCode());
       setAdvTime(currentTimeInput());
       setAdvances(await fetchLiveAdvances(worker.id));
     } catch (e) {
@@ -499,7 +508,10 @@ export function WorkerDetailModal({
       {tab === "payroll" && (
         <div className="mt-3 grid gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Ngày tạm ứng *">
+            <Field label="Tháng tạm ứng *">
+              <MonthYearPicker value={advMonth} onChange={setAdvMonth} placeholder="mm/yyyy" />
+            </Field>
+            <Field label="Ngày chi / tạm ứng *">
               <input suppressHydrationWarning type="date" className={inputClass} value={advDate} onChange={(e) => setAdvDate(e.target.value)} />
             </Field>
             <Field label="Giờ tạm ứng *">

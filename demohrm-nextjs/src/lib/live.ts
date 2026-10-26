@@ -560,6 +560,7 @@ export interface LiveAdvance {
   reason: string | null;
   status: string;
   advance_date: string;
+  advance_month?: string | null;
   advance_time: string;
   requested_by: number | null;
   approved_by?: number | null;
@@ -585,6 +586,7 @@ export interface AdvanceFilter {
   staffId?: number;
   subjectType?: "worker" | "staff";
   status?: string;
+  month?: string;
   from?: string;
   to?: string;
   q?: string;
@@ -600,6 +602,7 @@ export function fetchLiveAdvances(arg?: number | AdvanceFilter): Promise<LiveAdv
     if (arg.staffId) p.set("staff_id", String(arg.staffId));
     if (arg.subjectType) p.set("subject_type", arg.subjectType);
     if (arg.status) p.set("status", arg.status);
+    if (arg.month) p.set("month", arg.month);
     if (arg.from) p.set("from", arg.from);
     if (arg.to) p.set("to", arg.to);
     if (arg.q) p.set("q", arg.q);
@@ -616,6 +619,7 @@ export interface AdvanceWrite {
   amount: number;
   reason: string;
   advance_date: string;
+  advance_month: string;
   advance_time: string;
   requested_by: number;
   note?: string | null;
@@ -628,7 +632,14 @@ export function createLiveAdvance(body: AdvanceWrite): Promise<LiveAdvance> {
 
 export function updateLiveAdvance(
   id: number,
-  body: { amount?: number; reason?: string; advance_date?: string; advance_time?: string; note?: string | null },
+  body: {
+    amount?: number;
+    reason?: string;
+    advance_date?: string;
+    advance_month?: string;
+    advance_time?: string;
+    note?: string | null;
+  },
 ): Promise<LiveAdvance> {
   return apiPatch(`/advances/${id}`, body);
 }

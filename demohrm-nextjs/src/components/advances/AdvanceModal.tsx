@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
-import { monthCodeFromDate } from "@/lib/advance-months";
+import { currentMonthCode, monthCodeFromDate } from "@/lib/advance-months";
 import { createLiveAdvance, updateLiveAdvance } from "@/lib/live";
 import type { LiveAdvance, LiveStaff, LiveWorkerRow } from "@/lib/live";
 import { formatVND } from "@/lib/format";
 import { todayInput } from "@/lib/cashbook";
 import { Button } from "@/components/ui/button";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
+import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { SearchableStaffSelect } from "@/components/ui/searchable-staff-select";
 import { SearchableWorkerSelect } from "@/components/ui/searchable-worker-select";
 
@@ -19,6 +20,12 @@ function currentTimeInput(): string {
 
 function toTimeInput(value: string | null | undefined): string {
   return value ? value.slice(0, 5) : currentTimeInput();
+}
+
+function defaultAdvanceMonth(advance: LiveAdvance | null): string {
+  if (advance?.advance_month) return advance.advance_month;
+  if (advance?.advance_date) return monthCodeFromDate(advance.advance_date) ?? currentMonthCode();
+  return currentMonthCode();
 }
 
 function readImageFile(file: File): Promise<string> {
@@ -54,7 +61,6 @@ export function AdvanceModal({
   workers,
   staff,
   currentStaffId,
-  closedMonths,
   onClose,
   onSaved,
 }: {
@@ -63,7 +69,6 @@ export function AdvanceModal({
   workers: LiveWorkerRow[];
   staff: LiveStaff[];
   currentStaffId: number | null;
-  closedMonths?: Set<string>;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -74,6 +79,7 @@ export function AdvanceModal({
   const [reason, setReason] = useState(advance?.reason ?? "");
   const [note, setNote] = useState(advance?.note ?? "");
   const [advanceDate, setAdvanceDate] = useState(advance?.advance_date ?? todayInput());
+  const [advanceMonth, setAdvanceMonth] = useState(defaultAdvanceMonth(advance));
   const [advanceTime, setAdvanceTime] = useState(toTimeInput(advance?.advance_time));
   const [giverId, setGiverId] = useState<number | null>(advance?.requested_by ?? currentStaffId);
   const [evidence, setEvidence] = useState("");
@@ -100,13 +106,12 @@ export function AdvanceModal({
       setError("Chọn nhân viên tạm ứng.");
       return;
     }
-    if (!advanceDate) {
-      setError("Chọn ngày tạm ứng.");
+    if (!advanceMonth) {
+      setError("Chọn tháng tạm ứng.");
       return;
     }
-    const monthCode = monthCodeFromDate(advanceDate);
-    if (monthCode && closedMonths?.has(monthCode)) {
-      setError(`Tháng ${monthCode} đã kết thúc. Không thêm mới hoặc sửa phiếu trong tháng này.`);
+    if (!advanceDate) {
+      setError("Chọn ngày tạm ứng.");
       return;
     }
     if (!advanceTime) {
@@ -126,6 +131,7 @@ export function AdvanceModal({
           amount: value,
           reason: reason.trim(),
           advance_date: advanceDate,
+          advance_month: advanceMonth,
           advance_time: `${advanceTime}:00`,
           note: note.trim() || null,
         });
@@ -137,6 +143,7 @@ export function AdvanceModal({
           amount: value,
           reason: reason.trim(),
           advance_date: advanceDate,
+          advance_month: advanceMonth,
           advance_time: `${advanceTime}:00`,
           requested_by: giverId,
           note: note.trim() || null,
@@ -229,7 +236,11 @@ export function AdvanceModal({
             placeholder="VD: 2000000"
           />
         </Field>
-        <Field label="Ngày tạm ứng *">
+        <Field label="Tháng tạm ứng *">
+          <MonthYearPicker value={advanceMonth} onChange={setAdvanceMonth} placeholder="mm/yyyy" />
+        </Field>
+
+        <Field label="Ngày chi / tạm ứng *">
           <input
             type="date"
             className={inputClass}
@@ -237,7 +248,6 @@ export function AdvanceModal({
             onChange={(e) => setAdvanceDate(e.target.value)}
           />
         </Field>
-
         <Field label="Giờ tạm ứng *">
           <input
             type="time"
@@ -246,14 +256,17 @@ export function AdvanceModal({
             onChange={(e) => setAdvanceTime(e.target.value)}
           />
         </Field>
-        <Field label="Người đưa tiền *">
-          <SearchableStaffSelect
-            value={giverId}
-            onChange={setGiverId}
-            staff={staff}
-            placeholder="Chọn người đưa tiền"
-          />
-        </Field>
+
+        <div className="col-span-2">
+          <Field label="Người đưa tiền *">
+            <SearchableStaffSelect
+              value={giverId}
+              onChange={setGiverId}
+              staff={staff}
+              placeholder="Chọn người đưa tiền"
+            />
+          </Field>
+        </div>
 
         <div className="col-span-2">
           <Field label="Lý do tạm ứng *">

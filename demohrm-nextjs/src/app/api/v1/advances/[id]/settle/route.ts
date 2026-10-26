@@ -1,6 +1,5 @@
 export const runtime = "nodejs";
 
-import { assertAdvanceMonthOpen } from "@/lib/server/advance-months";
 import { getAuth, requireRole, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody } from "@/lib/server/http";
@@ -32,9 +31,6 @@ export async function PATCH(
     if (current.data.settled_at) {
       return json({ error: "invalid", message: "Phiếu này đã được quyết toán." }, 400);
     }
-    const monthLocked = await assertAdvanceMonthOpen(String(current.data.advance_date));
-    if (monthLocked) return monthLocked;
-
     const body = await readBody(req);
     const settledRaw = body["settled_amount"];
     const settledAmount =

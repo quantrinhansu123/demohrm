@@ -11,6 +11,7 @@ export function Modal({
   children,
   footer,
   wide,
+  xl,
   closeOnBackdrop = true,
   closeOnEscape = true,
 }: {
@@ -21,6 +22,8 @@ export function Modal({
   children: React.ReactNode;
   footer?: React.ReactNode;
   wide?: boolean;
+  /** Extra-wide dialog for spreadsheet-style previews */
+  xl?: boolean;
   closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
 }) {
@@ -42,7 +45,10 @@ export function Modal({
       aria-modal="true"
     >
       <div
-        className={cn("max-h-[90vh] w-full overflow-hidden rounded-2xl bg-white shadow-2xl", wide ? "max-w-4xl" : "max-w-2xl")}
+        className={cn(
+          "max-h-[90vh] w-full overflow-hidden rounded-2xl bg-white shadow-2xl",
+          xl ? "max-w-[96vw]" : wide ? "max-w-4xl" : "max-w-2xl",
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b px-5 py-3.5">
@@ -59,7 +65,7 @@ export function Modal({
             ×
           </button>
         </div>
-        <div className="max-h-[68vh] overflow-y-auto px-5 py-4">{children}</div>
+        <div className={cn("max-h-[68vh] overflow-y-auto px-5 py-4", xl && "overflow-x-auto")}>{children}</div>
         {footer && <div className="flex items-center justify-end gap-2 border-t bg-slate-50 px-5 py-3">{footer}</div>}
       </div>
     </div>

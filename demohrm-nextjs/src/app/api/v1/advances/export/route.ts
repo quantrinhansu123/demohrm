@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import ExcelJS from "exceljs";
 
+import { monthBounds, parseMonthCode } from "@/lib/server/advance-months";
 import { getAuth } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, searchParams } from "@/lib/server/http";
@@ -72,10 +73,12 @@ export async function GET(req: Request): Promise<Response> {
   try {
     getAuth(req);
     const sp = searchParams(req);
-    const from = advanceDate(sp.get("from"));
-    const to = advanceDate(sp.get("to"));
+    const month = parseMonthCode(sp.get("month"));
+    const monthRange = month ? monthBounds(month) : null;
+    const from = monthRange?.from ?? advanceDate(sp.get("from"));
+    const to = monthRange?.to ?? advanceDate(sp.get("to"));
     if (!from || !to) {
-      return json({ error: "invalid", message: "Chọn khoảng ngày trước khi xuất Excel." }, 400);
+      return json({ error: "invalid", message: "Chọn tháng hoặc khoảng ngày trước khi xuất Excel." }, 400);
     }
     if (to < from) return json({ error: "invalid", message: "Đến ngày phải sau hoặc bằng từ ngày." }, 400);
     if (dayCount(from, to) > MAX_DAYS) {
@@ -304,7 +307,7 @@ export async function GET(req: Request): Promise<Response> {
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    const filename = `tam-ung_${from}_${to}.xlsx`;
+    const filename = month ? `tam-ung_${month}.xlsx` : `tam-ung_${from}_${to}.xlsx`;
     return new Response(buffer as ArrayBuffer, {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

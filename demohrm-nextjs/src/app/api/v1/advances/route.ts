@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { randomBytes } from "crypto";
 
+import { assertAdvanceMonthOpen } from "@/lib/server/advance-months";
 import { getAuth, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody, searchParams } from "@/lib/server/http";
@@ -283,6 +284,8 @@ export async function POST(req: Request): Promise<Response> {
     }
     if (!date) return json({ error: "invalid", message: "Ngày tạm ứng không hợp lệ." }, 400);
     if (!time) return json({ error: "invalid", message: "Giờ tạm ứng không hợp lệ." }, 400);
+    const monthLocked = await assertAdvanceMonthOpen(date);
+    if (monthLocked) return monthLocked;
     if (!reason) return json({ error: "invalid", message: "Nhập lý do tạm ứng." }, 400);
     if (reason.length > 300) return json({ error: "invalid", message: "Lý do tối đa 300 ký tự." }, 400);
     if (!giverId) return json({ error: "invalid", message: "Chọn người đưa tiền tạm ứng." }, 400);

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ApiError } from "@/lib/api";
+import { monthCodeFromDate } from "@/lib/advance-months";
 import { createLiveAdvance, updateLiveAdvance } from "@/lib/live";
 import type { LiveAdvance, LiveStaff, LiveWorkerRow } from "@/lib/live";
 import { formatVND } from "@/lib/format";
@@ -53,6 +54,7 @@ export function AdvanceModal({
   workers,
   staff,
   currentStaffId,
+  closedMonths,
   onClose,
   onSaved,
 }: {
@@ -61,6 +63,7 @@ export function AdvanceModal({
   workers: LiveWorkerRow[];
   staff: LiveStaff[];
   currentStaffId: number | null;
+  closedMonths?: Set<string>;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -99,6 +102,11 @@ export function AdvanceModal({
     }
     if (!advanceDate) {
       setError("Chọn ngày tạm ứng.");
+      return;
+    }
+    const monthCode = monthCodeFromDate(advanceDate);
+    if (monthCode && closedMonths?.has(monthCode)) {
+      setError(`Tháng ${monthCode} đã kết thúc. Không thêm mới hoặc sửa phiếu trong tháng này.`);
       return;
     }
     if (!advanceTime) {

@@ -630,19 +630,70 @@ export function updateLiveAdvance(
 }
 
 export interface AdvanceExportFilter {
-  from: string;
-  to: string;
+  from?: string;
+  to?: string;
+  month?: string;
   status?: string;
   subjectType?: "worker" | "staff" | "";
   q?: string;
 }
 
 export function downloadLiveAdvancesExcel(filter: AdvanceExportFilter): Promise<DownloadResult> {
-  const p = new URLSearchParams({ from: filter.from, to: filter.to });
+  const p = new URLSearchParams();
+  if (filter.month) p.set("month", filter.month);
+  if (filter.from) p.set("from", filter.from);
+  if (filter.to) p.set("to", filter.to);
   if (filter.status) p.set("status", filter.status);
   if (filter.subjectType) p.set("subject_type", filter.subjectType);
   if (filter.q) p.set("q", filter.q);
   return apiDownload(`/advances/export?${p.toString()}`);
+}
+
+export interface AdvanceMonthClose {
+  month_code: string;
+  closed_at: string;
+  closed_by: number | null;
+  note: string | null;
+}
+
+export interface AdvanceMonthRow {
+  month_code: string;
+  status: "open" | "closed";
+  closed_at: string | null;
+  closed_by: number | null;
+  note: string | null;
+  advance_count: number;
+  total_amount: number;
+  open_count: number;
+  is_current: boolean;
+}
+
+export interface AdvanceMonthsResponse {
+  current_month: string;
+  current_closed: boolean;
+  closed: AdvanceMonthClose[];
+  months: AdvanceMonthRow[];
+}
+
+export function fetchLiveAdvanceMonths(): Promise<AdvanceMonthsResponse> {
+  return apiGet("/advances/months");
+}
+
+export function closeLiveAdvanceMonth(
+  month: string,
+  note?: string,
+): Promise<AdvanceMonthClose & { next_month: string | null }> {
+  return apiPost("/advances/months/close", { month, note });
+}
+
+export function reopenLiveAdvanceMonth(month: string): Promise<{ month_code: string; status: "open" }> {
+  return apiPost("/advances/months/reopen", { month });
+}
+
+export function deleteLiveAdvanceMonthClose(
+  month: string,
+): Promise<{ month_code: string; status: "open"; deleted: boolean }> {
+  return apiDelete(`/advances/months/close?month=${encodeURIComponent(month)}`);
 }
 
 export function cancelLiveAdvance(id: number): Promise<{ ok: boolean }> {

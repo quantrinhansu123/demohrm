@@ -10,6 +10,7 @@ import {
   createLiveCashbookEntry,
   deleteLiveCashbookEntry,
   deleteLiveCashbookMonthClose,
+  downloadLiveCashbookExcel,
   fetchCashbookSummary,
   fetchLiveCashbook,
   fetchLiveCashbookMonths,
@@ -26,6 +27,7 @@ import {
   todayInput,
   weekRangeInput,
 } from "@/lib/cashbook";
+import { downloadBlob } from "@/lib/download";
 import { formatVND } from "@/lib/format";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { CashbookEntryModal } from "@/components/finance/CashbookEntryModal";
@@ -93,6 +95,7 @@ export function FinanceView() {
   const [closingMonth, setClosingMonth] = useState<string | null>(null);
   const [reopeningMonth, setReopeningMonth] = useState<string | null>(null);
   const [deletingCloseMonth, setDeletingCloseMonth] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   // Sổ chi + KPI/tổng hợp: chỉ khi đang ở tab entries/summary.
   useEffect(() => {
@@ -164,6 +167,45 @@ export function FinanceView() {
   const applyPreset = (preset: "today" | "week" | "month") => {
     setOffset(0);
     setRange(preset === "today" ? { from: todayInput(), to: todayInput() } : preset === "week" ? weekRangeInput() : monthRangeInput());
+  };
+
+  const runCashbookExport = async (
+    filter: { month?: string; from?: string; to?: string },
+    fallbackName: string,
+  ) => {
+    setExporting(true);
+    setError("");
+    try {
+      const { blob, filename } = await downloadLiveCashbookExcel({
+        ...filter,
+        group: filter.month ? undefined : group || undefined,
+        q: filter.month ? undefined : query || undefined,
+      });
+      downloadBlob(blob, filename || fallbackName);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Xuất Excel thất bại.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportExcelRange = async () => {
+    if (!range.from || !range.to) {
+      setError("Chọn từ ngày / đến ngày trước khi xuất Excel.");
+      return;
+    }
+    await runCashbookExport(
+      { from: range.from, to: range.to },
+      `so-chi_${range.from}_${range.to}.xlsx`,
+    );
+  };
+
+  const exportExcelForMonth = async (monthCode: string) => {
+    if (!monthCode) {
+      setError("Chọn tháng trước khi xuất Excel.");
+      return;
+    }
+    await runCashbookExport({ month: monthCode }, `so-chi_${monthCode}.xlsx`);
   };
 
   const filteredMonthRows = useMemo(() => {
@@ -300,17 +342,30 @@ export function FinanceView() {
         title="Tài chính"
         sub="Sổ chi: lương tuần và chi văn phòng"
         actions={
-          tab !== "months" ? (
+          tab === "months" ? (
             <Button
-              className="bg-[#0052cc] text-white hover:bg-[#0747a6]"
-              onClick={() => {
-                setEditing(null);
-                setModalOpen(true);
-              }}
+              variant="outline"
+              disabled={exporting || !monthsFilter}
+              onClick={() => void exportExcelForMonth(monthsFilter)}
             >
-              + Thêm khoản chi
+              {exporting ? "Đang xuất..." : monthsFilter ? `Xuất Excel ${formatMonthLabel(monthsFilter)}` : "Xuất Excel"}
             </Button>
-          ) : null
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" disabled={exporting} onClick={() => void exportExcelRange()}>
+                {exporting ? "Đang xuất..." : "Xuất Excel"}
+              </Button>
+              <Button
+                className="bg-[#0052cc] text-white hover:bg-[#0747a6]"
+                onClick={() => {
+                  setEditing(null);
+                  setModalOpen(true);
+                }}
+              >
+                + Thêm khoản chi
+              </Button>
+            </div>
+          )
         }
       />
       <QueryState loading={loading && rows.length === 0 && !summary && tab !== "months"} error={error && rows.length === 0 && tab === "entries" ? error : ""}>
@@ -379,9 +434,14 @@ export function FinanceView() {
                     const closing = closingMonth === row.month_code;
                     const reopening = reopeningMonth === row.month_code;
                     const deleting = deletingCloseMonth === row.month_code;
-                    const busy = closing || reopening || deleting;
+                    const busy = closing || reopening || deleting || exporting;
                     const actions: RowActionItem[] = [
                       { label: "Xem phiếu", onClick: () => setPreviewMonth(row.month_code) },
+                      {
+                        label: exporting ? "Đang xuất..." : "Xuất Excel",
+                        disabled: exporting,
+                        onClick: () => void exportExcelForMonth(row.month_code),
+                      },
                     ];
                     if (canClose && row.status === "open") {
                       actions.push({
@@ -663,6 +723,8 @@ export function FinanceView() {
         monthCode={previewMonth}
         monthClosed={previewMonth ? closedMonths.has(previewMonth) : false}
         onClose={() => setPreviewMonth(null)}
+        onExport={(monthCode) => void exportExcelForMonth(monthCode)}
+        exporting={exporting}
       />
 
       <Modal

@@ -19,6 +19,7 @@ import {
 import type { AdvanceMonthRow, LiveAdvance, LiveWorkerRow } from "@/lib/live";
 import { useApp } from "@/lib/store";
 import { useSession } from "@/lib/session";
+import { downloadBlob } from "@/lib/download";
 import { formatVND } from "@/lib/format";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { AdvanceModal } from "@/components/advances/AdvanceModal";
@@ -237,17 +238,6 @@ export function AdvancesView() {
     } finally {
       setBusyId(null);
     }
-  };
-
-  const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
   };
 
   const exportExcelRange = async () => {

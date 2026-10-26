@@ -802,6 +802,24 @@ export function deleteLiveCashbookEntry(id: number): Promise<{ ok: boolean }> {
   return apiDelete(`/cashbook/${id}`);
 }
 
+export interface CashbookExportFilter {
+  month?: string;
+  from?: string;
+  to?: string;
+  group?: string;
+  q?: string;
+}
+
+export function downloadLiveCashbookExcel(filter: CashbookExportFilter): Promise<DownloadResult> {
+  const p = new URLSearchParams();
+  if (filter.month) p.set("month", filter.month);
+  if (filter.from) p.set("from", filter.from);
+  if (filter.to) p.set("to", filter.to);
+  if (filter.group) p.set("group", filter.group);
+  if (filter.q) p.set("q", filter.q);
+  return apiDownload(`/cashbook/export?${p.toString()}`);
+}
+
 export interface CashbookSummaryRow {
   period: string;
   total: number;

@@ -2,9 +2,11 @@ export const runtime = "nodejs";
 
 import ExcelJS from "exceljs";
 
+import { daysBetween } from "@/lib/advance-months";
 import { parseMonthCode } from "@/lib/server/advance-months";
 import { getAuth } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
+import { excelFileResponse, excelFormatDay, excelMoney } from "@/lib/server/excel";
 import { apiError, json, searchParams } from "@/lib/server/http";
 
 const MAX_ROWS = 20_000;
@@ -47,26 +49,11 @@ function advanceDate(value: string | null): string | null {
   return trimmed;
 }
 
-function dayCount(from: string, to: string): number {
-  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
-}
-
-function formatDay(value: string | null): string {
-  if (!value) return "";
-  const [year, month, day] = value.slice(0, 10).split("-");
-  return year && month && day ? `${day}/${month}/${year}` : value;
-}
-
 function formatDateTime(value: string | null): string {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("vi-VN", { hour12: false });
-}
-
-function money(value: number | string | null): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
 }
 
 export async function GET(req: Request): Promise<Response> {
@@ -81,7 +68,8 @@ export async function GET(req: Request): Promise<Response> {
     }
     if (!month && from && to) {
       if (to < from) return json({ error: "invalid", message: "Đến ngày phải sau hoặc bằng từ ngày." }, 400);
-      if (dayCount(from, to) > MAX_DAYS) {
+      const span = daysBetween(from, to);
+      if (span == null || span > MAX_DAYS) {
         return json({ error: "invalid", message: "Khoảng xuất tối đa 366 ngày." }, 400);
       }
     }
@@ -191,7 +179,7 @@ export async function GET(req: Request): Promise<Response> {
     const subtitle = sheet.getCell(2, 1);
     subtitle.value = month
       ? `Tháng tạm ứng ${month}${status ? ` · Trạng thái: ${STATUS_LABEL[status] ?? status}` : ""}${search ? ` · Từ khóa: ${search}` : ""}`
-      : `Từ ${formatDay(from!)} đến ${formatDay(to!)}${status ? ` · Trạng thái: ${STATUS_LABEL[status] ?? status}` : ""}${search ? ` · Từ khóa: ${search}` : ""}`;
+      : `Từ ${excelFormatDay(from!)} đến ${excelFormatDay(to!)}${status ? ` · Trạng thái: ${STATUS_LABEL[status] ?? status}` : ""}${search ? ` · Từ khóa: ${search}` : ""}`;
     subtitle.font = { italic: true, size: 10, color: { argb: "FF64748B" } };
     subtitle.alignment = { horizontal: "center", vertical: "middle" };
 
@@ -254,12 +242,12 @@ export async function GET(req: Request): Promise<Response> {
       const worker = row.worker_id ? workerMap.get(row.worker_id) : null;
       const staff = row.staff_id ? staffMap.get(row.staff_id) : null;
       const companyId = worker ? Number(worker.current_company_id) : 0;
-      const amount = money(row.amount);
+      const amount = excelMoney(row.amount);
       total += amount;
       const excelRow = sheet.addRow([
         index + 1,
         row.code,
-        formatDay(row.advance_date),
+        excelFormatDay(row.advance_date),
         (row.advance_time || "").slice(0, 5),
         row.subject_type === "staff" ? "Nhân viên" : "Người lao động",
         row.subject_type === "staff" ? String(staff?.code ?? "") : String(worker?.code ?? ""),
@@ -272,7 +260,7 @@ export async function GET(req: Request): Promise<Response> {
         row.approved_by ? String(staffMap.get(row.approved_by)?.full_name ?? "") : "",
         formatDateTime(row.paid_at),
         formatDateTime(row.settled_at),
-        row.settled_amount === null || row.settled_amount === undefined ? "" : money(row.settled_amount),
+        row.settled_amount === null || row.settled_amount === undefined ? "" : excelMoney(row.settled_amount),
         row.note ?? "",
       ]);
       excelRow.height = 20;
@@ -311,15 +299,8 @@ export async function GET(req: Request): Promise<Response> {
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
     });
 
-    const buffer = await workbook.xlsx.writeBuffer();
     const filename = month ? `tam-ung_${month}.xlsx` : `tam-ung_${from}_${to}.xlsx`;
-    return new Response(buffer as ArrayBuffer, {
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "no-store",
-      },
-    });
+    return excelFileResponse(workbook, filename);
   } catch (e) {
     return apiError(e);
   }

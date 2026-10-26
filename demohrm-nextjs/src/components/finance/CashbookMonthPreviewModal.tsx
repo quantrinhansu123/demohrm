@@ -16,11 +16,15 @@ export function CashbookMonthPreviewModal({
   monthCode,
   monthClosed,
   onClose,
+  onExport,
+  exporting,
 }: {
   open: boolean;
   monthCode: string | null;
   monthClosed: boolean;
   onClose: () => void;
+  onExport?: (monthCode: string) => void;
+  exporting?: boolean;
 }) {
   const [rows, setRows] = useState<LiveCashbookEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -67,7 +71,16 @@ export function CashbookMonthPreviewModal({
           <StatusPill tone="success">Đang mở</StatusPill>
         )
       }
-      footer={<Button variant="outline" onClick={onClose}>Đóng</Button>}
+      footer={
+        <>
+          {monthCode && onExport ? (
+            <Button variant="outline" disabled={exporting} onClick={() => onExport(monthCode)}>
+              {exporting ? "Đang xuất..." : "Xuất Excel"}
+            </Button>
+          ) : null}
+          <Button variant="outline" onClick={onClose}>Đóng</Button>
+        </>
+      }
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
       {loading ? (

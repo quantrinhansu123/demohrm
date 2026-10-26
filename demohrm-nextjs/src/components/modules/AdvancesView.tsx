@@ -31,6 +31,7 @@ import { QueryState } from "@/components/ui/query-state";
 import { RowActions } from "@/components/ui/row-actions";
 import type { RowActionItem } from "@/components/ui/row-actions";
 import { Button } from "@/components/ui/button";
+import { MonthYearPicker } from "@/components/ui/month-year-picker";
 
 type Tab = "entries" | "months";
 
@@ -68,19 +69,6 @@ function formatMonthLabel(monthCode: string): string {
   return `${month}/${year}`;
 }
 
-const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
-
-function yearOptions(extraYears: string[] = []): string[] {
-  const now = new Date().getFullYear();
-  const years = new Set<number>();
-  for (let y = now - 5; y <= now + 1; y += 1) years.add(y);
-  for (const raw of extraYears) {
-    const y = Number(raw);
-    if (Number.isInteger(y) && y >= 2000) years.add(y);
-  }
-  return [...years].sort((a, b) => b - a).map(String);
-}
-
 function formatClosedAt(value: string | null): string {
   if (!value) return "—";
   const date = new Date(value);
@@ -94,10 +82,8 @@ export function AdvancesView() {
   const canDelete = access.canDelete;
   const canClose = access.canClosePeriod;
   const [tab, setTab] = useState<Tab>("entries");
-  /** Bộ lọc tab Kết thúc tháng — trống khi vào màn hình, chỉ fill khi đã chọn đủ mm + yyyy. */
+  /** Bộ lọc tab Kết thúc tháng — trống khi vào màn hình, chỉ fill khi đã chọn tháng (YYYY-MM). */
   const [monthsFilter, setMonthsFilter] = useState("");
-  const [filterMonthPart, setFilterMonthPart] = useState("");
-  const [filterYearPart, setFilterYearPart] = useState("");
   const [monthRows, setMonthRows] = useState<AdvanceMonthRow[]>([]);
   const [closedMonths, setClosedMonths] = useState<Set<string>>(new Set());
   const [range, setRange] = useState(monthRangeInput);
@@ -210,21 +196,6 @@ export function AdvancesView() {
       settled: sum("settled"),
     };
   }, [rows]);
-
-  const filterYearChoices = useMemo(
-    () => yearOptions(monthRows.map((row) => row.month_code.slice(0, 4))),
-    [monthRows],
-  );
-
-  const applyMonthFilter = (monthPart: string, yearPart: string) => {
-    setFilterMonthPart(monthPart);
-    setFilterYearPart(yearPart);
-    if (monthPart && yearPart) {
-      setMonthsFilter(`${yearPart}-${monthPart}`);
-    } else {
-      setMonthsFilter("");
-    }
-  };
 
   const filteredMonthRows = useMemo(() => {
     if (!monthsFilter) return [] as AdvanceMonthRow[];
@@ -469,42 +440,15 @@ export function AdvancesView() {
               <div className="mb-4 rounded-xl border bg-white p-3 shadow-sm">
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
-                    <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Lọc theo tháng (mm/yyyy)</span>
-                    <div className="flex items-center gap-1.5">
-                      <select
-                        value={filterMonthPart}
-                        onChange={(e) => applyMonthFilter(e.target.value, filterYearPart)}
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
-                        aria-label="Tháng"
-                      >
-                        <option value="">mm</option>
-                        {MONTH_OPTIONS.map((mm) => (
-                          <option key={mm} value={mm}>{mm}</option>
-                        ))}
-                      </select>
-                      <span className="text-[13px] font-semibold text-slate-400">/</span>
-                      <select
-                        value={filterYearPart}
-                        onChange={(e) => applyMonthFilter(filterMonthPart, e.target.value)}
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
-                        aria-label="Năm"
-                      >
-                        <option value="">yyyy</option>
-                        {filterYearChoices.map((yyyy) => (
-                          <option key={yyyy} value={yyyy}>{yyyy}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Lọc theo tháng</span>
+                    <MonthYearPicker
+                      value={monthsFilter}
+                      onChange={setMonthsFilter}
+                      placeholder="mm/yyyy"
+                    />
                   </div>
-                  {monthsFilter || filterMonthPart || filterYearPart ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setFilterMonthPart("");
-                        setFilterYearPart("");
-                        setMonthsFilter("");
-                      }}
-                    >
+                  {monthsFilter ? (
+                    <Button variant="outline" onClick={() => setMonthsFilter("")}>
                       Xóa lọc
                     </Button>
                   ) : null}
@@ -514,7 +458,7 @@ export function AdvancesView() {
                 </div>
                 {!monthsFilter ? (
                   <p className="mt-2 text-[12.5px] text-slate-500">
-                    Chọn tháng (mm) và năm (yyyy) để xem trạng thái mở / đóng.
+                    Chọn tháng bằng picker (hiển thị mm/yyyy) để xem trạng thái mở / đóng.
                   </p>
                 ) : null}
               </div>

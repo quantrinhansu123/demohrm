@@ -254,6 +254,7 @@ export function WorkerDetailModal({
   onClose: () => void;
 }) {
   const { access } = useSession();
+  const canEditWorker = access.canEditWorker;
   const { staff } = useApp();
   const [tab, setTab] = useState<"personal" | "job" | "payroll">("personal");
   const [showAddDot, setShowAddDot] = useState(false);
@@ -433,9 +434,11 @@ export function WorkerDetailModal({
         <div className="mt-3">
           <div className="mb-2 flex items-center justify-between">
             <h4 className="text-[14px] font-bold text-slate-900">Lịch sử các đợt làm việc ({assignments.length || 1})</h4>
-            <Button size="sm" variant="outline" onClick={() => setShowAddDot((v) => !v)}>+ Thêm đợt (chuyển / quay lại)</Button>
+            {canEditWorker ? (
+              <Button size="sm" variant="outline" onClick={() => setShowAddDot((v) => !v)}>+ Thêm đợt (chuyển / quay lại)</Button>
+            ) : null}
           </div>
-          {showAddDot && (
+          {canEditWorker && showAddDot && (
             <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3">
               <Field label="Mã đơn hàng *"><input suppressHydrationWarning className={inputClass} value={newDot.orderCode} onChange={(e) => setNewDot({ ...newDot, orderCode: e.target.value })} placeholder="VD: DH-2610-OJTEK" /></Field>
               <Field label="Vị trí (để trống = vị trí đầu của đơn)"><input suppressHydrationWarning className={inputClass} value={newDot.position} onChange={(e) => setNewDot({ ...newDot, position: e.target.value })} placeholder="VD: QC ngoại quan" /></Field>
@@ -472,14 +475,16 @@ export function WorkerDetailModal({
                   {a.endDate === null ? (
                     <span className="ml-auto flex items-center gap-2">
                       <StatusPill tone="success">Đang làm</StatusPill>
-                      <HandoverInvite placementId={Number(a.id)} />
-                      <button
-                        type="button"
-                        className="text-[12px] font-semibold text-rose-600 hover:underline"
-                        onClick={() => void closeDot(Number(a.id), a.startDate)}
-                      >
-                        Kết thúc đợt
-                      </button>
+                      {canEditWorker ? <HandoverInvite placementId={Number(a.id)} /> : null}
+                      {canEditWorker ? (
+                        <button
+                          type="button"
+                          className="text-[12px] font-semibold text-rose-600 hover:underline"
+                          onClick={() => void closeDot(Number(a.id), a.startDate)}
+                        >
+                          Kết thúc đợt
+                        </button>
+                      ) : null}
                     </span>
                   ) : (
                     <StatusPill tone="neutral" className="ml-auto">Đã kết thúc</StatusPill>

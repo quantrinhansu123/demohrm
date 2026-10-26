@@ -34,6 +34,7 @@ import { CreateWorkerSchema, formatZodErrors } from "@/lib/validation";
 import type { Worker } from "@/types/hrm";
 
 const STATUSES = ["Đang làm", "Chờ đi làm", "Tạm nghỉ", "Nghỉ việc", "Không đi làm", "Đang tư vấn"];
+const HCNS_STATUSES = ["Đang làm", "Nghỉ việc"] as const;
 const TYPES = ["Thời vụ", "Chính thức"];
 const PAGE = 50;
 
@@ -120,6 +121,8 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   const { companies } = useApp();
   const { access } = useSession();
   const canDelete = access.canDelete;
+  const canEdit = access.canEditWorker;
+  const canEditStatus = access.canEditWorkerStatus;
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
   const [company, setCompany] = useState("");
@@ -184,9 +187,11 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
         title="Hồ sơ Người lao động"
         sub="Danh sách phân trang từ máy chủ"
         actions={
-          <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setOpenCreate(true)}>
-            + Thêm người lao động
-          </Button>
+          canEdit ? (
+            <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setOpenCreate(true)}>
+              + Thêm người lao động
+            </Button>
+          ) : undefined
         }
       />
       <div className="page-body">
@@ -232,6 +237,8 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                   <WorkerMenu
                     worker={w}
                     canDelete={canDelete}
+                    canEdit={canEdit}
+                    canEditStatus={canEditStatus}
                     onView={onViewDetail}
                     onCloseDeal={setClosing}
                     onEdit={setEditing}
@@ -249,9 +256,20 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
           </div>
         </QueryState>
       </div>
-      <CreateWorkerModal open={openCreate} onClose={() => setOpenCreate(false)} onCreated={() => void reload()} />
-      {editing && <EditWorkerModal worker={editing} onClose={() => setEditing(null)} onSaved={() => void reload()} />}
-      {closing && <CloseWorkerModal worker={closing} onClose={() => setClosing(null)} onSaved={() => void reload()} />}
+      {canEdit ? (
+        <CreateWorkerModal open={openCreate} onClose={() => setOpenCreate(false)} onCreated={() => void reload()} />
+      ) : null}
+      {editing && (
+        <EditWorkerModal
+          worker={editing}
+          statusOnly={!canEdit && canEditStatus}
+          onClose={() => setEditing(null)}
+          onSaved={() => void reload()}
+        />
+      )}
+      {canEdit && closing ? (
+        <CloseWorkerModal worker={closing} onClose={() => setClosing(null)} onSaved={() => void reload()} />
+      ) : null}
     </section>
   );
 }
@@ -259,6 +277,8 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
 function WorkerMenu({
   worker,
   canDelete,
+  canEdit,
+  canEditStatus,
   onView,
   onCloseDeal,
   onEdit,
@@ -266,6 +286,8 @@ function WorkerMenu({
 }: {
   worker: Worker;
   canDelete: boolean;
+  canEdit: boolean;
+  canEditStatus: boolean;
   onView: (worker: Worker) => void;
   onCloseDeal: (worker: Worker) => void;
   onEdit: (worker: Worker) => void;
@@ -306,10 +328,14 @@ function WorkerMenu({
       {open && (
         <div ref={menuRef} className="fixed z-50 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg" style={{ top: menuPos.top, left: menuPos.left }}>
           <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onView(worker); }}>Xem</button>
-          {worker.status === "Đang tư vấn" && (
+          {canEdit && worker.status === "Đang tư vấn" && (
             <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onCloseDeal(worker); }}>Chốt</button>
           )}
-          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(worker); }}>Sửa</button>
+          {(canEdit || canEditStatus) && (
+            <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(worker); }}>
+              {canEdit ? "Sửa" : "Sửa trạng thái"}
+            </button>
+          )}
           {canDelete && (
             <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); void onDelete(worker); }}>Xóa</button>
           )}
@@ -880,22 +906,26 @@ function CloseWorkerModal({
 }
 
 function EditWorkerModal({
-  worker, onClose, onSaved,
+  worker, statusOnly = false, onClose, onSaved,
 }: {
   worker: Worker;
+  statusOnly?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const { staff, reloadCatalog } = useApp();
   const [knownWorkers, setKnownWorkers] = useState<Worker[]>([]);
   const canEditPhone = !worker.phoneHidden;
+  const initialStatus = HCNS_STATUSES.includes(worker.status as (typeof HCNS_STATUSES)[number])
+    ? worker.status
+    : "Đang làm";
   const [form, setForm] = useState({
     name: worker.name,
     phone: worker.phone,
     hometown: worker.hometown === "—" ? "" : worker.hometown,
     position: worker.position === "—" ? "" : worker.position,
     type: worker.type,
-    status: worker.status,
+    status: statusOnly ? initialStatus : worker.status,
     sale: worker.recruiter,
     manager: worker.manager === "—" ? "" : worker.manager,
     consultDate: worker.consultDate ?? "",
@@ -908,6 +938,7 @@ function EditWorkerModal({
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
   useEffect(() => {
+    if (statusOnly) return;
     let alive = true;
     fetchLiveWorkers({ limit: 200 })
       .then((page) => {
@@ -919,9 +950,38 @@ function EditWorkerModal({
     return () => {
       alive = false;
     };
-  }, []);
+  }, [statusOnly]);
 
   const save = async () => {
+    if (statusOnly) {
+      if (!(HCNS_STATUSES as readonly string[]).includes(form.status)) {
+        setError("HCNS chỉ được chọn Đang làm hoặc Nghỉ việc.");
+        return;
+      }
+      const startWorkDate = isoDate(form.startWorkDate);
+      const resignDate = isoDate(form.resignDate);
+      if (startWorkDate === "invalid" || resignDate === "invalid") {
+        setError("Ngày theo dạng YYYY-MM-DD.");
+        return;
+      }
+      setSaving(true);
+      setError("");
+      try {
+        await updateLiveWorker(worker.id, {
+          status: VI_STATUS[form.status] ?? form.status.trim(),
+          start_work_date: startWorkDate,
+          resign_date: resignDate,
+        });
+        onSaved();
+        onClose();
+      } catch (e) {
+        setError(errorText(e, "Lưu thất bại."));
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     if (!form.sale.trim() || !form.manager.trim()) {
       setError("Nhập sale và người phụ trách. Có thể chọn gợi ý hoặc gõ tên mới.");
       return;
@@ -976,7 +1036,7 @@ function EditWorkerModal({
     <Modal
       open
       onClose={onClose}
-      title={`Sửa hồ sơ ${worker.code}`}
+      title={statusOnly ? `Sửa trạng thái ${worker.code}` : `Sửa hồ sơ ${worker.code}`}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>Hủy</Button>
@@ -986,34 +1046,52 @@ function EditWorkerModal({
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
       {notice && <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{notice}</p>}
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Họ và tên"><input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
-        <Field label="Số điện thoại">
-          <input
-            className={inputClass}
-            value={form.phone}
-            readOnly={!canEditPhone}
-            onChange={(e) => {
-              if (!canEditPhone) return;
-              set("phone", e.target.value);
-            }}
-          />
-        </Field>
-        {!canEditPhone && (
-          <p className="col-span-2 rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-700">
-            Số điện thoại đang bị che — bạn không có quyền xem/sửa SĐT hồ sơ này.
+      {statusOnly ? (
+        <div className="grid grid-cols-2 gap-3">
+          <p className="col-span-2 text-[12.5px] text-slate-500">
+            HCNS chỉ được sửa trạng thái <strong>Đang làm</strong> / <strong>Nghỉ việc</strong> và ngày vào / nghỉ liên quan.
           </p>
-        )}
-        <Field label="Quê quán"><input className={inputClass} value={form.hometown} onChange={(e) => set("hometown", e.target.value)} /></Field>
-        <Field label="Vị trí"><SuggestInput value={form.position} onChange={(position) => set("position", position)} suggestions={positions} createLabel="Thêm mới" placeholder="Chọn hoặc gõ vị trí mới" /></Field>
-        <Field label="Loại hình"><SuggestInput value={form.type} onChange={(type) => set("type", type)} suggestions={typeNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ loại hình mới" /></Field>
-        <Field label="Trạng thái"><SuggestInput value={form.status} onChange={(status) => set("status", status)} suggestions={statusNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ trạng thái mới" /></Field>
-        <Field label="Sale"><SuggestInput value={form.sale} onChange={(sale) => set("sale", sale)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ sale mới" /></Field>
-        <Field label="Phụ trách *"><SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" /></Field>
-        <Field label="Ngày tư vấn"><input type="date" className={inputClass} value={form.consultDate} onChange={(e) => set("consultDate", e.target.value)} /></Field>
-        <Field label="Ngày vào làm"><input type="date" className={inputClass} value={form.startWorkDate} onChange={(e) => set("startWorkDate", e.target.value)} /></Field>
-        <Field label="Ngày nghỉ việc"><input type="date" className={inputClass} value={form.resignDate} onChange={(e) => set("resignDate", e.target.value)} /></Field>
-      </div>
+          <Field label="Họ và tên"><input className={inputClass} value={worker.name} readOnly /></Field>
+          <Field label="Trạng thái">
+            <select className={inputClass} value={form.status} onChange={(e) => set("status", e.target.value)}>
+              {HCNS_STATUSES.map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Ngày vào làm"><input type="date" className={inputClass} value={form.startWorkDate} onChange={(e) => set("startWorkDate", e.target.value)} /></Field>
+          <Field label="Ngày nghỉ việc"><input type="date" className={inputClass} value={form.resignDate} onChange={(e) => set("resignDate", e.target.value)} /></Field>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Họ và tên"><input className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
+          <Field label="Số điện thoại">
+            <input
+              className={inputClass}
+              value={form.phone}
+              readOnly={!canEditPhone}
+              onChange={(e) => {
+                if (!canEditPhone) return;
+                set("phone", e.target.value);
+              }}
+            />
+          </Field>
+          {!canEditPhone && (
+            <p className="col-span-2 rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-700">
+              Số điện thoại đang bị che — bạn không có quyền xem/sửa SĐT hồ sơ này.
+            </p>
+          )}
+          <Field label="Quê quán"><input className={inputClass} value={form.hometown} onChange={(e) => set("hometown", e.target.value)} /></Field>
+          <Field label="Vị trí"><SuggestInput value={form.position} onChange={(position) => set("position", position)} suggestions={positions} createLabel="Thêm mới" placeholder="Chọn hoặc gõ vị trí mới" /></Field>
+          <Field label="Loại hình"><SuggestInput value={form.type} onChange={(type) => set("type", type)} suggestions={typeNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ loại hình mới" /></Field>
+          <Field label="Trạng thái"><SuggestInput value={form.status} onChange={(status) => set("status", status)} suggestions={statusNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ trạng thái mới" /></Field>
+          <Field label="Sale"><SuggestInput value={form.sale} onChange={(sale) => set("sale", sale)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ sale mới" /></Field>
+          <Field label="Phụ trách *"><SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" /></Field>
+          <Field label="Ngày tư vấn"><input type="date" className={inputClass} value={form.consultDate} onChange={(e) => set("consultDate", e.target.value)} /></Field>
+          <Field label="Ngày vào làm"><input type="date" className={inputClass} value={form.startWorkDate} onChange={(e) => set("startWorkDate", e.target.value)} /></Field>
+          <Field label="Ngày nghỉ việc"><input type="date" className={inputClass} value={form.resignDate} onChange={(e) => set("resignDate", e.target.value)} /></Field>
+        </div>
+      )}
     </Modal>
   );
 }

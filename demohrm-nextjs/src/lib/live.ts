@@ -327,12 +327,12 @@ export function dupFieldLabel(field: string): string {
 }
 
 export function updateLiveWorker(id: number, body: {
-  full_name: string;
+  full_name?: string;
   phone?: string;
-  hometown: string | null;
-  current_position: string;
-  employment_type: string;
-  status: string;
+  hometown?: string | null;
+  current_position?: string;
+  employment_type?: string;
+  status?: string;
   recruiter_id?: number;
   manager_id?: number;
   current_company_id?: number;

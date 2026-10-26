@@ -36,6 +36,8 @@ const EMPTY_ACCESS: Access = {
   canResetStaffPin: false,
   canManageAccounts: false,
   canViewAllWorkerPhones: false,
+  canEditWorker: false,
+  canEditWorkerStatus: false,
 };
 
 const SessionContext = createContext<SessionState | null>(null);

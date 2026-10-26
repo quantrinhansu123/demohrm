@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ApiError } from "@/lib/api";
-import { currentMonthCode, monthBounds, nextMonthCode } from "@/lib/advance-months";
+import { currentMonthCode, monthBounds, monthCodeFromDate, nextMonthCode } from "@/lib/advance-months";
+import { monthRangeInput } from "@/lib/cashbook";
 import {
   approveLiveAdvance,
   cancelLiveAdvance,
@@ -64,7 +65,20 @@ function formatDayTime(row: LiveAdvance): string {
 function formatMonthLabel(monthCode: string): string {
   const [year, month] = monthCode.split("-");
   if (!year || !month) return monthCode;
-  return `Tháng ${Number(month)}/${year}`;
+  return `${month}/${year}`;
+}
+
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"));
+
+function yearOptions(extraYears: string[] = []): string[] {
+  const now = new Date().getFullYear();
+  const years = new Set<number>();
+  for (let y = now - 5; y <= now + 1; y += 1) years.add(y);
+  for (const raw of extraYears) {
+    const y = Number(raw);
+    if (Number.isInteger(y) && y >= 2000) years.add(y);
+  }
+  return [...years].sort((a, b) => b - a).map(String);
 }
 
 function formatClosedAt(value: string | null): string {
@@ -80,11 +94,13 @@ export function AdvancesView() {
   const canDelete = access.canDelete;
   const canClose = access.canClosePeriod;
   const [tab, setTab] = useState<Tab>("entries");
-  const [month, setMonth] = useState(currentMonthCode);
-  /** Bộ lọc tab Kết thúc tháng — trống khi vào màn hình, chỉ fill khi đã chọn tháng. */
+  /** Bộ lọc tab Kết thúc tháng — trống khi vào màn hình, chỉ fill khi đã chọn đủ mm + yyyy. */
   const [monthsFilter, setMonthsFilter] = useState("");
+  const [filterMonthPart, setFilterMonthPart] = useState("");
+  const [filterYearPart, setFilterYearPart] = useState("");
   const [monthRows, setMonthRows] = useState<AdvanceMonthRow[]>([]);
   const [closedMonths, setClosedMonths] = useState<Set<string>>(new Set());
+  const [range, setRange] = useState(monthRangeInput);
   const [status, setStatus] = useState("");
   const [subjectType, setSubjectType] = useState("");
   const [search, setSearch] = useState("");
@@ -104,8 +120,10 @@ export function AdvancesView() {
   const [editing, setEditing] = useState<LiveAdvance | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  const range = useMemo(() => monthBounds(month) ?? { from: "", to: "" }, [month]);
-  const monthClosed = closedMonths.has(month);
+  const isRowMonthClosed = (advanceDate: string | null | undefined) => {
+    const code = advanceDate ? monthCodeFromDate(advanceDate) : null;
+    return Boolean(code && closedMonths.has(code));
+  };
 
   useEffect(() => {
     let alive = true;
@@ -193,6 +211,21 @@ export function AdvancesView() {
     };
   }, [rows]);
 
+  const filterYearChoices = useMemo(
+    () => yearOptions(monthRows.map((row) => row.month_code.slice(0, 4))),
+    [monthRows],
+  );
+
+  const applyMonthFilter = (monthPart: string, yearPart: string) => {
+    setFilterMonthPart(monthPart);
+    setFilterYearPart(yearPart);
+    if (monthPart && yearPart) {
+      setMonthsFilter(`${yearPart}-${monthPart}`);
+    } else {
+      setMonthsFilter("");
+    }
+  };
+
   const filteredMonthRows = useMemo(() => {
     if (!monthsFilter) return [] as AdvanceMonthRow[];
     const found = monthRows.find((row) => row.month_code === monthsFilter);
@@ -222,8 +255,9 @@ export function AdvancesView() {
   );
 
   const act = async (row: LiveAdvance, action: "approve" | "reject" | "pay" | "settle" | "cancel") => {
-    if (monthClosed) {
-      setError(`Tháng ${month} đã đóng. Chỉ được xem.`);
+    const rowMonth = monthCodeFromDate(row.advance_date) ?? "";
+    if (isRowMonthClosed(row.advance_date)) {
+      setError(`Tháng ${rowMonth} đã đóng. Chỉ được xem.`);
       return;
     }
     const deletingSettled = action === "cancel" && row.status === "settled";
@@ -257,7 +291,41 @@ export function AdvancesView() {
     }
   };
 
-  const exportExcelForMonth = async (monthCode: string, withFilters = false) => {
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportExcelRange = async () => {
+    if (!range.from || !range.to) {
+      setError("Chọn khoảng ngày trước khi xuất Excel.");
+      return;
+    }
+    setExporting(true);
+    setError("");
+    try {
+      const { blob, filename } = await downloadLiveAdvancesExcel({
+        from: range.from,
+        to: range.to,
+        status: status || undefined,
+        subjectType: subjectType === "staff" || subjectType === "worker" ? subjectType : "",
+        q: query || undefined,
+      });
+      downloadBlob(blob, filename || `tam-ung_${range.from}_${range.to}.xlsx`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Xuất Excel thất bại.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportExcelForMonth = async (monthCode: string) => {
     if (!monthCode) {
       setError("Chọn tháng trước khi xuất Excel.");
       return;
@@ -265,20 +333,8 @@ export function AdvancesView() {
     setExporting(true);
     setError("");
     try {
-      const { blob, filename } = await downloadLiveAdvancesExcel({
-        month: monthCode,
-        status: withFilters ? status || undefined : undefined,
-        subjectType: withFilters && (subjectType === "staff" || subjectType === "worker") ? subjectType : "",
-        q: withFilters ? query || undefined : undefined,
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename || `tam-ung_${monthCode}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      const { blob, filename } = await downloadLiveAdvancesExcel({ month: monthCode });
+      downloadBlob(blob, filename || `tam-ung_${monthCode}.xlsx`);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Xuất Excel thất bại.");
     } finally {
@@ -300,7 +356,10 @@ export function AdvancesView() {
     try {
       const result = await closeLiveAdvanceMonth(monthCode);
       const next = result.next_month || nextMonthCode(monthCode);
-      if (month === monthCode && next) setMonth(next);
+      if (next) {
+        const bounds = monthBounds(next);
+        if (bounds) setRange(bounds);
+      }
       reload();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Kết thúc tháng thất bại.");
@@ -359,7 +418,7 @@ export function AdvancesView() {
         actions={
           tab === "entries" ? (
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" disabled={exporting} onClick={() => void exportExcelForMonth(month, true)}>
+              <Button variant="outline" disabled={exporting} onClick={() => void exportExcelRange()}>
                 {exporting ? "Đang xuất..." : "Xuất Excel"}
               </Button>
               <Button
@@ -410,16 +469,42 @@ export function AdvancesView() {
               <div className="mb-4 rounded-xl border bg-white p-3 shadow-sm">
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
-                    <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Lọc theo tháng</span>
-                    <input
-                      type="month"
-                      value={monthsFilter}
-                      onChange={(e) => setMonthsFilter(e.target.value)}
-                      className="rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
-                    />
+                    <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Lọc theo tháng (mm/yyyy)</span>
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={filterMonthPart}
+                        onChange={(e) => applyMonthFilter(e.target.value, filterYearPart)}
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
+                        aria-label="Tháng"
+                      >
+                        <option value="">mm</option>
+                        {MONTH_OPTIONS.map((mm) => (
+                          <option key={mm} value={mm}>{mm}</option>
+                        ))}
+                      </select>
+                      <span className="text-[13px] font-semibold text-slate-400">/</span>
+                      <select
+                        value={filterYearPart}
+                        onChange={(e) => applyMonthFilter(filterMonthPart, e.target.value)}
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
+                        aria-label="Năm"
+                      >
+                        <option value="">yyyy</option>
+                        {filterYearChoices.map((yyyy) => (
+                          <option key={yyyy} value={yyyy}>{yyyy}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  {monthsFilter ? (
-                    <Button variant="outline" onClick={() => setMonthsFilter("")}>
+                  {monthsFilter || filterMonthPart || filterYearPart ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setFilterMonthPart("");
+                        setFilterYearPart("");
+                        setMonthsFilter("");
+                      }}
+                    >
                       Xóa lọc
                     </Button>
                   ) : null}
@@ -429,14 +514,14 @@ export function AdvancesView() {
                 </div>
                 {!monthsFilter ? (
                   <p className="mt-2 text-[12.5px] text-slate-500">
-                    Chọn tháng để xem trạng thái mở / đóng và thao tác kết thúc tháng.
+                    Chọn tháng (mm) và năm (yyyy) để xem trạng thái mở / đóng.
                   </p>
                 ) : null}
               </div>
 
               {monthsFilter ? (
                 <div className="grid gap-4 md:grid-cols-3">
-                  <KpiCard title="THÁNG" value={<>{formatMonthLabel(monthsFilter)}</>} sub={monthsFilter} />
+                  <KpiCard title="THÁNG" value={<>{formatMonthLabel(monthsFilter)}</>} sub={`Tháng ${formatMonthLabel(monthsFilter)}`} />
                   <KpiCard title="ĐANG MỞ" value={<>{openMonthCount}</>} valueClassName="text-emerald-600" sub="Thêm / sửa / xóa được" />
                   <KpiCard title="ĐÃ ĐÓNG" value={<>{closedMonthCount}</>} valueClassName="text-slate-600" sub="Chỉ xem" />
                 </div>
@@ -542,18 +627,22 @@ export function AdvancesView() {
               <div className="mt-4 rounded-xl border bg-white p-3 shadow-sm">
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
-                    <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Tháng</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="month"
-                        value={month}
-                        onChange={(e) => setMonth(e.target.value)}
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
-                      />
-                      <StatusPill tone={monthClosed ? "neutral" : "success"}>
-                        {monthClosed ? "Đóng" : "Mở"}
-                      </StatusPill>
-                    </div>
+                    <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Từ ngày</span>
+                    <input
+                      type="date"
+                      value={range.from}
+                      onChange={(e) => setRange((prev) => ({ ...prev, from: e.target.value }))}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
+                    />
+                  </div>
+                  <div>
+                    <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Đến ngày</span>
+                    <input
+                      type="date"
+                      value={range.to}
+                      onChange={(e) => setRange((prev) => ({ ...prev, to: e.target.value }))}
+                      className="rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
+                    />
                   </div>
                   <div>
                     <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Trạng thái</span>
@@ -596,11 +685,9 @@ export function AdvancesView() {
                     </div>
                   </div>
                 </div>
-                {monthClosed ? (
-                  <p className="mt-2 text-[12.5px] text-slate-500">
-                    Tháng {month} đã đóng — chỉ xem. Thêm / sửa / xóa chỉ áp dụng cho tháng đang mở.
-                  </p>
-                ) : null}
+                <p className="mt-2 text-[12.5px] text-slate-500">
+                  Phiếu thuộc tháng đã đóng chỉ xem. Thêm / sửa / xóa chỉ áp dụng cho tháng đang mở.
+                </p>
               </div>
 
               {error && rows.length > 0 && (
@@ -613,8 +700,9 @@ export function AdvancesView() {
                     const personName = row.subject_type === "staff" ? row.staff_name : row.worker_name;
                     const personCode = row.subject_type === "staff" ? null : row.worker_code;
                     const busy = busyId === row.id;
+                    const rowClosed = isRowMonthClosed(row.advance_date);
                     const actions: RowActionItem[] = [];
-                    if (!monthClosed) {
+                    if (!rowClosed) {
                       if (row.status === "requested") {
                         actions.push(
                           { label: "Duyệt", tone: "success", disabled: busy, onClick: () => void act(row, "approve") },
@@ -668,17 +756,17 @@ export function AdvancesView() {
                           {actions.length > 0 ? (
                             <RowActions items={actions} label="Thao tác phiếu tạm ứng" />
                           ) : (
-                            <span className="text-[12px] text-slate-400">{monthClosed ? "Chỉ xem" : "—"}</span>
+                            <span className="text-[12px] text-slate-400">{rowClosed ? "Chỉ xem" : "—"}</span>
                           )}
                         </td>
                       </tr>
                     );
                   })}
-                  {rows.length === 0 && <EmptyRow colSpan={9} text="Chưa có phiếu tạm ứng trong tháng này" />}
+                  {rows.length === 0 && <EmptyRow colSpan={9} text="Chưa có phiếu tạm ứng trong khoảng ngày này" />}
                 </DataTable>
               </div>
               <p className="mt-2 text-[12px] text-slate-500">
-                Đang hiển thị {rows.length} phiếu tháng {month}. Bộ lọc tối đa 500 phiếu gần nhất.
+                Đang hiển thị {rows.length} phiếu từ {range.from} đến {range.to}. Bộ lọc tối đa 500 phiếu gần nhất.
               </p>
             </>
           )}

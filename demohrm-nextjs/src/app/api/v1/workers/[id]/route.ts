@@ -2,8 +2,8 @@ export const runtime = "nodejs";
 
 import { getAuth, requireRole } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
-import { apiError, json, readBody } from "@/lib/server/http";
-import { ROLE } from "@/lib/server/roles";
+import { ForbiddenError, apiError, json, readBody } from "@/lib/server/http";
+import { ROLE, WORKER_STATUS_HCNS_ALLOWED, hasRole } from "@/lib/server/roles";
 import { applyWorkerPhonePrivacy, canViewWorkerPhone } from "@/lib/server/worker-privacy";
 
 const WORKER_PATCH = [
@@ -11,6 +11,8 @@ const WORKER_PATCH = [
   "employment_type", "status", "current_company_id", "current_position", "recruiter_id", "manager_id", "note",
   "consult_date", "start_work_date", "resign_date",
 ] as const;
+
+const WORKER_STATUS_PATCH = ["status", "start_work_date", "resign_date"] as const;
 
 const PUBLIC_RETURN =
   "id,code,full_name,phone,hometown,employment_type,status,current_position,current_company_id,recruiter_id,manager_id,created_by";
@@ -42,8 +44,42 @@ export async function PATCH(
       return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
     }
 
-    const body = pick(await readBody(req), WORKER_PATCH);
-    if (body["phone"] !== undefined) {
+    const canFull = hasRole(auth.staffRole, ROLE.workerEdit);
+    const canStatus = hasRole(auth.staffRole, ROLE.workerStatusEdit);
+    if (!canFull && !canStatus) {
+      throw new ForbiddenError("Bạn chỉ được xem hồ sơ người lao động.");
+    }
+
+    const raw = await readBody(req);
+    let body: Record<string, unknown>;
+    if (canFull) {
+      body = pick(raw, WORKER_PATCH);
+    } else {
+      body = pick(raw, WORKER_STATUS_PATCH);
+      if (Object.keys(body).length === 0) {
+        return json({ error: "invalid", message: "HCNS chỉ được sửa trạng thái Đang làm / Nghỉ việc." }, 400);
+      }
+      if (body["status"] !== undefined) {
+        const status = String(body["status"]);
+        if (!(WORKER_STATUS_HCNS_ALLOWED as readonly string[]).includes(status)) {
+          return json(
+            { error: "forbidden", message: "HCNS chỉ được đặt trạng thái Đang làm hoặc Nghỉ việc." },
+            403,
+          );
+        }
+      }
+      const extra = Object.keys(raw).filter(
+        (key) => raw[key] !== undefined && !(WORKER_STATUS_PATCH as readonly string[]).includes(key),
+      );
+      if (extra.length > 0) {
+        return json(
+          { error: "forbidden", message: "HCNS chỉ được sửa trạng thái Đang làm / Nghỉ việc (và ngày vào/nghỉ liên quan)." },
+          403,
+        );
+      }
+    }
+
+    if (canFull && body["phone"] !== undefined) {
       const current = await getSupabase()
         .from("workers")
         .select("id,created_by,recruiter_id,manager_id")

@@ -218,6 +218,8 @@ export interface WorkerFilter {
   statusEn?: string;
   typeEn?: string;
   q?: string;
+  recruiterId?: number;
+  managerId?: number;
   limit?: number;
   offset?: number;
 }
@@ -235,6 +237,8 @@ export function fetchLiveWorkers(f?: WorkerFilter, opts?: ApiOptions): Promise<W
   if (f?.statusEn) p.set("status", f.statusEn);
   if (f?.typeEn) p.set("type", f.typeEn);
   if (f?.q) p.set("q", f.q);
+  if (f?.recruiterId) p.set("recruiter_id", String(f.recruiterId));
+  if (f?.managerId) p.set("manager_id", String(f.managerId));
   if (f?.limit) p.set("limit", String(f.limit));
   if (f?.offset) p.set("offset", String(f.offset));
   const qs = p.toString();

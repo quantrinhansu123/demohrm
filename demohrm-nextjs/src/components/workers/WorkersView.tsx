@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { useSession } from "@/lib/session";
@@ -23,6 +23,7 @@ import type { DuplicateHit, LiveCompany, LiveStaff } from "@/lib/live";
 import { maskCitizenId, workerStatusTone } from "@/lib/format";
 import { workerStatusLabel } from "@/lib/worker-status";
 import { SuggestInput } from "@/components/ui/suggest-input";
+import { SearchableStaffSelect } from "@/components/ui/searchable-staff-select";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusPill } from "@/components/ui/badge";
@@ -118,7 +119,7 @@ async function ensureStaffId(staff: LiveStaff[], known: Map<string, number>, nam
 }
 
 export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => void }) {
-  const { companies } = useApp();
+  const { companies, staff } = useApp();
   const { access } = useSession();
   const canDelete = access.canDelete;
   const canEdit = access.canEditWorker;
@@ -131,6 +132,8 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   const [company, setCompany] = useState("");
   const [status, setStatus] = useState("");
   const [type, setType] = useState("");
+  const [saleId, setSaleId] = useState<number | null>(null);
+  const [managerId, setManagerId] = useState<number | null>(null);
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState(0);
   const [rows, setRows] = useState<Worker[]>([]);
@@ -147,7 +150,12 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
 
   useEffect(() => {
     setOffset(0);
-  }, [qDebounced, company, status, type]);
+  }, [qDebounced, company, status, type, saleId, managerId]);
+
+  const staffOptions = useMemo(
+    () => [...staff].sort((a, b) => a.full_name.localeCompare(b.full_name, "vi")),
+    [staff],
+  );
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -157,6 +165,8 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
         statusEn: status ? VI_STATUS[status] : undefined,
         typeEn: type ? VI_TYPE[type] : undefined,
         q: qDebounced || undefined,
+        recruiterId: saleId ?? undefined,
+        managerId: managerId ?? undefined,
         limit: PAGE,
         offset,
       });
@@ -168,7 +178,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
     } finally {
       setLoading(false);
     }
-  }, [company, status, type, qDebounced, offset]);
+  }, [company, status, type, saleId, managerId, qDebounced, offset]);
 
   useEffect(() => {
     void reload();
@@ -213,6 +223,24 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
             <option value="Thời vụ">Thời vụ</option>
             <option value="Chính thức">Chính thức</option>
           </select>
+          <div className="w-56">
+            <SearchableStaffSelect
+              value={saleId}
+              onChange={setSaleId}
+              staff={staffOptions}
+              placeholder="Tất cả sale"
+              showAvatar={false}
+            />
+          </div>
+          <div className="w-56">
+            <SearchableStaffSelect
+              value={managerId}
+              onChange={setManagerId}
+              staff={staffOptions}
+              placeholder="Tất cả phụ trách"
+              showAvatar={false}
+            />
+          </div>
           <span className="ml-auto text-[13px] text-slate-500">Tổng số: <strong className="text-slate-900">{total}</strong></span>
         </div>
         <QueryState loading={loading} error={error}>

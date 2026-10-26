@@ -36,6 +36,12 @@ function safeSearch(raw: unknown): string {
   return String(raw ?? "").replace(/[%_,.()]/g, "").trim().slice(0, 80);
 }
 
+function positiveIntParam(raw: string | null): number | null {
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 type WorkerExtra = {
   id: number;
   manager_id: number | null;
@@ -100,6 +106,24 @@ export async function GET(req: Request): Promise<Response> {
     if (type) q = q.eq("employment_type", type);
     const needle = safeSearch(sp.get("q"));
     if (needle) q = q.or(`full_name.ilike.%${needle}%,code.ilike.%${needle}%,phone.ilike.%${needle}%`);
+
+    const recruiterId = positiveIntParam(sp.get("recruiter_id"));
+    if (recruiterId) q = q.eq("recruiter_id", recruiterId);
+
+    // manager_id thường chỉ có trên workers, không có trên v_workers_public.
+    const managerId = positiveIntParam(sp.get("manager_id"));
+    if (managerId) {
+      const matched = await getSupabase().from("workers").select("id").eq("manager_id", managerId);
+      if (matched.error) throw matched.error;
+      const ids = (matched.data ?? [])
+        .map((row) => Number(row.id))
+        .filter((id) => Number.isInteger(id) && id > 0);
+      if (ids.length === 0) {
+        return json({ rows: [], total: 0, limit, offset });
+      }
+      q = q.in("id", ids);
+    }
+
     const { data, error, count } = await q.range(offset, offset + limit - 1);
     if (error) throw error;
     let rows = (data ?? []) as Array<Record<string, unknown>>;

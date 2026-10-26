@@ -12,6 +12,8 @@ interface Props {
   placeholder?: string;
   inputId?: string;
   disabled?: boolean;
+  /** Mặc định hiện avatar chữ cái; tắt khi dùng làm bộ lọc gọn. */
+  showAvatar?: boolean;
 }
 
 function labelOf(person: LiveStaff): string {
@@ -23,7 +25,7 @@ function matchQuery(person: LiveStaff, q: string): boolean {
   return q.split(/\s+/).filter(Boolean).every((part) => hay.includes(part));
 }
 
-export function SearchableStaffSelect({ value, onChange, staff, placeholder, inputId, disabled }: Props) {
+export function SearchableStaffSelect({ value, onChange, staff, placeholder, inputId, disabled, showAvatar = true }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -208,9 +210,11 @@ export function SearchableStaffSelect({ value, onChange, staff, placeholder, inp
                       active && "ring-1 ring-inset ring-[#0052cc]/40"
                     )}
                   >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0052cc]/10 text-[12px] font-bold text-[#0052cc]">
-                      {person.full_name.trim().slice(-1).toUpperCase()}
-                    </span>
+                    {showAvatar && (
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0052cc]/10 text-[12px] font-bold text-[#0052cc]">
+                        {person.full_name.trim().slice(-1).toUpperCase()}
+                      </span>
+                    )}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] font-semibold text-slate-900">{person.full_name}</span>
                       <span className="block truncate text-[12px] text-slate-500">

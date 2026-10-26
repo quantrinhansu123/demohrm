@@ -1,8 +1,9 @@
 export const runtime = "nodejs";
 
-import { getAuth } from "@/lib/server/authctx";
-import { apiError, json, readBody } from "@/lib/server/http";
+import { getAuth, requireRole } from "@/lib/server/authctx";
+import { ForbiddenError, apiError, json, readBody } from "@/lib/server/http";
 import { isOrderMediaSetupError, saveOrderMedia } from "@/lib/server/order-media";
+import { ROLE } from "@/lib/server/roles";
 
 function orderIdOf(params: Record<string, string>): number | null {
   const id = Number(params["id"]);
@@ -35,7 +36,12 @@ export async function POST(
   ctx: { params: Promise<Record<string, string>> },
 ): Promise<Response> {
   try {
-    getAuth(req);
+    const auth = getAuth(req);
+    try {
+      requireRole(auth, ...ROLE.orderWrite);
+    } catch {
+      throw new ForbiddenError("Chỉ Ban lãnh đạo và Kỹ thuật được sửa đơn hàng.");
+    }
     const id = orderIdOf(await ctx.params);
     if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
     const body = await readBody(req);

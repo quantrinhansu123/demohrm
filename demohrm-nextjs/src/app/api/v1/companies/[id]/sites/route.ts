@@ -1,8 +1,9 @@
 export const runtime = "nodejs";
 
-import { getAuth } from "@/lib/server/authctx";
+import { getAuth, requireRole } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
-import { apiError, json, readBody } from "@/lib/server/http";
+import { ForbiddenError, apiError, json, readBody } from "@/lib/server/http";
+import { ROLE } from "@/lib/server/roles";
 
 function positiveInt(value: unknown): number | null {
   const n = Number(value);
@@ -39,7 +40,12 @@ export async function POST(
   ctx: { params: Promise<Record<string, string>> },
 ): Promise<Response> {
   try {
-    getAuth(req);
+    const auth = getAuth(req);
+    try {
+      requireRole(auth, ...ROLE.companyWrite);
+    } catch {
+      throw new ForbiddenError("Chỉ Ban lãnh đạo và Kỹ thuật được sửa công ty.");
+    }
     const id = positiveInt((await ctx.params)["id"]);
     if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
     const body = await readBody(req);

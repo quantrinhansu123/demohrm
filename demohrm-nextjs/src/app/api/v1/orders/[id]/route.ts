@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 import { getAuth, requireRole } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { removeOrderMedia } from "@/lib/server/order-media";
-import { apiError, json, readBody } from "@/lib/server/http";
+import { ForbiddenError, apiError, json, readBody } from "@/lib/server/http";
 import { ROLE } from "@/lib/server/roles";
 
 // GET /api/v1/orders/:id — Chi tiet don
@@ -37,7 +37,12 @@ export async function PATCH(
   ctx: { params: Promise<Record<string, string>> },
 ): Promise<Response> {
   try {
-    getAuth(req);
+    const auth = getAuth(req);
+    try {
+      requireRole(auth, ...ROLE.orderWrite);
+    } catch {
+      throw new ForbiddenError("Chỉ Ban lãnh đạo và Kỹ thuật được sửa đơn hàng.");
+    }
     const p = await ctx.params;
     const body = await readBody(req);
     const patch: Record<string, unknown> = {};

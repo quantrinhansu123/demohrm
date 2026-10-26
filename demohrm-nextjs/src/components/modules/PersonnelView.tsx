@@ -63,6 +63,7 @@ export function PersonnelView() {
   const { access } = useSession();
   const canDelete = access.canDelete;
   const canManageAccounts = access.canManageAccounts;
+  const canEditStaff = access.canEditStaff;
   const [rows, setRows] = useState<LivePersonnel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -171,6 +172,7 @@ export function PersonnelView() {
   }, [filtered, query]);
 
   const movePerson = async (person: LivePersonnel, department: string) => {
+    if (!canEditStaff) return;
     if (department === "Chưa phân phòng" || departmentOf(person) === department) return;
     try {
       const updated = await updateLivePersonnel(person.id, {
@@ -289,7 +291,7 @@ export function PersonnelView() {
                 </header>
                 <div className="flex min-h-36 flex-col gap-2 px-2 pb-2">
                   {column.people.map((person) => (
-                    <PersonnelCard key={person.id} person={person} canDelete={canDelete} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
+                    <PersonnelCard key={person.id} person={person} canEdit={canEditStaff} canDelete={canDelete} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
                   ))}
                   {column.people.length === 0 && <p className="px-1 py-6 text-center text-[12px] text-slate-400">Chưa có người</p>}
                 </div>
@@ -321,6 +323,7 @@ export function PersonnelView() {
       />
       <PersonnelDetailModal
         person={viewing}
+        canEdit={canEditStaff}
         canDelete={canDelete}
         canResetPin={access.canResetStaffPin}
         onClose={() => setViewing(null)}
@@ -336,12 +339,14 @@ export function PersonnelView() {
 
 function PersonnelCard({
   person,
+  canEdit,
   canDelete,
   onView,
   onEdit,
   onDelete,
 }: {
   person: LivePersonnel;
+  canEdit: boolean;
   canDelete: boolean;
   onView: (person: LivePersonnel) => void;
   onEdit: (person: LivePersonnel) => void;
@@ -370,12 +375,13 @@ function PersonnelCard({
   const position = positionOf(person);
   return (
     <article
-      draggable
+      draggable={canEdit}
       onDragStart={(event) => {
+        if (!canEdit) return;
         event.dataTransfer.setData("text/plain", String(person.id));
         event.dataTransfer.effectAllowed = "move";
       }}
-      className="cursor-grab rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm active:cursor-grabbing"
+      className={`rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm ${canEdit ? "cursor-grab active:cursor-grabbing" : ""}`}
     >
       <div className="flex items-start gap-2">
         <Avatar tone={AVATAR_TONES[person.id % AVATAR_TONES.length]} size="sm">
@@ -406,7 +412,9 @@ function PersonnelCard({
       {open && (
         <div ref={menuRef} className="fixed z-50 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg" style={{ top: menuPos.top, left: menuPos.left }}>
           <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onView(person); }}>Xem</button>
-          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(person); }}>Sửa</button>
+          {canEdit && (
+            <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(person); }}>Sửa</button>
+          )}
           {canDelete ? (
             <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); onDelete(person); }}>Xóa</button>
           ) : (
@@ -680,6 +688,7 @@ function EditPersonnelModal({
 
 function PersonnelDetailModal({
   person,
+  canEdit,
   canDelete,
   canResetPin,
   onClose,
@@ -687,6 +696,7 @@ function PersonnelDetailModal({
   onDelete,
 }: {
   person: LivePersonnel | null;
+  canEdit: boolean;
   canDelete: boolean;
   canResetPin: boolean;
   onClose: () => void;
@@ -716,7 +726,9 @@ function PersonnelDetailModal({
             {canResetPin && (
               <Button variant="outline" onClick={() => setResetting((v) => !v)}>Đặt lại PIN</Button>
             )}
-            <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => onEdit(person)}>Sửa</Button>
+            {canEdit && (
+              <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => onEdit(person)}>Sửa</Button>
+            )}
           </>
         ) : null
       }

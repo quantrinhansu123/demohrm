@@ -39,6 +39,9 @@ const EMPTY_ACCESS: Access = {
   canEditWorker: false,
   canCreateWorker: false,
   canEditWorkerStatus: false,
+  canEditOrders: false,
+  canEditCompanies: false,
+  canEditStaff: false,
 };
 
 const SessionContext = createContext<SessionState | null>(null);

@@ -30,6 +30,12 @@ export const ROLE = {
   workerCreate: [...ELEVATED, "admin"],
   /** HCNS: chỉ sửa trạng thái Đang làm / Nghỉ việc */
   workerStatusEdit: ["admin"],
+  /** Sửa/tạo đơn hàng: chỉ Ban lãnh đạo + Kỹ thuật (HCNS không được) */
+  orderWrite: [...ELEVATED],
+  /** Sửa/tạo công ty: chỉ Ban lãnh đạo + Kỹ thuật (HCNS không được) */
+  companyWrite: [...ELEVATED],
+  /** Sửa hồ sơ nhân sự: chỉ Ban lãnh đạo + Kỹ thuật (HCNS không được; vẫn tạo TK / đặt PIN) */
+  staffEdit: [...ELEVATED],
 } as const;
 
 /** Trạng thái HCNS được phép gán (đi làm / chờ đi làm / nghỉ / tư vấn khi tái tuyển). */

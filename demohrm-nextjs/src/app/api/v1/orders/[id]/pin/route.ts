@@ -1,8 +1,9 @@
 export const runtime = "nodejs";
 
-import { getAuth } from "@/lib/server/authctx";
+import { getAuth, requireRole } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
-import { apiError, json, readBody } from "@/lib/server/http";
+import { ForbiddenError, apiError, json, readBody } from "@/lib/server/http";
+import { ROLE } from "@/lib/server/roles";
 
 // PATCH /api/v1/orders/:id/pin — Ghim / bo ghim don hang. Body: { pinned: boolean }
 export async function PATCH(
@@ -10,7 +11,12 @@ export async function PATCH(
   ctx: { params: Promise<Record<string, string>> },
 ): Promise<Response> {
   try {
-    getAuth(req);
+    const auth = getAuth(req);
+    try {
+      requireRole(auth, ...ROLE.orderWrite);
+    } catch {
+      throw new ForbiddenError("Chỉ Ban lãnh đạo và Kỹ thuật được sửa đơn hàng.");
+    }
     const id = Number((await ctx.params)["id"]);
     if (!Number.isInteger(id) || id <= 0) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
     const body = await readBody(req);

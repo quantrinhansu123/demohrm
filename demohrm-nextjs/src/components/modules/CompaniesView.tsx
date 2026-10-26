@@ -59,6 +59,7 @@ export function CompaniesView() {
   const { companies, periodCode, reloadCatalog } = useApp();
   const { access } = useSession();
   const canDelete = access.canDelete;
+  const canEdit = access.canEditCompanies;
   const [orders, setOrders] = useState<LiveOrderRow[]>([]);
   const [sites, setSites] = useState<LiveSite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,9 +112,11 @@ export function CompaniesView() {
         title="Công ty"
         sub="Thêm, xem, sửa và xóa công ty"
         actions={
-          <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setCreating(true)}>
-            + Thêm mới
-          </Button>
+          canEdit ? (
+            <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setCreating(true)}>
+              + Thêm mới
+            </Button>
+          ) : undefined
         }
       />
       <QueryState loading={loading || !periodCode} error={error}>
@@ -132,7 +135,7 @@ export function CompaniesView() {
                   <td>{mine.reduce((s, o) => s + o.target_qty, 0)}</td>
                   <td>{c.bill_rate_per_day ?? "—"}</td>
                   <td>
-                    <CompanyMenu company={c} canDelete={canDelete} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
+                    <CompanyMenu company={c} canEdit={canEdit} canDelete={canDelete} onView={setViewing} onEdit={setEditing} onDelete={handleDelete} />
                   </td>
                 </tr>
               );
@@ -157,6 +160,7 @@ export function CompaniesView() {
         company={viewing}
         site={viewing ? sites.find((s) => s.company_id === viewing.id) : undefined}
         orders={viewing ? orders.filter((order) => order.company === viewing.short_name) : []}
+        canEdit={canEdit}
         canDelete={canDelete}
         onClose={() => setViewing(null)}
         onEdit={(company) => {
@@ -171,12 +175,14 @@ export function CompaniesView() {
 
 function CompanyMenu({
   company,
+  canEdit,
   canDelete,
   onView,
   onEdit,
   onDelete,
 }: {
   company: LiveCompany;
+  canEdit: boolean;
   canDelete: boolean;
   onView: (company: LiveCompany) => void;
   onEdit: (company: LiveCompany) => void;
@@ -217,7 +223,9 @@ function CompanyMenu({
       {open && (
         <div ref={menuRef} className="fixed z-50 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg" style={{ top: menuPos.top, left: menuPos.left }}>
           <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onView(company); }}>Xem</button>
-          <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(company); }}>Sửa</button>
+          {canEdit && (
+            <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(company); }}>Sửa</button>
+          )}
           {canDelete && (
             <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setOpen(false); void onDelete(company); }}>Xóa</button>
           )}
@@ -334,6 +342,7 @@ function CompanyDetailModal({
   company,
   site,
   orders,
+  canEdit,
   canDelete,
   onClose,
   onEdit,
@@ -342,6 +351,7 @@ function CompanyDetailModal({
   company: LiveCompany | null;
   site?: LiveSite;
   orders: LiveOrderRow[];
+  canEdit: boolean;
   canDelete: boolean;
   onClose: () => void;
   onEdit: (company: LiveCompany) => void;
@@ -393,7 +403,9 @@ function CompanyDetailModal({
           <>
             {canDelete && <Button variant="destructive" onClick={() => onDelete(company)}>Xóa</Button>}
             <Button variant="outline" onClick={onClose}>Đóng</Button>
-            <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => onEdit(company)}>Sửa</Button>
+            {canEdit && (
+              <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => onEdit(company)}>Sửa</Button>
+            )}
           </>
         ) : null
       }

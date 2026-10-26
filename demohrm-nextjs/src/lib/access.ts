@@ -20,6 +20,12 @@ export interface Access {
   canCreateWorker: boolean;
   /** HCNS: chỉ sửa trạng thái Đang làm / Nghỉ việc */
   canEditWorkerStatus: boolean;
+  /** GD / PGĐ / Kỹ thuật: sửa / tạo đơn hàng (HCNS chỉ xem) */
+  canEditOrders: boolean;
+  /** GD / PGĐ / Kỹ thuật: sửa / tạo công ty (HCNS chỉ xem) */
+  canEditCompanies: boolean;
+  /** GD / PGĐ / Kỹ thuật: sửa hồ sơ nhân sự (HCNS tạo TK / đặt PIN, không sửa hồ sơ) */
+  canEditStaff: boolean;
 }
 
 const ELEVATED: readonly string[] = ["director", "deputy_director", "tech"];
@@ -51,6 +57,9 @@ export function accessFor(role: string): Access {
     canEditWorker: ELEVATED.includes(role),
     canCreateWorker: WORKER_CREATE.includes(role),
     canEditWorkerStatus: WORKER_STATUS_EDIT.includes(role),
+    canEditOrders: ELEVATED.includes(role),
+    canEditCompanies: ELEVATED.includes(role),
+    canEditStaff: ELEVATED.includes(role),
   };
 }
 

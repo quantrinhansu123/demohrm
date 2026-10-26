@@ -29,6 +29,11 @@ export async function PATCH(
 ): Promise<Response> {
   try {
     const auth = getAuth(req);
+    try {
+      requireRole(auth, ...ROLE.staffEdit);
+    } catch {
+      throw new ForbiddenError("Chỉ Ban lãnh đạo và Kỹ thuật được sửa hồ sơ nhân sự.");
+    }
     const id = positiveInt((await ctx.params)["id"]);
     if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
     const body = await readBody(req);

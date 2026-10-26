@@ -1,9 +1,10 @@
 export const runtime = "nodejs";
 
-import { getAuth } from "@/lib/server/authctx";
+import { getAuth, requireRole } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { attachOrderMedia } from "@/lib/server/order-media";
-import { apiError, json, readBody, searchParams } from "@/lib/server/http";
+import { ForbiddenError, apiError, json, readBody, searchParams } from "@/lib/server/http";
+import { ROLE } from "@/lib/server/roles";
 
 const ORDER_FIELDS = [
   "code",
@@ -68,6 +69,11 @@ export async function GET(req: Request): Promise<Response> {
 export async function POST(req: Request): Promise<Response> {
   try {
     const auth = getAuth(req);
+    try {
+      requireRole(auth, ...ROLE.orderWrite);
+    } catch {
+      throw new ForbiddenError("Chỉ Ban lãnh đạo và Kỹ thuật được tạo đơn hàng.");
+    }
     const body = await readBody(req);
     const raw = body as { positions?: unknown[] };
     const order = pick(body, ORDER_FIELDS);

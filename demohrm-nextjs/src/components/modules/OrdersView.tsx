@@ -154,6 +154,7 @@ export function OrdersView() {
   const { periodCode, periods } = useApp();
   const { access } = useSession();
   const canDelete = access.canDelete;
+  const canEdit = access.canEditOrders;
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<OrderSummary | null>(null);
   const [selectedTab, setSelectedTab] = useState<"desc" | "workers">("desc");
@@ -327,14 +328,16 @@ export function OrdersView() {
               placeholder="Tìm đơn hàng..."
               className="rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] outline-none focus:border-[#0052cc]"
             />
-            <button
-              type="button"
-              onClick={() => setCreating(true)}
-              className="inline-flex items-center gap-1 rounded-full bg-[#2563eb] px-3.5 py-1.5 text-[13px] font-semibold text-white hover:bg-[#1d4ed8]"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Tạo đơn hàng
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setCreating(true)}
+                className="inline-flex items-center gap-1 rounded-full bg-[#2563eb] px-3.5 py-1.5 text-[13px] font-semibold text-white hover:bg-[#1d4ed8]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Tạo đơn hàng
+              </button>
+            )}
           </>
         }
       />
@@ -346,6 +349,7 @@ export function OrdersView() {
               key={o.code}
               order={o}
               draft={drafts[o.code]}
+              canEdit={canEdit}
               canDelete={canDelete}
               onTogglePin={() => void togglePin(o)}
               onOpen={openOrder}
@@ -386,6 +390,7 @@ export function OrdersView() {
 function OrderDemandCard({
   order,
   draft,
+  canEdit,
   canDelete,
   onOpen,
   onEdit,
@@ -394,6 +399,7 @@ function OrderDemandCard({
 }: {
   order: OrderSummary;
   draft?: OrderDraft;
+  canEdit: boolean;
   canDelete: boolean;
   onTogglePin: () => void;
   onOpen: (order: OrderSummary, tab?: "desc" | "workers") => void;
@@ -470,7 +476,7 @@ function OrderDemandCard({
     <article className={`rounded-xl border bg-white p-3 shadow-sm ${order.pinnedAt ? "border-[#2563eb]/40 ring-1 ring-[#2563eb]/20" : "border-slate-200"}`}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
         <div className="w-full shrink-0 lg:w-[340px]">
-          <PreviewMedia src={videoLink} images={images} onCopy={() => void copyShare()} copied={copied} onAdd={onEdit} />
+          <PreviewMedia src={videoLink} images={images} onCopy={() => void copyShare()} copied={copied} onAdd={canEdit ? onEdit : undefined} />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -481,16 +487,18 @@ function OrderDemandCard({
               {preview && <span className="text-[12px] font-semibold text-rose-600">3 thông tin chưa khớp</span>}
             </div>
             <div className="relative flex shrink-0 items-center gap-1.5" ref={menuRef}>
-              <button
-                type="button"
-                onClick={onTogglePin}
-                className={`rounded-lg border p-1 ${order.pinnedAt ? "border-[#2563eb]/40 bg-blue-50 text-[#2563eb]" : "border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"}`}
-                aria-label={order.pinnedAt ? "Bỏ ghim đơn hàng" : "Ghim đơn hàng lên đầu"}
-                aria-pressed={!!order.pinnedAt}
-                title={order.pinnedAt ? "Bỏ ghim" : "Ghim lên đầu"}
-              >
-                <Pin className="h-4 w-4" fill={order.pinnedAt ? "currentColor" : "none"} />
-              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={onTogglePin}
+                  className={`rounded-lg border p-1 ${order.pinnedAt ? "border-[#2563eb]/40 bg-blue-50 text-[#2563eb]" : "border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"}`}
+                  aria-label={order.pinnedAt ? "Bỏ ghim đơn hàng" : "Ghim đơn hàng lên đầu"}
+                  aria-pressed={!!order.pinnedAt}
+                  title={order.pinnedAt ? "Bỏ ghim" : "Ghim lên đầu"}
+                >
+                  <Pin className="h-4 w-4" fill={order.pinnedAt ? "currentColor" : "none"} />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setMenuOpen((open) => !open)}
@@ -503,8 +511,12 @@ function OrderDemandCard({
               {menuOpen && (
                 <div className="absolute right-0 z-20 mt-1 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
                   <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onOpen(order, "desc"); }}>Xem</button>
-                  <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onTogglePin(); }}>{order.pinnedAt ? "Bỏ ghim" : "Ghim"}</button>
-                  <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onEdit(); }}>Sửa</button>
+                  {canEdit && (
+                    <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onTogglePin(); }}>{order.pinnedAt ? "Bỏ ghim" : "Ghim"}</button>
+                  )}
+                  {canEdit && (
+                    <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setMenuOpen(false); onEdit(); }}>Sửa</button>
+                  )}
                   {canDelete && (
                     <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-rose-600 hover:bg-rose-50" onClick={() => { setMenuOpen(false); onDelete(); }}>Xóa</button>
                   )}
@@ -612,17 +624,21 @@ function PreviewMedia({
   images: string[];
   onCopy: () => void;
   copied: boolean;
-  onAdd: () => void;
+  onAdd?: () => void;
 }) {
   return (
     <div>
       <div className="relative h-[220px] overflow-hidden rounded-lg bg-slate-900">
         {src ? (
           <LinkedVideo src={src} label="Phát từ link" className="absolute inset-0 h-full w-full" />
-        ) : (
+        ) : onAdd ? (
           <button type="button" onClick={onAdd} className="absolute inset-0 grid place-items-center px-2 text-center text-[12px] font-medium text-slate-300">
             + Thêm video
           </button>
+        ) : (
+          <div className="absolute inset-0 grid place-items-center px-2 text-center text-[12px] font-medium text-slate-400">
+            Chưa có video
+          </div>
         )}
         <button
           type="button"

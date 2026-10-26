@@ -81,15 +81,29 @@ test("API chặn recruiter tạo tài khoản nhân sự", async ({ request }, t
   expect(res.status()).toBe(403);
 });
 
-test("API chặn recruiter sửa hồ sơ nhân sự", async ({ request }, testInfo) => {
-  test.fail(true, "PATCH /api/v1/staff/:id chưa gọi requireRole(ROLE.accountManage) nên recruiter nhận 404 thay vì 403.");
-  const res = await request.patch("/api/v1/staff/999999", {
-    headers: headers("recruiter"),
-    data: { full_name: "Kiểm thử quyền", department: "Nhân viên", status: "active" },
-  });
-  const body = await readJson(res);
-  await evidence(testInfo, "recruiter-patch-staff", res.status(), body);
-  expect(res.status()).toBe(403);
+test("API chặn recruiter và HCNS sửa hồ sơ nhân sự / đơn hàng / công ty", async ({ request }, testInfo) => {
+  for (const role of ["recruiter", "admin"] as Role[]) {
+    const staff = await request.patch("/api/v1/staff/999999", {
+      headers: headers(role),
+      data: { full_name: "Kiểm thử quyền", department: "Nhân viên", status: "active" },
+    });
+    await evidence(testInfo, `${role}-patch-staff`, staff.status(), await readJson(staff));
+    expect(staff.status(), `${role} PATCH staff`).toBe(403);
+
+    const order = await request.patch("/api/v1/orders/999999", {
+      headers: headers(role),
+      data: { name: "Kiểm thử quyền", note: "blocked" },
+    });
+    await evidence(testInfo, `${role}-patch-order`, order.status(), await readJson(order));
+    expect(order.status(), `${role} PATCH order`).toBe(403);
+
+    const company = await request.patch("/api/v1/companies/999999", {
+      headers: headers(role),
+      data: { short_name: "KT", name: "Kiểm thử quyền" },
+    });
+    await evidence(testInfo, `${role}-patch-company`, company.status(), await readJson(company));
+    expect(company.status(), `${role} PATCH company`).toBe(403);
+  }
 });
 
 test("API chặn recruiter đặt lại PIN", async ({ request }, testInfo) => {

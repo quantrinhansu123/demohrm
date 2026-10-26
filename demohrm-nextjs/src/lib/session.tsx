@@ -37,6 +37,7 @@ const EMPTY_ACCESS: Access = {
   canManageAccounts: false,
   canViewAllWorkerPhones: false,
   canEditWorker: false,
+  canCreateWorker: false,
   canEditWorkerStatus: false,
 };
 

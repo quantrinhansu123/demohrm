@@ -1,18 +1,62 @@
 export const runtime = "nodejs";
 
+import { assertAdvanceMonthOpen } from "@/lib/server/advance-months";
 import { getAuth, requireRole, writeAudit } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { apiError, json, readBody } from "@/lib/server/http";
 import { ROLE } from "@/lib/server/roles";
-import { CASHBOOK_COLUMNS, cashbookPayload, isSystemCashbookEntry } from "@/lib/server/cashbook";
-
-function positiveInt(value: string): number | null {
-  const n = Number(value);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
+import {
+  CASHBOOK_COLUMNS,
+  cashbookPayload,
+  isSystemCashbookEntry,
+  parsePositiveId,
+} from "@/lib/server/cashbook";
 
 async function loadEntry(id: number) {
   return getSupabase().from("cashbook_entries").select(CASHBOOK_COLUMNS).eq("id", id).maybeSingle();
+}
+
+/** Gỡ liên kết sổ chi tạm ứng và đưa phiếu về đã duyệt (để chi lại được). */
+async function unlinkAdvanceCashbook(entryId: number, sourceId: number | null) {
+  const cols = "id,code,status,advance_date,cashbook_entry_id";
+  let advance: { id: number; code: string; status: string; advance_date: string; cashbook_entry_id: number | null } | null =
+    null;
+
+  if (sourceId && sourceId > 0) {
+    const bySource = await getSupabase().from("advances").select(cols).eq("id", sourceId).maybeSingle();
+    if (bySource.error) throw bySource.error;
+    advance = bySource.data;
+  }
+  if (!advance) {
+    const byLink = await getSupabase().from("advances").select(cols).eq("cashbook_entry_id", entryId).maybeSingle();
+    if (byLink.error) throw byLink.error;
+    advance = byLink.data;
+  }
+  if (!advance) {
+    return { advance: null as null, monthLocked: null as Response | null };
+  }
+
+  const monthLocked = await assertAdvanceMonthOpen(String(advance.advance_date));
+  if (monthLocked) return { advance, monthLocked };
+
+  const paidOrSettled = advance.status === "paid" || advance.status === "settled";
+  const { error } = await getSupabase()
+    .from("advances")
+    .update({
+      ...(paidOrSettled
+        ? {
+            status: "approved",
+            paid_at: null,
+            settled_at: null,
+            settled_amount: null,
+          }
+        : {}),
+      cashbook_entry_id: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", advance.id);
+  if (error) throw error;
+  return { advance, monthLocked: null as Response | null };
 }
 
 export async function PATCH(
@@ -23,7 +67,7 @@ export async function PATCH(
     const auth = getAuth(req);
     requireRole(auth, ...ROLE.finance);
     const params = await ctx.params;
-    const id = positiveInt(params["id"] ?? "");
+    const id = parsePositiveId(params["id"]);
     if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
 
     const current = await loadEntry(id);
@@ -71,31 +115,45 @@ export async function DELETE(
     const auth = getAuth(req);
     requireRole(auth, ...ROLE.deleteRecords);
     const params = await ctx.params;
-    const id = positiveInt(params["id"] ?? "");
+    const id = parsePositiveId(params["id"]);
     if (!id) return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
 
     const current = await loadEntry(id);
     if (current.error) throw current.error;
     if (!current.data) return json({ error: "not_found", message: "Không tìm thấy khoản chi." }, 404);
-    if (isSystemCashbookEntry(current.data)) {
-      return json(
-        { error: "locked", message: "Khoản chi từ tạm ứng không được xóa. Hãy xử lý trên màn Tạm ứng." },
-        400,
+
+    const fromAdvance = isSystemCashbookEntry(current.data);
+    let advanceCode: string | null = null;
+    if (fromAdvance) {
+      const sourceId = current.data.source_id == null ? null : Number(current.data.source_id);
+      const { advance, monthLocked } = await unlinkAdvanceCashbook(
+        id,
+        Number.isFinite(sourceId) ? sourceId : null,
       );
+      if (monthLocked) return monthLocked;
+      // Không tìm thấy phiếu: vẫn cho xóa dòng sổ mồ côi nếu tháng theo ngày chi còn mở.
+      if (!advance) {
+        const orphanLocked = await assertAdvanceMonthOpen(String(current.data.entry_date));
+        if (orphanLocked) return orphanLocked;
+      } else {
+        advanceCode = String(advance.code);
+      }
     }
 
-    const { error } = await getSupabase()
-      .from("cashbook_entries")
-      .delete()
-      .eq("id", id)
-      .is("source_type", null);
+    let del = getSupabase().from("cashbook_entries").delete().eq("id", id);
+    if (!fromAdvance) del = del.is("source_type", null);
+    const { error } = await del;
     if (error) throw error;
 
     await writeAudit(auth, {
       action: "DELETE",
       table: "cashbook_entries",
       recordId: id,
-      detail: `Xóa khoản chi ${current.data.content} - ${Number(current.data.amount).toLocaleString("vi-VN")} đ`,
+      detail: fromAdvance
+        ? `Xóa khoản chi tạm ứng ${current.data.content} - ${Number(current.data.amount).toLocaleString("vi-VN")} đ${
+            advanceCode ? ` (phiếu ${advanceCode} → đã duyệt)` : ""
+          }`
+        : `Xóa khoản chi ${current.data.content} - ${Number(current.data.amount).toLocaleString("vi-VN")} đ`,
     });
     return json({ ok: true });
   } catch (e) {

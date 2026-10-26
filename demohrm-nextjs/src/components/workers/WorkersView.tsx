@@ -34,7 +34,7 @@ import { CreateWorkerSchema, formatZodErrors } from "@/lib/validation";
 import type { Worker } from "@/types/hrm";
 
 const STATUSES = ["Đang làm", "Chờ đi làm", "Tạm nghỉ", "Nghỉ việc", "Không đi làm", "Đang tư vấn"];
-const HCNS_STATUSES = ["Đang làm", "Nghỉ việc"] as const;
+const HCNS_STATUSES = ["Đang làm", "Chờ đi làm", "Nghỉ việc"] as const;
 const TYPES = ["Thời vụ", "Chính thức"];
 const PAGE = 50;
 
@@ -122,6 +122,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   const { access } = useSession();
   const canDelete = access.canDelete;
   const canEdit = access.canEditWorker;
+  const canCreate = access.canCreateWorker;
   const canEditStatus = access.canEditWorkerStatus;
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
@@ -187,7 +188,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
         title="Hồ sơ Người lao động"
         sub="Danh sách phân trang từ máy chủ"
         actions={
-          canEdit ? (
+          canCreate ? (
             <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setOpenCreate(true)}>
               + Thêm người lao động
             </Button>
@@ -238,6 +239,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                     worker={w}
                     canDelete={canDelete}
                     canEdit={canEdit}
+                    canCreate={canCreate}
                     canEditStatus={canEditStatus}
                     onView={onViewDetail}
                     onCloseDeal={setClosing}
@@ -256,7 +258,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
           </div>
         </QueryState>
       </div>
-      {canEdit ? (
+      {canCreate ? (
         <CreateWorkerModal open={openCreate} onClose={() => setOpenCreate(false)} onCreated={() => void reload()} />
       ) : null}
       {editing && (
@@ -267,7 +269,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
           onSaved={() => void reload()}
         />
       )}
-      {canEdit && closing ? (
+      {(canEdit || canCreate) && closing ? (
         <CloseWorkerModal worker={closing} onClose={() => setClosing(null)} onSaved={() => void reload()} />
       ) : null}
     </section>
@@ -278,6 +280,7 @@ function WorkerMenu({
   worker,
   canDelete,
   canEdit,
+  canCreate,
   canEditStatus,
   onView,
   onCloseDeal,
@@ -287,6 +290,7 @@ function WorkerMenu({
   worker: Worker;
   canDelete: boolean;
   canEdit: boolean;
+  canCreate: boolean;
   canEditStatus: boolean;
   onView: (worker: Worker) => void;
   onCloseDeal: (worker: Worker) => void;
@@ -328,7 +332,7 @@ function WorkerMenu({
       {open && (
         <div ref={menuRef} className="fixed z-50 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg" style={{ top: menuPos.top, left: menuPos.left }}>
           <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onView(worker); }}>Xem</button>
-          {canEdit && worker.status === "Đang tư vấn" && (
+          {(canEdit || canCreate) && worker.status === "Đang tư vấn" && (
             <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onCloseDeal(worker); }}>Chốt</button>
           )}
           {(canEdit || canEditStatus) && (
@@ -647,11 +651,6 @@ function CreateWorkerModal({
       const pins: string[] = [];
       const managerId = await ensureStaffId(staff, new Map(), form.manager, "Phụ trách", pins);
       await updateLiveWorker(created.id, {
-        full_name: form.name.trim(),
-        phone: form.phone.trim(),
-        hometown: form.hometown.trim() || null,
-        current_position: "",
-        employment_type: VI_TYPE[form.type] ?? form.type.trim(),
         status: "waiting_start",
         manager_id: managerId,
       });
@@ -861,11 +860,6 @@ function CloseWorkerModal({
       const pins: string[] = [];
       const managerId = await ensureStaffId(staff, new Map(), manager, "Phụ trách", pins);
       await updateLiveWorker(worker.id, {
-        full_name: worker.name,
-        phone: worker.phone,
-        hometown: worker.hometown || null,
-        current_position: worker.position === "—" ? "" : worker.position,
-        employment_type: VI_TYPE[worker.type] ?? worker.type,
         status: "waiting_start",
         manager_id: managerId,
       });
@@ -955,7 +949,7 @@ function EditWorkerModal({
   const save = async () => {
     if (statusOnly) {
       if (!(HCNS_STATUSES as readonly string[]).includes(form.status)) {
-        setError("HCNS chỉ được chọn Đang làm hoặc Nghỉ việc.");
+        setError("HCNS chỉ được chọn Đang làm, Chờ đi làm hoặc Nghỉ việc.");
         return;
       }
       const startWorkDate = isoDate(form.startWorkDate);
@@ -1049,7 +1043,7 @@ function EditWorkerModal({
       {statusOnly ? (
         <div className="grid grid-cols-2 gap-3">
           <p className="col-span-2 text-[12.5px] text-slate-500">
-            HCNS chỉ được sửa trạng thái <strong>Đang làm</strong> / <strong>Nghỉ việc</strong> và ngày vào / nghỉ liên quan.
+            HCNS chỉ được sửa trạng thái <strong>Đang làm</strong> / <strong>Chờ đi làm</strong> / <strong>Nghỉ việc</strong> và ngày vào / nghỉ liên quan.
           </p>
           <Field label="Họ và tên"><input className={inputClass} value={worker.name} readOnly /></Field>
           <Field label="Trạng thái">

@@ -14,8 +14,10 @@ export interface Access {
   canManageAccounts: boolean;
   /** Xem mọi SĐT công nhân (không cần là người nhập/phụ trách) */
   canViewAllWorkerPhones: boolean;
-  /** GD / PGĐ / Kỹ thuật: sửa full hồ sơ NLĐ (tạo, chốt, sửa mọi trường) */
+  /** GD / PGĐ / Kỹ thuật: sửa full hồ sơ NLĐ (chốt, sửa mọi trường) */
   canEditWorker: boolean;
+  /** GD / PGĐ / Kỹ thuật / HCNS: tạo hồ sơ NLĐ */
+  canCreateWorker: boolean;
   /** HCNS: chỉ sửa trạng thái Đang làm / Nghỉ việc */
   canEditWorkerStatus: boolean;
 }
@@ -31,6 +33,7 @@ const CLOSE: readonly string[] = [...ELEVATED, "accountant"];
 const ACCOUNT_MANAGE: readonly string[] = [...ELEVATED, "admin"];
 const WORKER_PHONE_FULL: readonly string[] = [...ELEVATED, "admin"];
 const WORKER_STATUS_EDIT: readonly string[] = ["admin"];
+const WORKER_CREATE: readonly string[] = [...ELEVATED, "admin"];
 
 export function accessFor(role: string): Access {
   return {
@@ -46,6 +49,7 @@ export function accessFor(role: string): Access {
     canManageAccounts: ACCOUNT_MANAGE.includes(role),
     canViewAllWorkerPhones: WORKER_PHONE_FULL.includes(role),
     canEditWorker: ELEVATED.includes(role),
+    canCreateWorker: WORKER_CREATE.includes(role),
     canEditWorkerStatus: WORKER_STATUS_EDIT.includes(role),
   };
 }

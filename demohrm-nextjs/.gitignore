@@ -48,5 +48,8 @@ next-env.d.ts
 # Local temp files
 temp/
 
-# Elementor agent run artifacts
-.elementor-work/
+# Playwright
+playwright-report/
+test-results/
+
+playwright-screenshots/

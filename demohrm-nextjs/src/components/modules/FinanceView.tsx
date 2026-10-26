@@ -280,7 +280,12 @@ export function FinanceView() {
                         label="Thao tác khoản chi"
                         items={
                           locked
-                            ? [{ label: "Xem", onClick: () => { setEditing(row); setModalOpen(true); } }]
+                            ? [
+                                { label: "Xem", onClick: () => { setEditing(row); setModalOpen(true); } },
+                                ...(canDelete
+                                  ? [{ label: "Xóa", tone: "danger" as const, onClick: () => { setDeleteTarget(row); setDeleteError(""); } }]
+                                  : []),
+                              ]
                             : [
                                 { label: "Sửa", onClick: () => { setEditing(row); setModalOpen(true); } },
                                 ...(canDelete
@@ -367,7 +372,13 @@ export function FinanceView() {
           Xóa khoản chi <strong>{deleteTarget?.content}</strong> với số tiền{" "}
           <strong className="text-rose-600">{formatVND(Number(deleteTarget?.amount ?? 0))}</strong>?
         </p>
-        <p className="mt-1 text-[12.5px] text-slate-500">Thao tác này không thể hoàn tác.</p>
+        {deleteTarget && isAdvanceCashbookEntry(deleteTarget) ? (
+          <p className="mt-1 text-[12.5px] text-slate-500">
+            Khoản từ tạm ứng: xóa khi tháng chưa kết thúc. Phiếu tạm ứng sẽ về trạng thái đã duyệt để chi lại nếu cần.
+          </p>
+        ) : (
+          <p className="mt-1 text-[12.5px] text-slate-500">Thao tác này không thể hoàn tác.</p>
+        )}
       </Modal>
     </section>
   );

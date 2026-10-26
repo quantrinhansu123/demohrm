@@ -147,7 +147,7 @@ export async function GET(req: Request): Promise<Response> {
 export async function POST(req: Request): Promise<Response> {
   try {
     const ctx = getAuth(req);
-    requireRole(ctx, ...ROLE.workerEdit);
+    requireRole(ctx, ...ROLE.workerCreate);
     const body = pick(await readBody(req), WORKER_INSERT);
     const blocking = await findBlockingDuplicate(body);
     if (blocking) return json({ error: "duplicate", message: blocking.message }, 409);

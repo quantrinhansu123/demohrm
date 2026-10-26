@@ -12,7 +12,24 @@ const WORKER_PATCH = [
   "consult_date", "start_work_date", "resign_date",
 ] as const;
 
+/** HCNS sửa trạng thái (+ ngày) trên màn Sửa. */
 const WORKER_STATUS_PATCH = ["status", "start_work_date", "resign_date"] as const;
+/** HCNS tạo/chốt/tái tuyển: cho phép các trường vận hành hồ sơ, không mở full edit UI. */
+const WORKER_HCNS_OPS_PATCH = [
+  "status",
+  "start_work_date",
+  "resign_date",
+  "consult_date",
+  "manager_id",
+  "recruiter_id",
+  "full_name",
+  "phone",
+  "hometown",
+  "employment_type",
+  "current_position",
+  "current_company_id",
+  "note",
+] as const;
 
 const PUBLIC_RETURN =
   "id,code,full_name,phone,hometown,employment_type,status,current_position,current_company_id,recruiter_id,manager_id,created_by";
@@ -45,8 +62,9 @@ export async function PATCH(
     }
 
     const canFull = hasRole(auth.staffRole, ROLE.workerEdit);
+    const canCreate = hasRole(auth.staffRole, ROLE.workerCreate);
     const canStatus = hasRole(auth.staffRole, ROLE.workerStatusEdit);
-    if (!canFull && !canStatus) {
+    if (!canFull && !canCreate && !canStatus) {
       throw new ForbiddenError("Bạn chỉ được xem hồ sơ người lao động.");
     }
 
@@ -55,31 +73,36 @@ export async function PATCH(
     if (canFull) {
       body = pick(raw, WORKER_PATCH);
     } else {
-      body = pick(raw, WORKER_STATUS_PATCH);
+      // HCNS: tạo/chốt/tái tuyển dùng ops patch; còn lại chỉ status + ngày.
+      const allowedKeys = canCreate ? WORKER_HCNS_OPS_PATCH : WORKER_STATUS_PATCH;
+      body = pick(raw, allowedKeys);
       if (Object.keys(body).length === 0) {
-        return json({ error: "invalid", message: "HCNS chỉ được sửa trạng thái Đang làm / Nghỉ việc." }, 400);
+        return json({ error: "invalid", message: "Không có dữ liệu được phép cập nhật." }, 400);
       }
       if (body["status"] !== undefined) {
         const status = String(body["status"]);
         if (!(WORKER_STATUS_HCNS_ALLOWED as readonly string[]).includes(status)) {
           return json(
-            { error: "forbidden", message: "HCNS chỉ được đặt trạng thái Đang làm hoặc Nghỉ việc." },
+            {
+              error: "forbidden",
+              message: "HCNS chỉ được đặt trạng thái Đang làm, Chờ đi làm, Nghỉ việc hoặc Đang tư vấn.",
+            },
             403,
           );
         }
       }
       const extra = Object.keys(raw).filter(
-        (key) => raw[key] !== undefined && !(WORKER_STATUS_PATCH as readonly string[]).includes(key),
+        (key) => raw[key] !== undefined && !(allowedKeys as readonly string[]).includes(key),
       );
       if (extra.length > 0) {
         return json(
-          { error: "forbidden", message: "HCNS chỉ được sửa trạng thái Đang làm / Nghỉ việc (và ngày vào/nghỉ liên quan)." },
+          { error: "forbidden", message: "Bạn không có quyền sửa một số trường hồ sơ này." },
           403,
         );
       }
     }
 
-    if (canFull && body["phone"] !== undefined) {
+    if (body["phone"] !== undefined) {
       const current = await getSupabase()
         .from("workers")
         .select("id,created_by,recruiter_id,manager_id")

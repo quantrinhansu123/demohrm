@@ -26,12 +26,14 @@ export const ROLE = {
   workerPhoneFull: [...ELEVATED, "admin"],
   /** Sửa full hồ sơ NLĐ */
   workerEdit: [...ELEVATED],
+  /** Tạo hồ sơ NLĐ: GD/PGĐ/Kỹ thuật/HCNS */
+  workerCreate: [...ELEVATED, "admin"],
   /** HCNS: chỉ sửa trạng thái Đang làm / Nghỉ việc */
   workerStatusEdit: ["admin"],
 } as const;
 
-/** Trạng thái HCNS được phép gán. */
-export const WORKER_STATUS_HCNS_ALLOWED = ["working", "resigned"] as const;
+/** Trạng thái HCNS được phép gán (đi làm / chờ đi làm / nghỉ / tư vấn khi tái tuyển). */
+export const WORKER_STATUS_HCNS_ALLOWED = ["working", "waiting_start", "resigned", "candidate"] as const;
 
 export function hasRole(role: string | undefined, allowed: readonly string[]): boolean {
   return Boolean(role) && allowed.includes(role as string);

@@ -32,9 +32,12 @@ export function isModuleSlug(slug: string): boolean {
 export function moduleFromPath(pathname: string): ModuleId {
   const slug = pathname.split("/").filter(Boolean)[0] ?? "";
   if (slug === "khach-hang") return "companies";
+  // Tạm ứng đã gộp vào sổ chi / Tài chính.
+  if (slug === "tam-ung") return "finance";
   return SLUG_MODULE[slug] ?? "orders";
 }
 
 export function pathForModule(module: ModuleId): string {
+  if (module === "advances") return `/${MODULE_SLUG.finance}`;
   return `/${MODULE_SLUG[module]}`;
 }

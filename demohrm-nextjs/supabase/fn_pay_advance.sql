@@ -51,12 +51,15 @@ begin
   end if;
 
   insert into trangway.cashbook_entries
-    (entry_date, content, full_name, company_name, amount, note, group_code, source_type, source_id)
+    (entry_date, expense_month, content, full_name, company_name, worker_id, staff_id, amount, note, group_code, source_type, source_id)
   values
     (v_advance.advance_date,
+     coalesce(v_advance.advance_month, to_char(v_advance.advance_date, 'YYYY-MM')),
      'Tạm ứng ' || v_advance.code || ' - ' || coalesce(v_advance.reason, ''),
      v_name,
      v_company,
+     case when v_advance.subject_type = 'worker' then v_advance.worker_id else null end,
+     case when v_advance.subject_type = 'staff' then v_advance.staff_id else null end,
      v_advance.amount,
      v_advance.reason,
      'weekly_wage',

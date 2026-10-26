@@ -8,9 +8,11 @@ import {
   CASHBOOK_COLUMNS,
   applyCashbookGroupFilter,
   cashbookDate,
+  cashbookMonth,
   cashbookPayload,
   cashbookSearchTerm,
 } from "@/lib/server/cashbook";
+import { CASHBOOK_MIGRATION_MESSAGE, isCashbookSchemaError } from "@/lib/server/cashbook-errors";
 
 function clampPage(sp: URLSearchParams, fallback = 200, max = 500): { limit: number; offset: number } {
   const limitRaw = Number(sp.get("limit") ?? fallback);
@@ -33,15 +35,26 @@ export async function GET(req: Request): Promise<Response> {
       .order("id", { ascending: false })
       .range(offset, offset + limit - 1);
 
-    const from = cashbookDate(sp.get("from"));
-    const to = cashbookDate(sp.get("to"));
-    if (from) q = q.gte("entry_date", from);
-    if (to) q = q.lte("entry_date", to);
+    const month = cashbookMonth(sp.get("month"));
+    if (month) {
+      q = q.eq("expense_month", month);
+    } else {
+      const from = cashbookDate(sp.get("from"));
+      const to = cashbookDate(sp.get("to"));
+      if (from) q = q.gte("entry_date", from);
+      if (to) q = q.lte("entry_date", to);
+    }
 
     q = applyCashbookGroupFilter(q, sp.get("group"));
 
     const company = cashbookSearchTerm(sp.get("company"));
     if (company) q = q.ilike("company_name", `%${company}%`);
+
+    const workerId = Number(sp.get("worker_id") ?? "");
+    if (Number.isFinite(workerId) && workerId > 0) q = q.eq("worker_id", workerId);
+
+    const staffId = Number(sp.get("staff_id") ?? "");
+    if (Number.isFinite(staffId) && staffId > 0) q = q.eq("staff_id", staffId);
 
     const search = cashbookSearchTerm(sp.get("q"));
     if (search) {
@@ -51,7 +64,12 @@ export async function GET(req: Request): Promise<Response> {
     }
 
     const { data, error, count } = await q;
-    if (error) throw error;
+    if (error) {
+      if (isCashbookSchemaError(error.message)) {
+        return json({ error: "missing_migration", message: CASHBOOK_MIGRATION_MESSAGE }, 400);
+      }
+      throw error;
+    }
     return json({ rows: data ?? [], total: count ?? 0, limit, offset });
   } catch (e) {
     return apiError(e);
@@ -62,7 +80,7 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const auth = getAuth(req);
     requireRole(auth, ...ROLE.finance);
-    const parsed = cashbookPayload(await readBody(req));
+    const parsed = await cashbookPayload(await readBody(req));
     if (parsed.error || !parsed.value) return json({ error: "invalid", message: parsed.error }, 400);
 
     const { data, error } = await getSupabase()
@@ -70,7 +88,12 @@ export async function POST(req: Request): Promise<Response> {
       .insert(parsed.value)
       .select(CASHBOOK_COLUMNS)
       .single();
-    if (error) throw error;
+    if (error) {
+      if (isCashbookSchemaError(error.message)) {
+        return json({ error: "missing_migration", message: CASHBOOK_MIGRATION_MESSAGE }, 400);
+      }
+      throw error;
+    }
 
     await writeAudit(auth, {
       action: "INSERT",

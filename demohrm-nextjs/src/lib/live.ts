@@ -732,9 +732,12 @@ export function settleLiveAdvance(id: number, settled_amount?: number): Promise<
 export interface LiveCashbookEntry {
   id: number;
   entry_date: string;
+  expense_month?: string | null;
   content: string;
   full_name: string | null;
   company_name: string | null;
+  worker_id?: number | null;
+  staff_id?: number | null;
   amount: number;
   note: string | null;
   group_code: string;
@@ -746,10 +749,13 @@ export interface LiveCashbookEntry {
 }
 
 export interface CashbookFilter {
+  month?: string;
   from?: string;
   to?: string;
   group?: string;
   company?: string;
+  worker_id?: number;
+  staff_id?: number;
   q?: string;
   limit?: number;
   offset?: number;
@@ -757,10 +763,13 @@ export interface CashbookFilter {
 
 export function fetchLiveCashbook(filter?: CashbookFilter): Promise<Page<LiveCashbookEntry>> {
   const p = new URLSearchParams();
+  if (filter?.month) p.set("month", filter.month);
   if (filter?.from) p.set("from", filter.from);
   if (filter?.to) p.set("to", filter.to);
   if (filter?.group) p.set("group", filter.group);
   if (filter?.company) p.set("company", filter.company);
+  if (filter?.worker_id) p.set("worker_id", String(filter.worker_id));
+  if (filter?.staff_id) p.set("staff_id", String(filter.staff_id));
   if (filter?.q) p.set("q", filter.q);
   if (filter?.limit) p.set("limit", String(filter.limit));
   if (filter?.offset) p.set("offset", String(filter.offset));
@@ -770,9 +779,12 @@ export function fetchLiveCashbook(filter?: CashbookFilter): Promise<Page<LiveCas
 
 export interface CashbookWrite {
   entry_date: string;
+  expense_month?: string;
   content: string;
   full_name?: string | null;
   company_name?: string | null;
+  worker_id?: number | null;
+  staff_id?: number | null;
   amount: number;
   note?: string | null;
   group_code: string;
@@ -807,14 +819,66 @@ export interface CashbookSummary {
 }
 
 export function fetchCashbookSummary(params: {
-  from: string;
-  to: string;
+  month?: string;
+  from?: string;
+  to?: string;
   groupBy: "day" | "month";
   group?: string;
 }): Promise<CashbookSummary> {
-  const p = new URLSearchParams({ from: params.from, to: params.to, group_by: params.groupBy });
+  const p = new URLSearchParams({ group_by: params.groupBy });
+  if (params.month) p.set("month", params.month);
+  if (params.from) p.set("from", params.from);
+  if (params.to) p.set("to", params.to);
   if (params.group) p.set("group", params.group);
   return apiGet(`/cashbook/summary?${p.toString()}`);
+}
+
+export interface CashbookMonthClose {
+  month_code: string;
+  closed_at: string;
+  closed_by: number | null;
+  note: string | null;
+}
+
+export interface CashbookMonthRow {
+  month_code: string;
+  status: "open" | "closed";
+  closed_at: string | null;
+  closed_by: number | null;
+  note: string | null;
+  entry_count: number;
+  total_amount: number;
+  weekly_wage: number;
+  office: number;
+  is_current: boolean;
+}
+
+export interface CashbookMonthsResponse {
+  current_month: string;
+  current_closed: boolean;
+  closed: CashbookMonthClose[];
+  months: CashbookMonthRow[];
+}
+
+export function fetchLiveCashbookMonths(): Promise<CashbookMonthsResponse> {
+  return apiGet("/cashbook/months");
+}
+
+export function closeLiveCashbookMonth(
+  month: string,
+  note?: string,
+): Promise<CashbookMonthClose & { next_month: string | null }> {
+  return apiPost("/cashbook/months/close", { month, note });
+}
+
+export function reopenLiveCashbookMonth(month: string): Promise<{ month_code: string; status: "open" }> {
+  return apiPost("/cashbook/months/reopen", { month });
+}
+
+export function deleteLiveCashbookMonthClose(
+  month: string,
+): Promise<{ month_code: string; status: "open"; deleted: boolean }> {
+  return apiDelete(`/cashbook/months/close?month=${encodeURIComponent(month)}`);
 }
 
 export interface Page<T> {

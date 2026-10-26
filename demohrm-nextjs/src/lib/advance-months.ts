@@ -44,3 +44,26 @@ export function currentMonthCode(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
+
+/** YYYY-MM → mm/yyyy */
+export function formatMonthLabel(monthCode: string): string {
+  const [year, month] = monthCode.split("-");
+  if (!year || !month) return monthCode;
+  return `${month}/${year}`;
+}
+
+export function formatClosedAt(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("vi-VN", { hour12: false });
+}
+
+/** Số ngày giữa from/to (YYYY-MM-DD), inclusive-ish for range size checks. */
+export function daysBetween(from: string, to: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return null;
+  const a = Date.parse(`${from}T00:00:00Z`);
+  const b = Date.parse(`${to}T00:00:00Z`);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return Math.floor((b - a) / 86_400_000) + 1;
+}

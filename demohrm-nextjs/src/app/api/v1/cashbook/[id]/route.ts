@@ -10,12 +10,13 @@ import {
   isSystemCashbookEntry,
   parsePositiveId,
 } from "@/lib/server/cashbook";
+import { CASHBOOK_MIGRATION_MESSAGE, isCashbookSchemaError } from "@/lib/server/cashbook-errors";
 
 async function loadEntry(id: number) {
   return getSupabase().from("cashbook_entries").select(CASHBOOK_COLUMNS).eq("id", id).maybeSingle();
 }
 
-/** Gỡ liên kết sổ chi tạm ứng và đưa phiếu về đã duyệt (để chi lại được). */
+/** Gỡ liên kết sổ chi tạm ứng (legacy) và đưa phiếu về đã duyệt nếu còn. */
 async function unlinkAdvanceCashbook(entryId: number, sourceId: number | null) {
   const cols = "id,code,status,advance_date,cashbook_entry_id";
   let advance: { id: number; code: string; status: string; advance_date: string; cashbook_entry_id: number | null } | null =
@@ -69,27 +70,26 @@ export async function PATCH(
     const current = await loadEntry(id);
     if (current.error) throw current.error;
     if (!current.data) return json({ error: "not_found", message: "Không tìm thấy khoản chi." }, 404);
-    if (isSystemCashbookEntry(current.data)) {
-      return json(
-        { error: "locked", message: "Khoản chi từ tạm ứng không được sửa. Hãy xử lý trên màn Tạm ứng." },
-        400,
-      );
-    }
 
-    const parsed = cashbookPayload(await readBody(req), true);
+    const parsed = await cashbookPayload(await readBody(req), true);
     if (parsed.error || !parsed.value) return json({ error: "invalid", message: parsed.error }, 400);
 
     const keys = Object.keys(parsed.value).filter((key) => key !== "updated_at");
     if (keys.length === 0) return json({ error: "invalid", message: "Không có dữ liệu để cập nhật." }, 400);
 
+    // Cho phép sửa cả khoản chi legacy từ tạm ứng (màn tạm ứng đã bỏ).
     const { data, error } = await getSupabase()
       .from("cashbook_entries")
       .update(parsed.value)
       .eq("id", id)
-      .is("source_type", null)
       .select(CASHBOOK_COLUMNS)
       .single();
-    if (error) throw error;
+    if (error) {
+      if (isCashbookSchemaError(error.message)) {
+        return json({ error: "missing_migration", message: CASHBOOK_MIGRATION_MESSAGE }, 400);
+      }
+      throw error;
+    }
 
     await writeAudit(auth, {
       action: "UPDATE",
@@ -126,9 +126,7 @@ export async function DELETE(
       if (advance) advanceCode = String(advance.code);
     }
 
-    let del = getSupabase().from("cashbook_entries").delete().eq("id", id);
-    if (!fromAdvance) del = del.is("source_type", null);
-    const { error } = await del;
+    const { error } = await getSupabase().from("cashbook_entries").delete().eq("id", id);
     if (error) throw error;
 
     await writeAudit(auth, {
@@ -136,7 +134,7 @@ export async function DELETE(
       table: "cashbook_entries",
       recordId: id,
       detail: fromAdvance
-        ? `Xóa khoản chi tạm ứng ${current.data.content} - ${Number(current.data.amount).toLocaleString("vi-VN")} đ${
+        ? `Xóa khoản chi (legacy tạm ứng) ${current.data.content} - ${Number(current.data.amount).toLocaleString("vi-VN")} đ${
             advanceCode ? ` (phiếu ${advanceCode} → đã duyệt)` : ""
           }`
         : `Xóa khoản chi ${current.data.content} - ${Number(current.data.amount).toLocaleString("vi-VN")} đ`,

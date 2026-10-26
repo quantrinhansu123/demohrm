@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ApiError } from "@/lib/api";
-import { currentMonthCode, monthCodeFromDate, nextMonthCode } from "@/lib/advance-months";
+import { currentMonthCode, formatClosedAt, formatMonthLabel, monthCodeFromDate, nextMonthCode } from "@/lib/advance-months";
 import {
   approveLiveAdvance,
   cancelLiveAdvance,
@@ -60,19 +60,6 @@ function formatAdvanceDate(value: string | null): string {
 
 function formatDayTime(row: LiveAdvance): string {
   return `${formatAdvanceDate(row.advance_date)} ${(row.advance_time || "").slice(0, 5) || "—"}`;
-}
-
-function formatMonthLabel(monthCode: string): string {
-  const [year, month] = monthCode.split("-");
-  if (!year || !month) return monthCode;
-  return `${month}/${year}`;
-}
-
-function formatClosedAt(value: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("vi-VN", { hour12: false });
 }
 
 export function AdvancesView() {

@@ -7,22 +7,16 @@ import { ApiError } from "@/lib/api";
 import {
   addLivePlacement,
   closeLivePlacement,
-  createLiveAdvance,
-  fetchLiveAdvances,
   fetchLiveAssignments,
   toWorkAssignment,
 } from "@/lib/live";
-import type { LiveAdvance, LiveAssignmentRow } from "@/lib/live";
-import { formatVND, maskCitizenId } from "@/lib/format";
-import { currentMonthCode } from "@/lib/advance-months";
-import { todayInput } from "@/lib/cashbook";
-import { MonthYearPicker } from "@/components/ui/month-year-picker";
+import type { LiveAssignmentRow } from "@/lib/live";
+import { maskCitizenId } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusPill, statusToneForWorker } from "@/components/ui/badge";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { SuggestInput } from "@/components/ui/suggest-input";
 import { HandoverInvite } from "@/components/workers/HandoverInvite";
-import { SearchableStaffSelect } from "@/components/ui/searchable-staff-select";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Worker } from "@/types/hrm";
@@ -237,17 +231,6 @@ function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCcc
   );
 }
 
-function currentTimeInput(): string {
-  const date = new Date();
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
-
-function formatAdvanceWhen(row: LiveAdvance): string {
-  const [year, month, day] = (row.advance_date || "").slice(0, 10).split("-");
-  const date = year && month && day ? `${day}/${month}/${year}` : row.advance_date || "—";
-  return `${date} ${(row.advance_time || "").slice(0, 5) || "—"}`;
-}
-
 export function WorkerDetailModal({
   worker,
   onClose,
@@ -257,18 +240,9 @@ export function WorkerDetailModal({
 }) {
   const { access } = useSession();
   const canEditWorker = access.canEditWorker;
-  const { staff } = useApp();
-  const [tab, setTab] = useState<"personal" | "job" | "payroll">("personal");
+  const [tab, setTab] = useState<"personal" | "job">("personal");
   const [showAddDot, setShowAddDot] = useState(false);
   const [newDot, setNewDot] = useState({ orderCode: "", position: "", startDate: new Date().toISOString().slice(0, 10) });
-  const [advDate, setAdvDate] = useState(todayInput);
-  const [advMonth, setAdvMonth] = useState(currentMonthCode);
-  const [advTime, setAdvTime] = useState(currentTimeInput);
-  const [advAmount, setAdvAmount] = useState("");
-  const [advReason, setAdvReason] = useState("");
-  const [advStaffId, setAdvStaffId] = useState<number | null>(null);
-  const [advPhoto, setAdvPhoto] = useState("");
-  const [advances, setAdvances] = useState<LiveAdvance[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [liveDots, setLiveDots] = useState<LiveAssignmentRow[] | null>(null);
@@ -287,21 +261,6 @@ export function WorkerDetailModal({
   useEffect(() => {
     if (tab === "job") void reloadDots();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, workerId]);
-
-  useEffect(() => {
-    if (tab !== "payroll" || !workerId) return;
-    let alive = true;
-    fetchLiveAdvances(workerId)
-      .then((rows) => {
-        if (alive) setAdvances(rows);
-      })
-      .catch(() => {
-        if (alive) setAdvances([]);
-      });
-    return () => {
-      alive = false;
-    };
   }, [tab, workerId]);
 
   if (!worker) return null;
@@ -344,59 +303,6 @@ export function WorkerDetailModal({
     }
   };
 
-  const saveAdvance = async () => {
-    const amount = Number(advAmount.replace(/\D/g, ""));
-    if (!amount || amount <= 0) {
-      setError("Nhập số tiền tạm ứng.");
-      return;
-    }
-    if (!advMonth) {
-      setError("Chọn tháng tạm ứng.");
-      return;
-    }
-    if (!advDate) {
-      setError("Chọn ngày tạm ứng.");
-      return;
-    }
-    if (!advTime) {
-      setError("Chọn giờ tạm ứng.");
-      return;
-    }
-    if (!advReason.trim()) {
-      setError("Nhập lý do.");
-      return;
-    }
-    if (!advStaffId) {
-      setError("Chọn người tạm ứng.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    try {
-      await createLiveAdvance({
-        worker_id: worker.id,
-        amount,
-        reason: advReason.trim(),
-        advance_date: advDate,
-        advance_month: advMonth,
-        advance_time: `${advTime}:00`,
-        requested_by: advStaffId,
-        evidence: advPhoto || undefined,
-      });
-      setAdvAmount("");
-      setAdvReason("");
-      setAdvPhoto("");
-      setAdvDate(todayInput());
-      setAdvMonth(currentMonthCode());
-      setAdvTime(currentTimeInput());
-      setAdvances(await fetchLiveAdvances(worker.id));
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Tạo tạm ứng thất bại.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <Modal
       open
@@ -421,7 +327,7 @@ export function WorkerDetailModal({
       </div>
 
       <div className="mt-3 flex gap-1 rounded-lg bg-slate-100 p-1">
-        {([["personal", "1. Hồ Sơ & Ảnh CCCD"], ["job", "2. Điều Phối & Công Việc"], ["payroll", "3. Tạm ứng"]] as const).map(([id, label]) => (
+        {([["personal", "1. Hồ Sơ & Ảnh CCCD"], ["job", "2. Điều Phối & Công Việc"]] as const).map(([id, label]) => (
           <button
             key={id}
             type="button"
@@ -505,82 +411,6 @@ export function WorkerDetailModal({
         </div>
       )}
 
-      {tab === "payroll" && (
-        <div className="mt-3 grid gap-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Tháng tạm ứng *">
-              <MonthYearPicker value={advMonth} onChange={setAdvMonth} placeholder="mm/yyyy" />
-            </Field>
-            <Field label="Ngày chi / tạm ứng *">
-              <input suppressHydrationWarning type="date" className={inputClass} value={advDate} onChange={(e) => setAdvDate(e.target.value)} />
-            </Field>
-            <Field label="Giờ tạm ứng *">
-              <input suppressHydrationWarning type="time" className={inputClass} value={advTime} onChange={(e) => setAdvTime(e.target.value)} />
-            </Field>
-            <Field label="Số tiền *">
-              <input suppressHydrationWarning value={advAmount} onChange={(e) => setAdvAmount(e.target.value)} inputMode="numeric" placeholder="Ví dụ: 500000" className={inputClass} />
-            </Field>
-            <Field label="Lý do *">
-              <input suppressHydrationWarning value={advReason} onChange={(e) => setAdvReason(e.target.value)} placeholder="Ví dụ: Ứng tiền ăn" className={inputClass} />
-            </Field>
-            <Field label="Người tạm ứng *">
-              <SearchableStaffSelect value={advStaffId} onChange={setAdvStaffId} staff={staff} placeholder="Chọn nhân sự" />
-            </Field>
-            <div className="sm:col-span-2">
-              <span className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh bằng chứng (không bắt buộc)</span>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="cursor-pointer rounded-lg bg-[#0052cc] px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-[#0747a6]">
-                  Chụp ảnh
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      event.target.value = "";
-                      if (!file) return;
-                      void readImageFile(file).then(setAdvPhoto).catch(() => setError("Không đọc được ảnh."));
-                    }}
-                  />
-                </label>
-                <span className="text-[12px] text-slate-500">Mở camera điện thoại để chụp bằng chứng.</span>
-              </div>
-              {advPhoto && (
-                <div className="relative mt-2 w-40">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={advPhoto} alt="Ảnh bằng chứng tạm ứng" className="h-28 w-40 rounded-lg object-cover" />
-                  <button type="button" onClick={() => setAdvPhoto("")} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-slate-900/80 text-white" aria-label="Xóa ảnh">×</button>
-                </div>
-              )}
-            </div>
-          </div>
-          <div>
-            <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void saveAdvance()}>
-              {busy ? "Đang lưu..." : "Lưu tạm ứng"}
-            </Button>
-          </div>
-          <div className="flex flex-col gap-2">
-            {advances.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-[13px] text-slate-400">Chưa có tạm ứng.</p>
-            ) : advances.map((row) => (
-              <article key={row.id} className="flex flex-wrap items-start gap-3 rounded-xl border border-slate-100 p-3">
-                {row.evidence_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={row.evidence_url} alt="" className="h-16 w-16 rounded-lg object-cover" />
-                ) : (
-                  <div className="grid h-16 w-16 place-items-center rounded-lg bg-slate-100 text-[11px] text-slate-400">Không ảnh</div>
-                )}
-                <div className="min-w-0 flex-1 text-[13px]">
-                  <div className="font-semibold text-slate-900">{formatAdvanceWhen(row)} · {formatVND(Number(row.amount) || 0)}</div>
-                  <div className="text-slate-600">{row.reason || "—"}</div>
-                  <div className="text-[12px] text-slate-500">Người đưa tiền: {row.giver_name || "—"} · {row.status}</div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      )}
     </Modal>
   );
 }

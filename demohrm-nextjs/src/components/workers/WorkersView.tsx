@@ -35,7 +35,7 @@ import { CreateWorkerSchema, formatZodErrors } from "@/lib/validation";
 import type { Worker } from "@/types/hrm";
 
 const STATUSES = ["Đang làm", "Chờ đi làm", "Tạm nghỉ", "Nghỉ việc", "Không đi làm", "Đang tư vấn"];
-const HCNS_STATUSES = ["Đang làm", "Chờ đi làm", "Nghỉ việc"] as const;
+const HCNS_STATUSES = ["Đang làm", "Chờ đi làm", "Nghỉ việc", "Không đi làm"] as const;
 const TYPES = ["Thời vụ", "Chính thức"];
 const PAGE = 50;
 
@@ -991,7 +991,7 @@ function EditWorkerModal({
   const save = async () => {
     if (statusOnly) {
       if (!(HCNS_STATUSES as readonly string[]).includes(form.status)) {
-        setError("HCNS chỉ được chọn Đang làm, Chờ đi làm hoặc Nghỉ việc.");
+        setError("HCNS chỉ được chọn Đang làm, Chờ đi làm, Nghỉ việc hoặc Không đi làm.");
         return;
       }
       const startWorkDate = isoDate(form.startWorkDate);
@@ -1085,7 +1085,7 @@ function EditWorkerModal({
       {statusOnly ? (
         <div className="grid grid-cols-2 gap-3">
           <p className="col-span-2 text-[12.5px] text-slate-500">
-            HCNS chỉ được sửa trạng thái <strong>Đang làm</strong> / <strong>Chờ đi làm</strong> / <strong>Nghỉ việc</strong> và ngày vào / nghỉ liên quan.
+            HCNS chỉ được sửa trạng thái <strong>Đang làm</strong> / <strong>Chờ đi làm</strong> / <strong>Nghỉ việc</strong> / <strong>Không đi làm</strong> và ngày vào / nghỉ liên quan.
           </p>
           <Field label="Họ và tên"><input className={inputClass} value={worker.name} readOnly /></Field>
           <Field label="Trạng thái">

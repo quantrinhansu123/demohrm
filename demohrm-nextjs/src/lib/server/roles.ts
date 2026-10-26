@@ -38,8 +38,8 @@ export const ROLE = {
   staffEdit: [...ELEVATED],
 } as const;
 
-/** Trạng thái HCNS được phép gán (đi làm / chờ đi làm / nghỉ / tư vấn khi tái tuyển). */
-export const WORKER_STATUS_HCNS_ALLOWED = ["working", "waiting_start", "resigned", "candidate"] as const;
+/** Trạng thái HCNS được phép gán (đi làm / chờ / nghỉ / không đi làm / tư vấn khi tái tuyển). */
+export const WORKER_STATUS_HCNS_ALLOWED = ["working", "waiting_start", "resigned", "no_show", "candidate"] as const;
 
 export function hasRole(role: string | undefined, allowed: readonly string[]): boolean {
   return Boolean(role) && allowed.includes(role as string);

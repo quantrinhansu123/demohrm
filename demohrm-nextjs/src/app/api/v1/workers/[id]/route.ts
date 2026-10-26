@@ -83,7 +83,7 @@ export async function PATCH(
           return json(
             {
               error: "forbidden",
-              message: "HCNS chỉ được đặt trạng thái Đang làm, Chờ đi làm, Nghỉ việc hoặc Đang tư vấn.",
+              message: "HCNS chỉ được đặt trạng thái Đang làm, Chờ đi làm, Nghỉ việc, Không đi làm hoặc Đang tư vấn.",
             },
             403,
           );

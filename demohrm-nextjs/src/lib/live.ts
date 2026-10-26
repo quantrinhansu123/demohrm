@@ -245,6 +245,48 @@ export function fetchLiveWorkers(f?: WorkerFilter, opts?: ApiOptions): Promise<W
   return apiGet<WorkerPage>(`/workers${qs ? `?${qs}` : ""}`, opts);
 }
 
+/** Danh sách gọn cho select (không extras/CCCD). */
+export type LiveWorkerOption = Pick<
+  LiveWorkerRow,
+  "id" | "code" | "full_name" | "phone" | "company" | "current_position" | "status"
+>;
+
+export function fetchLiveWorkerOptions(f?: {
+  q?: string;
+  limit?: number;
+  id?: number | null;
+}): Promise<LiveWorkerRow[]> {
+  const p = new URLSearchParams();
+  if (f?.q) p.set("q", f.q);
+  if (f?.limit) p.set("limit", String(f.limit));
+  if (f?.id) p.set("id", String(f.id));
+  const qs = p.toString();
+  return apiGet<{ rows: LiveWorkerOption[] }>(`/workers/options${qs ? `?${qs}` : ""}`).then((data) =>
+    (data.rows ?? []).map(
+      (row) =>
+        ({
+          id: row.id,
+          code: row.code,
+          full_name: row.full_name,
+          phone: row.phone ?? "",
+          company: row.company ?? null,
+          current_position: row.current_position ?? null,
+          status: row.status ?? "",
+          hometown: null,
+          national_id_masked: null,
+          employment_type: "",
+          recruiter_id: null,
+          recruiter_name: null,
+          recruited_by: null,
+          supervisor_name: null,
+          supervisor_phone: null,
+          assignment_count: 0,
+          open_duplicate_alerts: 0,
+        }) satisfies LiveWorkerRow,
+    ),
+  );
+}
+
 export interface WorkerCreateBody {
   code?: string;
   full_name: string;

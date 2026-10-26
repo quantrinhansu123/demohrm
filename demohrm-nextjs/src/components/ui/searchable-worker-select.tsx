@@ -4,16 +4,23 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import type { LiveWorkerRow } from "@/lib/live";
+import { loadWorkerOptions, peekWorkerOptionsCache } from "@/lib/worker-options";
 
 interface Props {
   value: number | null;
   onChange: (id: number | null) => void;
-  workers: LiveWorkerRow[];
+  /** Danh sách local. Bỏ qua khi remote=true. */
+  workers?: LiveWorkerRow[];
   placeholder?: string;
   inputId?: string;
   disabled?: boolean;
   /** Mặc định hiện avatar chữ cái; tắt khi dùng làm form gọn. */
   showAvatar?: boolean;
+  /**
+   * Tìm trên server (API /workers/options) — nhanh, scale tốt.
+   * Không cần truyền workers đầy đủ.
+   */
+  remote?: boolean;
 }
 
 function labelOf(worker: LiveWorkerRow): string {
@@ -25,27 +32,45 @@ function matchQuery(worker: LiveWorkerRow, q: string): boolean {
   return q.split(/\s+/).filter(Boolean).every((part) => hay.includes(part));
 }
 
-export function SearchableWorkerSelect({ value, onChange, workers, placeholder, inputId, disabled, showAvatar = true }: Props) {
+const REMOTE_LIMIT = 40;
+
+export function SearchableWorkerSelect({
+  value,
+  onChange,
+  workers = [],
+  placeholder,
+  inputId,
+  disabled,
+  showAvatar = true,
+  remote = false,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const [remoteRows, setRemoteRows] = useState<LiveWorkerRow[]>(() =>
+    remote ? peekWorkerOptionsCache("", REMOTE_LIMIT) ?? [] : [],
+  );
+  const [remoteLoading, setRemoteLoading] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchSeq = useRef(0);
 
-  const selected = useMemo(() => workers.find((worker) => worker.id === value) ?? null, [workers, value]);
+  const source = remote ? remoteRows : workers;
+  const selected = useMemo(() => source.find((worker) => worker.id === value) ?? null, [source, value]);
 
   const filtered = useMemo(() => {
+    if (remote) return source;
     const q = query.trim().toLowerCase();
-    if (!q) return workers;
-    return workers.filter((worker) => matchQuery(worker, q));
-  }, [workers, query]);
+    if (!q) return source;
+    return source.filter((worker) => matchQuery(worker, q));
+  }, [remote, source, query]);
 
   const updatePos = () => {
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const panelH = Math.min(320, 48 + Math.min(filtered.length, 8) * 56);
+    const panelH = Math.min(320, 48 + Math.min(Math.max(filtered.length, 1), 8) * 56);
     const spaceBelow = window.innerHeight - rect.bottom;
     const above = spaceBelow < panelH + 12 && rect.top > panelH + 12;
     setPos({
@@ -55,12 +80,59 @@ export function SearchableWorkerSelect({ value, onChange, workers, placeholder, 
     });
   };
 
+  const runRemoteSearch = (q: string, selectedId: number | null) => {
+    const seq = ++searchSeq.current;
+    setRemoteLoading(true);
+    void loadWorkerOptions({ q, limit: REMOTE_LIMIT, id: selectedId })
+      .then((rows) => {
+        if (seq !== searchSeq.current) return;
+        setRemoteRows(rows);
+      })
+      .catch(() => {
+        if (seq !== searchSeq.current) return;
+        setRemoteRows([]);
+      })
+      .finally(() => {
+        if (seq === searchSeq.current) setRemoteLoading(false);
+      });
+  };
+
   const openPanel = () => {
     updatePos();
     setQuery("");
     setHighlight(0);
     setOpen(true);
+    if (remote) {
+      const cached = peekWorkerOptionsCache("", REMOTE_LIMIT);
+      if (cached?.length) setRemoteRows(cached);
+      runRemoteSearch("", value);
+    }
   };
+
+  useEffect(() => {
+    if (!open || !remote) return;
+    const handle = window.setTimeout(() => {
+      runRemoteSearch(query.trim(), value);
+    }, query.trim() ? 200 : 0);
+    return () => window.clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ search khi đổi query lúc panel mở
+  }, [open, remote, query]);
+
+  // Đảm bảo label người đã chọn hiện khi remote (edit phiếu).
+  useEffect(() => {
+    if (!remote || value == null) return;
+    let alive = true;
+    void loadWorkerOptions({ limit: 1, id: value }).then((rows) => {
+      if (!alive || rows.length === 0) return;
+      setRemoteRows((prev) => {
+        if (prev.some((row) => row.id === value)) return prev;
+        return [...rows, ...prev];
+      });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [remote, value]);
 
   useEffect(() => {
     if (!open) return;
@@ -78,34 +150,27 @@ export function SearchableWorkerSelect({ value, onChange, workers, placeholder, 
         setOpen(false);
       }
     };
-    window.addEventListener("resize", onResize);
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", onScroll, true);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", onScroll, true);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: MouseEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (panelRef.current?.contains(target)) return;
-      if (buttonRef.current?.contains(target)) return;
+    const onPointer = (event: MouseEvent | PointerEvent) => {
+      const target = event.target as Node;
+      if (buttonRef.current?.contains(target) || panelRef.current?.contains(target)) return;
       setOpen(false);
     };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("pointerdown", onPointer, true);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("pointerdown", onPointer, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, filtered.length]);
 
-  const pick = (id: number | null) => {
+  const pick = (id: number) => {
     onChange(id);
-    setQuery("");
     setOpen(false);
   };
 
@@ -122,31 +187,22 @@ export function SearchableWorkerSelect({ value, onChange, workers, placeholder, 
           else openPanel();
         }}
         className={cn(
-          "flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-[13.5px] text-slate-900 outline-none",
-          "focus:border-[#0052cc] focus:ring-2 focus:ring-[#0052cc]/20",
-          disabled && "cursor-not-allowed bg-slate-50 text-slate-500",
+          "flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-[13px] outline-none focus:border-[#0052cc]",
+          disabled && "cursor-not-allowed bg-slate-50 text-slate-400",
         )}
       >
-        <span className={cn("truncate", !selected && "text-slate-400")}>
-          {selected ? labelOf(selected) : placeholder ?? "Chọn người lao động"}
+        <span className={cn("min-w-0 flex-1 truncate", !selected && "text-slate-400")}>
+          {selected ? labelOf(selected) : placeholder || "Chọn người lao động"}
         </span>
         <span className="flex shrink-0 items-center gap-1">
-          {selected && !disabled && (
+          {value != null && !disabled && (
             <span
               role="button"
-              tabIndex={0}
-              aria-label="Xóa lựa chọn"
-              className="rounded px-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              tabIndex={-1}
+              className="grid h-5 w-5 place-items-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               onClick={(event) => {
                 event.stopPropagation();
-                pick(null);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  pick(null);
-                }
+                onChange(null);
               }}
             >
               ×
@@ -184,12 +240,15 @@ export function SearchableWorkerSelect({ value, onChange, workers, placeholder, 
                     if (hit) pick(hit.id);
                   }
                 }}
-                placeholder="Gõ để tìm tên, mã, SĐT, công ty..."
+                placeholder="Gõ để tìm tên, mã, SĐT..."
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
               />
             </div>
             <div className="max-h-[280px] overflow-y-auto p-1">
-              {filtered.length === 0 && (
+              {remoteLoading && filtered.length === 0 && (
+                <p className="px-3 py-6 text-center text-[12.5px] text-slate-400">Đang tìm...</p>
+              )}
+              {!remoteLoading && filtered.length === 0 && (
                 <p className="px-3 py-6 text-center text-[12.5px] text-slate-400">Không tìm thấy người lao động.</p>
               )}
               {filtered.map((worker, index) => {
@@ -225,7 +284,9 @@ export function SearchableWorkerSelect({ value, onChange, workers, placeholder, 
               })}
             </div>
             <div className="border-t border-slate-100 bg-slate-50 px-3 py-1.5 text-[11.5px] text-slate-500">
-              {filtered.length}/{workers.length} người lao động · Enter để chọn · Esc để đóng
+              {remote
+                ? `${filtered.length} kết quả${remoteLoading ? " · đang tìm..." : ""} · gõ để lọc server`
+                : `${filtered.length}/${workers.length} người lao động · Enter để chọn · Esc để đóng`}
             </div>
           </div>,
           document.body,

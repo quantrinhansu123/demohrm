@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
-import { fetchLiveWorkers } from "@/lib/live";
-import type { LiveCashbookEntry, LiveStaff, LiveWorkerRow } from "@/lib/live";
+import type { LiveCashbookEntry, LiveStaff } from "@/lib/live";
 import { currentMonthCode, monthCodeFromDate } from "@/lib/advance-months";
 import { CASHBOOK_GROUPS, normalizeCashbookGroup, todayInput } from "@/lib/cashbook";
+import { loadWorkerOptions } from "@/lib/worker-options";
 import { Button } from "@/components/ui/button";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { SuggestInput } from "@/components/ui/suggest-input";
@@ -78,9 +78,6 @@ export function CashbookEntryModal({
   onSave: (form: CashbookForm) => Promise<void>;
 }) {
   const [form, setForm] = useState<CashbookForm>(entry ? formFromEntry(entry) : emptyForm(defaultMonth));
-  const [workers, setWorkers] = useState<LiveWorkerRow[]>([]);
-  const [workersLoaded, setWorkersLoaded] = useState(false);
-  const [workersLoading, setWorkersLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -88,31 +85,9 @@ export function CashbookEntryModal({
     if (!open) return;
     setForm(entry ? formFromEntry(entry) : emptyForm(defaultMonth));
     setError("");
+    // Prefetch options gọn vào cache — mở select không phải chờ tải hồ sơ đầy đủ.
+    void loadWorkerOptions({ limit: 40, id: entry?.worker_id ?? null }).catch(() => undefined);
   }, [open, entry, defaultMonth]);
-
-  // Lazy-load danh sách CN chỉ khi chọn đối tượng công nhân (hoặc sửa phiếu đã gắn CN).
-  useEffect(() => {
-    if (!open || form.payee_type !== "worker" || workersLoaded || workersLoading) return;
-    let alive = true;
-    setWorkersLoading(true);
-    fetchLiveWorkers({ limit: 500 })
-      .then((page) => {
-        if (!alive) return;
-        setWorkers(page.rows);
-        setWorkersLoaded(true);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setWorkers([]);
-        setWorkersLoaded(true);
-      })
-      .finally(() => {
-        if (alive) setWorkersLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [open, form.payee_type, workersLoaded, workersLoading]);
 
   const set = <K extends keyof CashbookForm>(field: K, value: CashbookForm[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -213,17 +188,13 @@ export function CashbookEntryModal({
         </Field>
         <Field label="Họ tên người nhận">
           {form.payee_type === "worker" ? (
-            workersLoading && !workersLoaded ? (
-              <p className="py-2 text-[12.5px] text-slate-500">Đang tải danh sách công nhân...</p>
-            ) : (
-              <SearchableWorkerSelect
-                value={form.worker_id}
-                onChange={(id) => set("worker_id", id)}
-                workers={workers}
-                placeholder="Chọn công nhân"
-                showAvatar={false}
-              />
-            )
+            <SearchableWorkerSelect
+              value={form.worker_id}
+              onChange={(id) => set("worker_id", id)}
+              remote
+              placeholder="Chọn công nhân"
+              showAvatar={false}
+            />
           ) : form.payee_type === "staff" ? (
             <SearchableStaffSelect
               value={form.staff_id}

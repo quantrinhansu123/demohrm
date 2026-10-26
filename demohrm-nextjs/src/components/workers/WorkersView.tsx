@@ -124,6 +124,8 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   const canEdit = access.canEditWorker;
   const canCreate = access.canCreateWorker;
   const canEditStatus = access.canEditWorkerStatus;
+  /** Chốt / tái tuyển / sửa — không gồm Nhân viên·CTV (chỉ tạo). */
+  const canCloseWorker = canEdit || canEditStatus;
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
   const [company, setCompany] = useState("");
@@ -239,7 +241,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                     worker={w}
                     canDelete={canDelete}
                     canEdit={canEdit}
-                    canCreate={canCreate}
+                    canCloseWorker={canCloseWorker}
                     canEditStatus={canEditStatus}
                     onView={onViewDetail}
                     onCloseDeal={setClosing}
@@ -259,7 +261,12 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
         </QueryState>
       </div>
       {canCreate ? (
-        <CreateWorkerModal open={openCreate} onClose={() => setOpenCreate(false)} onCreated={() => void reload()} />
+        <CreateWorkerModal
+          open={openCreate}
+          allowCloseDeal={canCloseWorker}
+          onClose={() => setOpenCreate(false)}
+          onCreated={() => void reload()}
+        />
       ) : null}
       {editing && (
         <EditWorkerModal
@@ -269,7 +276,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
           onSaved={() => void reload()}
         />
       )}
-      {(canEdit || canCreate) && closing ? (
+      {canCloseWorker && closing ? (
         <CloseWorkerModal worker={closing} onClose={() => setClosing(null)} onSaved={() => void reload()} />
       ) : null}
     </section>
@@ -280,7 +287,7 @@ function WorkerMenu({
   worker,
   canDelete,
   canEdit,
-  canCreate,
+  canCloseWorker,
   canEditStatus,
   onView,
   onCloseDeal,
@@ -290,7 +297,7 @@ function WorkerMenu({
   worker: Worker;
   canDelete: boolean;
   canEdit: boolean;
-  canCreate: boolean;
+  canCloseWorker: boolean;
   canEditStatus: boolean;
   onView: (worker: Worker) => void;
   onCloseDeal: (worker: Worker) => void;
@@ -332,7 +339,7 @@ function WorkerMenu({
       {open && (
         <div ref={menuRef} className="fixed z-50 w-28 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg" style={{ top: menuPos.top, left: menuPos.left }}>
           <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onView(worker); }}>Xem</button>
-          {(canEdit || canCreate) && worker.status === "Đang tư vấn" && (
+          {canCloseWorker && worker.status === "Đang tư vấn" && (
             <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onCloseDeal(worker); }}>Chốt</button>
           )}
           {(canEdit || canEditStatus) && (
@@ -350,9 +357,11 @@ function WorkerMenu({
 }
 
 function CreateWorkerModal({
-  open, onClose, onCreated,
+  open, allowCloseDeal = false, onClose, onCreated,
 }: {
   open: boolean;
+  /** GD/PGĐ/KT/HCNS: bước chốt & tái tuyển. Nhân viên/CTV chỉ lưu hồ sơ tư vấn. */
+  allowCloseDeal?: boolean;
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -528,8 +537,12 @@ function CreateWorkerModal({
         }
       }
       setCreated({ id: createdRow.id, code: createdRow.code });
-      setStep("close");
       onCreated();
+      if (allowCloseDeal) {
+        setStep("close");
+      } else {
+        onClose();
+      }
     } catch (e) {
       setError(errorText(e, "Lưu thất bại."));
     } finally {
@@ -602,6 +615,7 @@ function CreateWorkerModal({
   };
 
   const rehireExact = async () => {
+    if (!allowCloseDeal) return;
     const target = rehirableHits[0];
     const dates = parseConsultDates(form);
     if (!target) return;
@@ -677,7 +691,7 @@ function CreateWorkerModal({
         step === "consult" ? (
           <>
             <Button variant="outline" onClick={onClose}>Hủy</Button>
-            {rehirableHits.length > 0 && confirmed && (
+            {allowCloseDeal && rehirableHits.length > 0 && confirmed && (
               <Button variant="outline" disabled={saving || checking} onClick={() => void rehireExact()}>
                 {saving ? "Đang mở lại..." : `Tái tuyển ${rehirableHits[0].matched_code}`}
               </Button>

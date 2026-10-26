@@ -61,6 +61,33 @@ test("API chặn recruiter sửa SĐT hồ sơ không thuộc phạm vi", async 
   expect(res.status()).toBe(403);
 });
 
+test("API cho phép Nhân viên/CTV tạo NLĐ nhưng chặn sửa và xóa", async ({ request }, testInfo) => {
+  const create = await request.post("/api/v1/workers", {
+    headers: headers("recruiter"),
+    data: {
+      full_name: "Kiểm thử tạo quyền",
+      phone: "0900000099",
+      employment_type: "seasonal",
+      status: "candidate",
+    },
+  });
+  const createBody = await readJson(create);
+  await evidence(testInfo, "recruiter-create-worker", create.status(), createBody);
+  // Không 403: được tạo (201) hoặc lỗi nghiệp vụ (trùng/thiếu cột), không phải cấm quyền.
+  expect(create.status(), "recruiter POST workers").not.toBe(403);
+
+  const patch = await request.patch("/api/v1/workers/999999", {
+    headers: headers("recruiter"),
+    data: { status: "working" },
+  });
+  await evidence(testInfo, "recruiter-patch-worker", patch.status(), await readJson(patch));
+  expect(patch.status()).toBe(403);
+
+  const del = await request.delete("/api/v1/workers/999999", { headers: headers("recruiter") });
+  await evidence(testInfo, "recruiter-delete-worker", del.status(), await readJson(del));
+  expect(del.status()).toBe(403);
+});
+
 test("API cho phép quản lý sửa SĐT công nhân", async ({ request }, testInfo) => {
   const res = await request.patch("/api/v1/workers/7", {
     headers: headers("director"),

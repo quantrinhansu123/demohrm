@@ -12,9 +12,7 @@ const WORKER_PATCH = [
   "consult_date", "start_work_date", "resign_date",
 ] as const;
 
-/** HCNS sửa trạng thái (+ ngày) trên màn Sửa. */
-const WORKER_STATUS_PATCH = ["status", "start_work_date", "resign_date"] as const;
-/** HCNS tạo/chốt/tái tuyển: cho phép các trường vận hành hồ sơ, không mở full edit UI. */
+/** HCNS chốt/tái tuyển/sửa trạng thái: vận hành hồ sơ, không full edit. */
 const WORKER_HCNS_OPS_PATCH = [
   "status",
   "start_work_date",
@@ -62,10 +60,10 @@ export async function PATCH(
     }
 
     const canFull = hasRole(auth.staffRole, ROLE.workerEdit);
-    const canCreate = hasRole(auth.staffRole, ROLE.workerCreate);
     const canStatus = hasRole(auth.staffRole, ROLE.workerStatusEdit);
-    if (!canFull && !canCreate && !canStatus) {
-      throw new ForbiddenError("Bạn chỉ được xem hồ sơ người lao động.");
+    // workerCreate (Nhân viên/CTV) chỉ được POST tạo mới — không PATCH/sửa/chốt.
+    if (!canFull && !canStatus) {
+      throw new ForbiddenError("Bạn không có quyền sửa hồ sơ người lao động.");
     }
 
     const raw = await readBody(req);
@@ -73,8 +71,8 @@ export async function PATCH(
     if (canFull) {
       body = pick(raw, WORKER_PATCH);
     } else {
-      // HCNS: tạo/chốt/tái tuyển dùng ops patch; còn lại chỉ status + ngày.
-      const allowedKeys = canCreate ? WORKER_HCNS_OPS_PATCH : WORKER_STATUS_PATCH;
+      // HCNS: chốt/tái tuyển/sửa trạng thái — ops patch, không full edit.
+      const allowedKeys = WORKER_HCNS_OPS_PATCH;
       body = pick(raw, allowedKeys);
       if (Object.keys(body).length === 0) {
         return json({ error: "invalid", message: "Không có dữ liệu được phép cập nhật." }, 400);

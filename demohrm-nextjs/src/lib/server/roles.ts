@@ -26,9 +26,9 @@ export const ROLE = {
   workerPhoneFull: [...ELEVATED, "admin"],
   /** Sửa full hồ sơ NLĐ */
   workerEdit: [...ELEVATED],
-  /** Tạo hồ sơ NLĐ: GD/PGĐ/Kỹ thuật/HCNS */
-  workerCreate: [...ELEVATED, "admin"],
-  /** HCNS: chỉ sửa trạng thái Đang làm / Nghỉ việc */
+  /** Tạo hồ sơ NLĐ: GD/PGĐ/Kỹ thuật/HCNS/Nhân viên/CTV (recruiter). Không gồm sửa/xóa. */
+  workerCreate: [...ELEVATED, "admin", "recruiter"],
+  /** HCNS: sửa trạng thái / chốt / tái tuyển (ops patch). Nhân viên/CTV không có. */
   workerStatusEdit: ["admin"],
   /** Sửa/tạo đơn hàng: chỉ Ban lãnh đạo + Kỹ thuật (HCNS không được) */
   orderWrite: [...ELEVATED],

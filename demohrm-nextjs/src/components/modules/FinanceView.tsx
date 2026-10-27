@@ -59,7 +59,7 @@ function mapCashbookError(e: unknown, fallback: string): string {
 }
 
 export function FinanceView() {
-  const { companies, staff } = useApp();
+  const { companies } = useApp();
   const { access } = useSession();
   const canDelete = access.canDelete;
   const canClose = access.canClosePeriod;
@@ -246,8 +246,8 @@ export function FinanceView() {
       amount: Number(form.amount),
       note: form.note.trim() || null,
       group_code: form.group_code,
-      worker_id: form.payee_type === "worker" ? form.worker_id : null,
-      staff_id: form.payee_type === "staff" ? form.staff_id : null,
+      worker_id: form.worker_id,
+      staff_id: null as number | null,
       full_name: null as string | null,
     };
     if (editing) {
@@ -712,7 +712,6 @@ export function FinanceView() {
         open={modalOpen}
         entry={editing}
         companies={companyNames}
-        staff={staff}
         defaultMonth={currentMonthCode()}
         onClose={() => setModalOpen(false)}
         onSave={saveEntry}

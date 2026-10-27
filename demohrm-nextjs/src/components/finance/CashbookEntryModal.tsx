@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
-import type { LiveCashbookEntry, LiveStaff } from "@/lib/live";
+import type { LiveCashbookEntry } from "@/lib/live";
 import { currentMonthCode, monthCodeFromDate } from "@/lib/advance-months";
 import { CASHBOOK_GROUPS, normalizeCashbookGroup, todayInput } from "@/lib/cashbook";
 import { loadWorkerOptions } from "@/lib/worker-options";
@@ -10,10 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { SuggestInput } from "@/components/ui/suggest-input";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
-import { SearchableStaffSelect } from "@/components/ui/searchable-staff-select";
 import { SearchableWorkerSelect } from "@/components/ui/searchable-worker-select";
-
-type PayeeType = "" | "worker" | "staff";
 
 export interface CashbookForm {
   entry_date: string;
@@ -23,7 +20,8 @@ export interface CashbookForm {
   amount: string;
   note: string;
   group_code: string;
-  payee_type: PayeeType;
+  /** Luôn là công nhân; giữ field để tương thích save. */
+  payee_type: "worker";
   worker_id: number | null;
   staff_id: number | null;
 }
@@ -38,14 +36,13 @@ function emptyForm(defaultMonth?: string): CashbookForm {
     amount: "",
     note: "",
     group_code: "office",
-    payee_type: "",
+    payee_type: "worker",
     worker_id: null,
     staff_id: null,
   };
 }
 
 function formFromEntry(entry: LiveCashbookEntry): CashbookForm {
-  const payee_type: PayeeType = entry.worker_id ? "worker" : entry.staff_id ? "staff" : "";
   return {
     entry_date: entry.entry_date,
     expense_month: entry.expense_month || monthCodeFromDate(entry.entry_date) || currentMonthCode(),
@@ -54,9 +51,9 @@ function formFromEntry(entry: LiveCashbookEntry): CashbookForm {
     amount: String(Math.round(Number(entry.amount) || 0)),
     note: entry.note ?? "",
     group_code: normalizeCashbookGroup(entry.group_code),
-    payee_type,
+    payee_type: "worker",
     worker_id: entry.worker_id ?? null,
-    staff_id: entry.staff_id ?? null,
+    staff_id: null,
   };
 }
 
@@ -64,7 +61,6 @@ export function CashbookEntryModal({
   open,
   entry,
   companies,
-  staff,
   defaultMonth,
   onClose,
   onSave,
@@ -72,7 +68,6 @@ export function CashbookEntryModal({
   open: boolean;
   entry: LiveCashbookEntry | null;
   companies: string[];
-  staff: LiveStaff[];
   defaultMonth?: string;
   onClose: () => void;
   onSave: (form: CashbookForm) => Promise<void>;
@@ -83,23 +78,32 @@ export function CashbookEntryModal({
 
   useEffect(() => {
     if (!open) return;
-    setForm(entry ? formFromEntry(entry) : emptyForm(defaultMonth));
+    const next = entry ? formFromEntry(entry) : emptyForm(defaultMonth);
+    setForm(next);
     setError("");
-    // Prefetch options gọn vào cache — mở select không phải chờ tải hồ sơ đầy đủ.
-    void loadWorkerOptions({ limit: 40, id: entry?.worker_id ?? null }).catch(() => undefined);
+    void loadWorkerOptions({
+      limit: 100,
+      id: next.worker_id,
+      company: next.company_name || null,
+    }).catch(() => undefined);
   }, [open, entry, defaultMonth]);
 
   const set = <K extends keyof CashbookForm>(field: K, value: CashbookForm[K]) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const setPayeeType = (payee_type: PayeeType) => {
-    setForm((prev) => ({
-      ...prev,
-      payee_type,
-      worker_id: payee_type === "worker" ? prev.worker_id : null,
-      staff_id: payee_type === "staff" ? prev.staff_id : null,
-    }));
+  const setCompany = (company_name: string) => {
+    setForm((prev) => {
+      const changed = prev.company_name.trim() !== company_name.trim();
+      return {
+        ...prev,
+        company_name,
+        worker_id: changed ? null : prev.worker_id,
+      };
+    });
+    if (company_name.trim()) {
+      void loadWorkerOptions({ limit: 100, company: company_name.trim() }).catch(() => undefined);
+    }
   };
 
   const save = async () => {
@@ -115,14 +119,6 @@ export function CashbookEntryModal({
       setError("Nhập nội dung chi.");
       return;
     }
-    if (form.payee_type === "worker" && !form.worker_id) {
-      setError("Chọn công nhân nhận tiền.");
-      return;
-    }
-    if (form.payee_type === "staff" && !form.staff_id) {
-      setError("Chọn nhân sự nhận tiền.");
-      return;
-    }
     const amount = Number(form.amount.replace(/[^\d]/g, ""));
     if (!amount || amount <= 0) {
       setError("Nhập số tiền lớn hơn 0.");
@@ -131,7 +127,7 @@ export function CashbookEntryModal({
     setSaving(true);
     setError("");
     try {
-      await onSave({ ...form, amount: String(amount) });
+      await onSave({ ...form, amount: String(amount), payee_type: "worker", staff_id: null });
       onClose();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Lưu khoản chi thất bại.");
@@ -179,46 +175,30 @@ export function CashbookEntryModal({
             <input className={inputClass} value={form.content} onChange={(e) => set("content", e.target.value)} placeholder="VD: Chi lương tuần, ghế văn phòng, tiền ăn trưa..." />
           </Field>
         </div>
-        <Field label="Đối tượng nhận">
-          <select className={inputClass} value={form.payee_type} onChange={(e) => setPayeeType(e.target.value as PayeeType)}>
-            <option value="">Không chọn</option>
-            <option value="worker">Công nhân</option>
-            <option value="staff">Nhân sự</option>
-          </select>
-        </Field>
-        <Field label="Họ tên người nhận">
-          {form.payee_type === "worker" ? (
-            <SearchableWorkerSelect
-              value={form.worker_id}
-              onChange={(id) => set("worker_id", id)}
-              remote
-              placeholder="Chọn công nhân"
-              showAvatar={false}
-            />
-          ) : form.payee_type === "staff" ? (
-            <SearchableStaffSelect
-              value={form.staff_id}
-              onChange={(id) => set("staff_id", id)}
-              staff={staff}
-              placeholder="Chọn nhân sự"
-              showAvatar={false}
-            />
-          ) : (
-            <input className={inputClass} disabled value="" placeholder="Chọn đối tượng nhận bên trái" />
-          )}
-        </Field>
         <Field label="Công ty">
           <SuggestInput
             value={form.company_name}
-            onChange={(company) => set("company_name", company)}
+            onChange={setCompany}
             suggestions={companies}
             createLabel="Thêm mới"
             placeholder="Chọn hoặc gõ tên công ty"
           />
         </Field>
-        <Field label="Ghi chú">
-          <input className={inputClass} value={form.note} onChange={(e) => set("note", e.target.value)} placeholder="Ghi chú thêm" />
+        <Field label="Công nhân">
+          <SearchableWorkerSelect
+            value={form.worker_id}
+            onChange={(id) => set("worker_id", id)}
+            remote
+            company={form.company_name.trim() || null}
+            placeholder={form.company_name.trim() ? "Chọn công nhân theo công ty" : "Chọn công nhân"}
+            showAvatar={false}
+          />
         </Field>
+        <div className="col-span-2">
+          <Field label="Ghi chú">
+            <input className={inputClass} value={form.note} onChange={(e) => set("note", e.target.value)} placeholder="Ghi chú thêm" />
+          </Field>
+        </div>
       </div>
     </Modal>
   );

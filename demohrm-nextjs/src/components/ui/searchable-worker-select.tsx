@@ -21,6 +21,8 @@ interface Props {
    * Không cần truyền workers đầy đủ.
    */
   remote?: boolean;
+  /** Lọc theo tên công ty (API options). Không lọc trạng thái. */
+  company?: string | null;
 }
 
 function labelOf(worker: LiveWorkerRow): string {
@@ -33,6 +35,7 @@ function matchQuery(worker: LiveWorkerRow, q: string): boolean {
 }
 
 const REMOTE_LIMIT = 40;
+const REMOTE_LIMIT_BY_COMPANY = 100;
 
 export function SearchableWorkerSelect({
   value,
@@ -43,13 +46,16 @@ export function SearchableWorkerSelect({
   disabled,
   showAvatar = true,
   remote = false,
+  company = null,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const companyKey = company?.trim() || null;
+  const remoteLimit = companyKey ? REMOTE_LIMIT_BY_COMPANY : REMOTE_LIMIT;
   const [remoteRows, setRemoteRows] = useState<LiveWorkerRow[]>(() =>
-    remote ? peekWorkerOptionsCache("", REMOTE_LIMIT) ?? [] : [],
+    remote ? peekWorkerOptionsCache("", remoteLimit, companyKey) ?? [] : [],
   );
   const [remoteLoading, setRemoteLoading] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -57,7 +63,11 @@ export function SearchableWorkerSelect({
   const inputRef = useRef<HTMLInputElement>(null);
   const searchSeq = useRef(0);
 
-  const source = remote ? remoteRows : workers;
+  const source = remote
+    ? remoteRows
+    : companyKey
+      ? workers.filter((worker) => (worker.company ?? "").trim() === companyKey)
+      : workers;
   const selected = useMemo(() => source.find((worker) => worker.id === value) ?? null, [source, value]);
 
   const filtered = useMemo(() => {
@@ -83,7 +93,7 @@ export function SearchableWorkerSelect({
   const runRemoteSearch = (q: string, selectedId: number | null) => {
     const seq = ++searchSeq.current;
     setRemoteLoading(true);
-    void loadWorkerOptions({ q, limit: REMOTE_LIMIT, id: selectedId })
+    void loadWorkerOptions({ q, limit: remoteLimit, id: selectedId, company: companyKey })
       .then((rows) => {
         if (seq !== searchSeq.current) return;
         setRemoteRows(rows);
@@ -103,7 +113,7 @@ export function SearchableWorkerSelect({
     setHighlight(0);
     setOpen(true);
     if (remote) {
-      const cached = peekWorkerOptionsCache("", REMOTE_LIMIT);
+      const cached = peekWorkerOptionsCache("", remoteLimit, companyKey);
       if (cached?.length) setRemoteRows(cached);
       runRemoteSearch("", value);
     }
@@ -115,8 +125,17 @@ export function SearchableWorkerSelect({
       runRemoteSearch(query.trim(), value);
     }, query.trim() ? 200 : 0);
     return () => window.clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ search khi đổi query lúc panel mở
-  }, [open, remote, query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ search khi đổi query/công ty lúc panel mở
+  }, [open, remote, query, companyKey]);
+
+  // Prefetch khi đổi công ty (kể cả lúc panel đóng) để list sẵn sàng.
+  useEffect(() => {
+    if (!remote) return;
+    const cached = peekWorkerOptionsCache("", remoteLimit, companyKey);
+    if (cached?.length) setRemoteRows(cached);
+    runRemoteSearch("", value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ refetch khi đổi công ty
+  }, [remote, companyKey, remoteLimit]);
 
   // Đảm bảo label người đã chọn hiện khi remote (edit phiếu).
   useEffect(() => {

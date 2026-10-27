@@ -30,12 +30,18 @@ export async function GET(req: Request): Promise<Response> {
     const limit = clampLimit(sp.get("limit"));
     const needle = safeSearch(sp.get("q"));
     const selectedId = positiveId(sp.get("id"));
+    const company = String(sp.get("company") ?? "").trim();
 
     let q = getSupabase()
       .from("v_workers_public")
       .select(OPTIONS_COLUMNS)
       .order("code")
       .limit(limit);
+
+    // Lọc theo công ty; không lọc status (gồm nghỉ việc / không đi làm).
+    if (company) {
+      q = q.eq("company", company);
+    }
 
     if (needle) {
       q = q.or(`full_name.ilike.%${needle}%,code.ilike.%${needle}%,phone.ilike.%${needle}%`);

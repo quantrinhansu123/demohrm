@@ -8,8 +8,8 @@ const inflight = new Map<CacheKey, Promise<LiveWorkerRow[]>>();
 
 const TTL_MS = 60_000;
 
-function keyOf(q: string, limit: number, id?: number | null): CacheKey {
-  return `${q.trim().toLowerCase()}|${limit}|${id ?? ""}`;
+function keyOf(q: string, limit: number, id?: number | null, company?: string | null): CacheKey {
+  return `${q.trim().toLowerCase()}|${limit}|${id ?? ""}|${(company ?? "").trim().toLowerCase()}`;
 }
 
 /** Options gọn + cache ngắn hạn; gộp request trùng. */
@@ -17,19 +17,21 @@ export async function loadWorkerOptions(opts?: {
   q?: string;
   limit?: number;
   id?: number | null;
+  company?: string | null;
   force?: boolean;
 }): Promise<LiveWorkerRow[]> {
   const q = opts?.q?.trim() ?? "";
   const limit = opts?.limit ?? 40;
   const id = opts?.id ?? null;
-  const key = keyOf(q, limit, id);
+  const company = opts?.company?.trim() || null;
+  const key = keyOf(q, limit, id, company);
   const hit = cache.get(key);
   if (!opts?.force && hit && Date.now() - hit.at < TTL_MS) return hit.rows;
 
   const pending = inflight.get(key);
   if (pending) return pending;
 
-  const task = fetchLiveWorkerOptions({ q: q || undefined, limit, id })
+  const task = fetchLiveWorkerOptions({ q: q || undefined, limit, id, company })
     .then((rows) => {
       cache.set(key, { at: Date.now(), rows });
       inflight.delete(key);
@@ -44,8 +46,8 @@ export async function loadWorkerOptions(opts?: {
   return task;
 }
 
-export function peekWorkerOptionsCache(q = "", limit = 40): LiveWorkerRow[] | null {
-  const hit = cache.get(keyOf(q, limit, null));
+export function peekWorkerOptionsCache(q = "", limit = 40, company?: string | null): LiveWorkerRow[] | null {
+  const hit = cache.get(keyOf(q, limit, null, company));
   if (!hit) return null;
   if (Date.now() - hit.at >= TTL_MS) return null;
   return hit.rows;

@@ -255,11 +255,13 @@ export function fetchLiveWorkerOptions(f?: {
   q?: string;
   limit?: number;
   id?: number | null;
+  company?: string | null;
 }): Promise<LiveWorkerRow[]> {
   const p = new URLSearchParams();
   if (f?.q) p.set("q", f.q);
   if (f?.limit) p.set("limit", String(f.limit));
   if (f?.id) p.set("id", String(f.id));
+  if (f?.company?.trim()) p.set("company", f.company.trim());
   const qs = p.toString();
   return apiGet<{ rows: LiveWorkerOption[] }>(`/workers/options${qs ? `?${qs}` : ""}`).then((data) =>
     (data.rows ?? []).map(

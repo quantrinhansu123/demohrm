@@ -851,6 +851,7 @@ export interface CashbookExportFilter {
   from?: string;
   to?: string;
   group?: string;
+  company?: string;
   q?: string;
 }
 
@@ -860,6 +861,7 @@ export function downloadLiveCashbookExcel(filter: CashbookExportFilter): Promise
   if (filter.from) p.set("from", filter.from);
   if (filter.to) p.set("to", filter.to);
   if (filter.group) p.set("group", filter.group);
+  if (filter.company) p.set("company", filter.company);
   if (filter.q) p.set("q", filter.q);
   return apiDownload(`/cashbook/export?${p.toString()}`);
 }
@@ -886,12 +888,14 @@ export function fetchCashbookSummary(params: {
   to?: string;
   groupBy: "day" | "month";
   group?: string;
+  company?: string;
 }): Promise<CashbookSummary> {
   const p = new URLSearchParams({ group_by: params.groupBy });
   if (params.month) p.set("month", params.month);
   if (params.from) p.set("from", params.from);
   if (params.to) p.set("to", params.to);
   if (params.group) p.set("group", params.group);
+  if (params.company) p.set("company", params.company);
   return apiGet(`/cashbook/summary?${p.toString()}`);
 }
 

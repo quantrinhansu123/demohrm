@@ -48,7 +48,7 @@ export async function GET(req: Request): Promise<Response> {
     q = applyCashbookGroupFilter(q, sp.get("group"));
 
     const company = cashbookSearchTerm(sp.get("company"));
-    if (company) q = q.ilike("company_name", `%${company}%`);
+    if (company) q = q.eq("company_name", company);
 
     const workerId = Number(sp.get("worker_id") ?? "");
     if (Number.isFinite(workerId) && workerId > 0) q = q.eq("worker_id", workerId);

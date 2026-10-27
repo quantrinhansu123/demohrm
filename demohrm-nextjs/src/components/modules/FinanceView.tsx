@@ -72,6 +72,7 @@ export function FinanceView() {
   const [range, setRange] = useState(monthRangeInput());
   const [monthsFilter, setMonthsFilter] = useState("");
   const [group, setGroup] = useState("");
+  const [company, setCompany] = useState("");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [groupBy, setGroupBy] = useState<GroupBy>("day");
@@ -106,6 +107,7 @@ export function FinanceView() {
       from: range.from,
       to: range.to,
       group: group || undefined,
+      company: company || undefined,
       q: query || undefined,
       limit: LIMIT,
       offset,
@@ -115,6 +117,7 @@ export function FinanceView() {
       to: range.to,
       groupBy: tab === "summary" ? groupBy : "day",
       group: group || undefined,
+      company: company || undefined,
     });
     Promise.all([listPromise, summaryPromise])
       .then(([page, sum]) => {
@@ -134,7 +137,7 @@ export function FinanceView() {
     return () => {
       alive = false;
     };
-  }, [tab, range.from, range.to, group, query, groupBy, offset, listReloadKey]);
+  }, [tab, range.from, range.to, group, company, query, groupBy, offset, listReloadKey]);
 
   // Kết thúc tháng: chỉ fetch khi mở tab (tránh RPC stats mỗi lần đổi filter ngày).
   useEffect(() => {
@@ -179,6 +182,7 @@ export function FinanceView() {
       const { blob, filename } = await downloadLiveCashbookExcel({
         ...filter,
         group: filter.month ? undefined : group || undefined,
+        company: filter.month ? undefined : company || undefined,
         q: filter.month ? undefined : query || undefined,
       });
       downloadBlob(blob, filename || fallbackName);
@@ -557,6 +561,22 @@ export function FinanceView() {
                       <option value="">Tất cả</option>
                       {CASHBOOK_GROUPS.map((item) => (
                         <option key={item.value} value={item.value}>{item.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Công ty</span>
+                    <select
+                      value={company}
+                      onChange={(e) => {
+                        setOffset(0);
+                        setCompany(e.target.value);
+                      }}
+                      className="min-w-[160px] rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
+                    >
+                      <option value="">Tất cả công ty</option>
+                      {companyNames.map((name) => (
+                        <option key={name} value={name}>{name}</option>
                       ))}
                     </select>
                   </div>

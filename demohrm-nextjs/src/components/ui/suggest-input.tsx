@@ -16,6 +16,10 @@ export function SuggestInput({
   createLabel,
   onCreate,
   disabled,
+  /** Số ký tự tối thiểu mới hiện danh sách gợi ý (0 = hiện khi trống). */
+  minQueryLength = 0,
+  /** Khi ô trống, chỉ hiện N gợi ý đầu (tránh bung full A–Z). */
+  emptyLimit,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -24,10 +28,18 @@ export function SuggestInput({
   createLabel: string;
   onCreate?: (value: string) => void;
   disabled?: boolean;
+  minQueryLength?: number;
+  emptyLimit?: number;
 }) {
   const [open, setOpen] = useState(false);
   const query = value.trim().toLowerCase();
-  const matches = suggestions.filter((item) => !query || item.toLowerCase().includes(query));
+  const needMoreChars = minQueryLength > 0 && query.length < minQueryLength;
+  const filtered = needMoreChars
+    ? []
+    : suggestions.filter((item) => !query || item.toLowerCase().includes(query));
+  const matches =
+    !query && emptyLimit != null && emptyLimit > 0 ? filtered.slice(0, emptyLimit) : filtered;
+  const truncatedEmpty = !query && emptyLimit != null && filtered.length > matches.length;
   const exact = suggestions.find((item) => item.toLowerCase() === query);
   const canCreate = tidy(value).length > 0 && !exact;
 
@@ -45,6 +57,7 @@ export function SuggestInput({
           placeholder={placeholder}
           disabled={disabled}
           className={inputClass}
+          autoComplete="off"
           onChange={(e) => {
             onChange(e.target.value);
             setOpen(true);
@@ -77,6 +90,11 @@ export function SuggestInput({
       </div>
       {open && !disabled && (
         <ul className="mt-1 max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-sm">
+          {needMoreChars && (
+            <li className="px-3 py-2 text-[13px] text-slate-400">
+              Gõ ít nhất {minQueryLength} ký tự để tìm gợi ý
+            </li>
+          )}
           {matches.map((item) => (
             <li key={item}>
               <button
@@ -110,8 +128,13 @@ export function SuggestInput({
               </button>
             </li>
           )}
-          {matches.length === 0 && !canCreate && (
+          {!needMoreChars && matches.length === 0 && !canCreate && (
             <li className="px-3 py-2 text-[13px] text-slate-400">Không có gợi ý</li>
+          )}
+          {truncatedEmpty && (
+            <li className="px-3 py-2 text-[12px] text-slate-400">
+              Đang hiện {matches.length}/{filtered.length} · gõ thêm để lọc
+            </li>
           )}
         </ul>
       )}

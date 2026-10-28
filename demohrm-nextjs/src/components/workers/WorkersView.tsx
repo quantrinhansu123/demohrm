@@ -788,7 +788,14 @@ function CreateWorkerModal({
           {fieldErrors.startWorkDate && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.startWorkDate}</p>}
         </Field>
         <Field label="Công ty *">
-          <SuggestInput value={form.company} onChange={(company) => set("company", company)} suggestions={companyNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ công ty mới" />
+          <SuggestInput
+            value={form.company}
+            onChange={(company) => set("company", company)}
+            suggestions={companyNames}
+            createLabel="Thêm mới"
+            placeholder="Chọn hoặc gõ tên công ty (bắt buộc)"
+            emptyLimit={20}
+          />
           {fieldErrors.company && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.company}</p>}
         </Field>
         <Field label="Loại hình">

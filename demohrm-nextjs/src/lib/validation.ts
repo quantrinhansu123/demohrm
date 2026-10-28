@@ -19,7 +19,7 @@ export const CreateWorkerSchema = z.object({
   citizenId: z.string().trim().min(1, "CCCD không được để trống").regex(/^[0-9]{12}$/, "CCCD phải gồm đúng 12 chữ số"),
   dob: z.string().optional().nullable(),
   hometown: z.string().optional().nullable(),
-  company: z.string().trim().min(1, "Vui lòng chọn công ty"),
+  company: z.string().trim().min(1, "Bắt buộc chọn công ty trước khi lưu"),
   type: z.string().default("Thời vụ"),
   source: z.string().optional(),
   sale: z.string().trim().min(1, "Vui lòng chọn sale"),

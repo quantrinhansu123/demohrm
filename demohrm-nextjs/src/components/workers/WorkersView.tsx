@@ -11,6 +11,7 @@ import {
   createLivePersonnel,
   createLiveWorker,
   deleteLiveWorker,
+  downloadLiveWorkersExcel,
   dupFieldLabel,
   fetchLiveOrders,
   fetchLiveWorkers,
@@ -20,6 +21,7 @@ import {
   uploadWorkerPortrait,
 } from "@/lib/live";
 import type { DuplicateHit, LiveCompany, LiveStaff } from "@/lib/live";
+import { downloadBlob } from "@/lib/download";
 import { maskCitizenId, workerStatusTone } from "@/lib/format";
 import { workerStatusLabel } from "@/lib/worker-status";
 import { SuggestInput } from "@/components/ui/suggest-input";
@@ -142,6 +144,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   const [openCreate, setOpenCreate] = useState(false);
   const [editing, setEditing] = useState<Worker | null>(null);
   const [closing, setClosing] = useState<Worker | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setQDebounced(q), 300);
@@ -194,17 +197,42 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
     }
   };
 
+  const exportExcel = async () => {
+    setExporting(true);
+    setError("");
+    try {
+      const { blob, filename } = await downloadLiveWorkersExcel({
+        company: company || undefined,
+        statusEn: status ? VI_STATUS[status] : undefined,
+        typeEn: type ? VI_TYPE[type] : undefined,
+        q: qDebounced || undefined,
+        recruiterId: saleId ?? undefined,
+        managerId: managerId ?? undefined,
+      });
+      downloadBlob(blob, filename || "nguoi-lao-dong.xlsx");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Xuất Excel thất bại.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <section className="absolute inset-0 flex flex-col">
       <ModuleHeader
         title="Hồ sơ Người lao động"
         sub="Danh sách phân trang từ máy chủ"
         actions={
-          canCreate ? (
-            <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setOpenCreate(true)}>
-              + Thêm người lao động
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" disabled={exporting} onClick={() => void exportExcel()}>
+              {exporting ? "Đang xuất..." : "Xuất Excel"}
             </Button>
-          ) : undefined
+            {canCreate ? (
+              <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setOpenCreate(true)}>
+                + Thêm người lao động
+              </Button>
+            ) : null}
+          </div>
         }
       />
       <div className="page-body">

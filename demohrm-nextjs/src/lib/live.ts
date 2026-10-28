@@ -245,6 +245,21 @@ export function fetchLiveWorkers(f?: WorkerFilter, opts?: ApiOptions): Promise<W
   return apiGet<WorkerPage>(`/workers${qs ? `?${qs}` : ""}`, opts);
 }
 
+export type WorkerExportFilter = Omit<WorkerFilter, "limit" | "offset">;
+
+/** Cùng endpoint search `/workers`, thêm export=1. */
+export function downloadLiveWorkersExcel(filter?: WorkerExportFilter): Promise<DownloadResult> {
+  const p = new URLSearchParams();
+  p.set("export", "1");
+  if (filter?.company) p.set("company", filter.company);
+  if (filter?.statusEn) p.set("status", filter.statusEn);
+  if (filter?.typeEn) p.set("type", filter.typeEn);
+  if (filter?.q) p.set("q", filter.q);
+  if (filter?.recruiterId) p.set("recruiter_id", String(filter.recruiterId));
+  if (filter?.managerId) p.set("manager_id", String(filter.managerId));
+  return apiDownload(`/workers?${p.toString()}`);
+}
+
 /** Danh sách gọn cho select (không extras/CCCD). */
 export type LiveWorkerOption = Pick<
   LiveWorkerRow,

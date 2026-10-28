@@ -6,6 +6,11 @@ import { apiError, json, readBody, searchParams } from "@/lib/server/http";
 import { ROLE } from "@/lib/server/roles";
 import { applyWorkerPhonePrivacy } from "@/lib/server/worker-privacy";
 import { findBlockingDuplicate } from "@/lib/server/worker-duplicates";
+import {
+  buildWorkersExcelResponse,
+  isWorkerExportRequest,
+  WorkerListQueryBuilder,
+} from "@/lib/server/worker-list";
 
 const WORKER_INSERT = [
   "code", "full_name", "phone", "date_of_birth", "gender", "hometown", "permanent_address",
@@ -30,16 +35,6 @@ function clampPage(sp: URLSearchParams, fallback = 50, max = 200): { limit: numb
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.trunc(limitRaw), 1), max) : fallback;
   const offset = Number.isFinite(offsetRaw) ? Math.max(Math.trunc(offsetRaw), 0) : 0;
   return { limit, offset };
-}
-
-function safeSearch(raw: unknown): string {
-  return String(raw ?? "").replace(/[%_,.()]/g, "").trim().slice(0, 80);
-}
-
-function positiveIntParam(raw: string | null): number | null {
-  if (!raw) return null;
-  const n = Number(raw);
-  return Number.isInteger(n) && n > 0 ? n : null;
 }
 
 type WorkerExtra = {
@@ -90,39 +85,25 @@ async function nextWorkerCode(): Promise<string> {
   return `NL-${String(max + 1).padStart(3, "0")}`;
 }
 
-// GET /api/v1/workers — Danh sach NLD (merge national_id_full neu co quyen cccd)
+// GET /api/v1/workers — danh sách NLD; thêm export=1 để xuất Excel (cùng bộ lọc search).
 export async function GET(req: Request): Promise<Response> {
   try {
     const ctx = getAuth(req);
     const canViewCccd = (ROLE.cccd as readonly string[]).includes(ctx.staffRole);
     const sp = searchParams(req);
-    const { limit, offset } = clampPage(sp);
-    let q = getSupabase().from("v_workers_public").select("*", { count: "exact" }).order("code");
-    const status = sp.get("status");
-    if (status) q = q.eq("status", status);
-    const company = sp.get("company");
-    if (company) q = q.eq("company", company);
-    const type = sp.get("type");
-    if (type) q = q.eq("employment_type", type);
-    const needle = safeSearch(sp.get("q"));
-    if (needle) q = q.or(`full_name.ilike.%${needle}%,code.ilike.%${needle}%,phone.ilike.%${needle}%`);
+    const builder = await WorkerListQueryBuilder.fromSearchParams(sp).prepare();
 
-    const recruiterId = positiveIntParam(sp.get("recruiter_id"));
-    if (recruiterId) q = q.eq("recruiter_id", recruiterId);
-
-    // manager_id thường chỉ có trên workers, không có trên v_workers_public.
-    const managerId = positiveIntParam(sp.get("manager_id"));
-    if (managerId) {
-      const matched = await getSupabase().from("workers").select("id").eq("manager_id", managerId);
-      if (matched.error) throw matched.error;
-      const ids = (matched.data ?? [])
-        .map((row) => Number(row.id))
-        .filter((id) => Number.isInteger(id) && id > 0);
-      if (ids.length === 0) {
-        return json({ rows: [], total: 0, limit, offset });
-      }
-      q = q.in("id", ids);
+    if (isWorkerExportRequest(sp)) {
+      return await buildWorkersExcelResponse(builder, canViewCccd);
     }
+
+    const { limit, offset } = clampPage(sp);
+    if (builder.isEmpty) {
+      return json({ rows: [], total: 0, limit, offset });
+    }
+
+    let q = getSupabase().from("v_workers_public").select("*", { count: "exact" }).order("code");
+    q = builder.apply(q);
 
     const { data, error, count } = await q.range(offset, offset + limit - 1);
     if (error) throw error;
@@ -139,13 +120,13 @@ export async function GET(req: Request): Promise<Response> {
       if (people.error) throw people.error;
       const names = new Map((people.data ?? []).map((row) => [row.id as number, String(row.full_name)]));
       rows = rows.map((row) => {
-        const managerId = byWorker.get(row["id"] as number) ?? null;
+        const rowManagerId = byWorker.get(row["id"] as number) ?? null;
         const d = dateById.get(row["id"] as number);
         return {
           ...row,
-          manager_id: managerId,
+          manager_id: rowManagerId,
           created_by: d?.created_by ?? null,
-          manager_name: managerId ? names.get(managerId) ?? null : null,
+          manager_name: rowManagerId ? names.get(rowManagerId) ?? null : null,
           consult_date: d?.consult_date ?? null,
           start_work_date: d?.start_work_date ?? null,
           resign_date: d?.resign_date ?? null,
@@ -153,8 +134,8 @@ export async function GET(req: Request): Promise<Response> {
       });
     }
     if (canViewCccd && rows.length > 0) {
-      const ids = rows.map((r) => r["id"] as number);
-      const { data: full, error: e2 } = await getSupabase().from("workers").select("id,national_id").in("id", ids);
+      const cccdIds = rows.map((r) => r["id"] as number);
+      const { data: full, error: e2 } = await getSupabase().from("workers").select("id,national_id").in("id", cccdIds);
       if (e2) throw e2;
       const map = new Map(((full ?? []) as Array<{ id: number; national_id: string }>).map((w) => [w.id, w.national_id]));
       rows = rows.map((r) => ({ ...r, national_id_full: map.get(r["id"] as number) ?? null }));

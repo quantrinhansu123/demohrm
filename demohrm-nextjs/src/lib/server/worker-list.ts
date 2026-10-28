@@ -39,11 +39,16 @@ type WorkerLean = {
   manager_id: number | null;
 };
 
+/** Interface lỏng — tránh TS2589 khi chain với PostgREST generics. */
 type FilterableQuery = {
   eq: (column: string, value: unknown) => FilterableQuery;
   or: (filters: string) => FilterableQuery;
   in: (column: string, values: readonly unknown[]) => FilterableQuery;
 };
+
+function asFilterable(query: unknown): FilterableQuery {
+  return query as FilterableQuery;
+}
 
 type ParsedValue = string | number;
 
@@ -182,11 +187,12 @@ export class WorkerListQueryBuilder {
     return this.emptyResult;
   }
 
-  apply<T extends FilterableQuery>(query: T): T {
+  /** Trả về cùng kiểu query đầu vào (cast 1 lần, không recurse generic Supabase). */
+  apply<T>(query: T): T {
     if (!this.prepared) {
       throw new Error("WorkerListQueryBuilder.prepare() must run before apply().");
     }
-    let q: FilterableQuery = query;
+    let q = asFilterable(query);
     for (const field of WORKER_FILTER_FIELDS) {
       if (field.key === "managerId") continue;
       const value = this.filters[field.key];
@@ -253,12 +259,13 @@ export async function buildWorkersExcelResponse(
       break;
     }
 
-    let q = getSupabase()
-      .from("v_workers_public")
-      .select(EXPORT_COLUMNS)
-      .order("code")
-      .range(offset, offset + WORKER_EXPORT_PAGE_SIZE - 1);
-    q = builder.apply(q);
+    const q = builder.apply(
+      getSupabase()
+        .from("v_workers_public")
+        .select(EXPORT_COLUMNS)
+        .order("code")
+        .range(offset, offset + WORKER_EXPORT_PAGE_SIZE - 1),
+    );
 
     const { data, error } = await q;
     if (error) throw error;

@@ -102,8 +102,9 @@ export async function GET(req: Request): Promise<Response> {
       return json({ rows: [], total: 0, limit, offset });
     }
 
-    let q = getSupabase().from("v_workers_public").select("*", { count: "exact" }).order("code");
-    q = builder.apply(q);
+    const q = builder.apply(
+      getSupabase().from("v_workers_public").select("*", { count: "exact" }).order("code"),
+    );
 
     const { data, error, count } = await q.range(offset, offset + limit - 1);
     if (error) throw error;

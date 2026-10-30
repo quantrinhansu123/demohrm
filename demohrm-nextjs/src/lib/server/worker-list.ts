@@ -20,7 +20,8 @@ const EXPORT_COLUMNS = "id,full_name,company";
 
 export type WorkerListFilters = {
   status: string | null;
-  company: string | null;
+  /** Nhiều công ty — query `company` lặp lại hoặc 1 giá trị. */
+  companies: string[];
   type: string | null;
   q: string;
   recruiterId: number | null;
@@ -52,8 +53,10 @@ function asFilterable(query: unknown): FilterableQuery {
 
 type ParsedValue = string | number;
 
+type ScalarFilterKey = Exclude<keyof WorkerListFilters, "companies">;
+
 type FilterFieldDef = {
-  key: keyof WorkerListFilters;
+  key: ScalarFilterKey;
   /** Parse từ query string; falsy → bỏ qua. */
   parse: (sp: URLSearchParams) => ParsedValue | null | "";
   /** Gắn vào PostgREST query khi có giá trị. */
@@ -72,9 +75,24 @@ export function positiveIntParam(raw: string | null): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+/** Đọc nhiều `company=` (và bỏ trống / trùng). */
+export function parseCompanyParams(sp: URLSearchParams): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of sp.getAll("company")) {
+    const value = String(raw ?? "").trim();
+    if (!value) continue;
+    const key = value.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+  }
+  return out;
+}
+
 /**
- * Bộ filter khai báo một chỗ.
- * Thêm điều kiện mới: thêm 1 object vào mảng này (không sửa chuỗi if ở list/export).
+ * Bộ filter khai báo một chỗ (field đơn).
+ * Công ty multi + manager scope xử lý riêng trong builder.
  */
 const WORKER_FILTER_FIELDS: FilterFieldDef[] = [
   {
@@ -82,12 +100,6 @@ const WORKER_FILTER_FIELDS: FilterFieldDef[] = [
     parse: (sp) => sp.get("status"),
     apply: (q, value) => q.eq("status", value),
     subtitle: (value) => `TT: ${value}`,
-  },
-  {
-    key: "company",
-    parse: (sp) => sp.get("company"),
-    apply: (q, value) => q.eq("company", value),
-    subtitle: (value) => `Công ty: ${value}`,
   },
   {
     key: "type",
@@ -143,13 +155,13 @@ export class WorkerListQueryBuilder {
   }
 
   static fromSearchParams(sp: URLSearchParams): WorkerListQueryBuilder {
-    const filters = {
-      status: null as string | null,
-      company: null as string | null,
-      type: null as string | null,
+    const filters: WorkerListFilters = {
+      status: null,
+      companies: parseCompanyParams(sp),
+      type: null,
       q: "",
-      recruiterId: null as number | null,
-      managerId: null as number | null,
+      recruiterId: null,
+      managerId: null,
     };
     for (const field of WORKER_FILTER_FIELDS) {
       const parsed = field.parse(sp);
@@ -157,7 +169,7 @@ export class WorkerListQueryBuilder {
       if (field.key === "q") filters.q = String(parsed);
       else if (field.key === "recruiterId" || field.key === "managerId") {
         filters[field.key] = Number(parsed);
-      } else {
+      } else if (field.key === "status" || field.key === "type") {
         filters[field.key] = String(parsed);
       }
     }
@@ -193,6 +205,10 @@ export class WorkerListQueryBuilder {
       throw new Error("WorkerListQueryBuilder.prepare() must run before apply().");
     }
     let q = asFilterable(query);
+    const companies = this.filters.companies;
+    if (companies.length === 1) q = q.eq("company", companies[0]);
+    else if (companies.length > 1) q = q.in("company", companies);
+
     for (const field of WORKER_FILTER_FIELDS) {
       if (field.key === "managerId") continue;
       const value = this.filters[field.key];
@@ -207,6 +223,11 @@ export class WorkerListQueryBuilder {
 
   subtitle(prefix = `Xuất ngày ${new Date().toLocaleDateString("vi-VN")}`): string {
     const parts = [prefix];
+    if (this.filters.companies.length === 1) {
+      parts.push(`Công ty: ${this.filters.companies[0]}`);
+    } else if (this.filters.companies.length > 1) {
+      parts.push(`Công ty: ${this.filters.companies.length} đã chọn`);
+    }
     for (const field of WORKER_FILTER_FIELDS) {
       const value = this.filters[field.key];
       if (!hasFilterValue(value as ParsedValue | null | "") || !field.subtitle) continue;

@@ -26,6 +26,7 @@ import { maskCitizenId, workerStatusTone } from "@/lib/format";
 import { workerStatusLabel } from "@/lib/worker-status";
 import { SuggestInput } from "@/components/ui/suggest-input";
 import { SearchableStaffSelect } from "@/components/ui/searchable-staff-select";
+import { SearchableMultiSelect } from "@/components/ui/searchable-multi-select";
 import { ModuleHeader } from "@/components/modules/ModuleHeader";
 import { Avatar } from "@/components/ui/avatar";
 import { StatusPill } from "@/components/ui/badge";
@@ -127,11 +128,11 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   const canEdit = access.canEditWorker;
   const canCreate = access.canCreateWorker;
   const canEditStatus = access.canEditWorkerStatus;
-  /** Chốt / tái tuyển / sửa — không gồm Nhân viên·CTV (chỉ tạo). */
+  /** Chốt / tái tuyển / sửa trạng thái: GD/PGĐ/KT (full) hoặc HCNS·Nhân viên·CTV (ops). */
   const canCloseWorker = canEdit || canEditStatus;
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
-  const [company, setCompany] = useState("");
+  const [companyFilter, setCompanyFilter] = useState<string[]>([]);
   const [status, setStatus] = useState("");
   const [type, setType] = useState("");
   const [saleId, setSaleId] = useState<number | null>(null);
@@ -153,18 +154,23 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
 
   useEffect(() => {
     setOffset(0);
-  }, [qDebounced, company, status, type, saleId, managerId]);
+  }, [qDebounced, companyFilter, status, type, saleId, managerId]);
 
   const staffOptions = useMemo(
     () => [...staff].sort((a, b) => a.full_name.localeCompare(b.full_name, "vi")),
     [staff],
   );
 
+  const companyOptions = useMemo(
+    () => [...new Set(companies.map((c) => c.short_name).filter(Boolean))].sort((a, b) => a.localeCompare(b, "vi")),
+    [companies],
+  );
+
   const reload = useCallback(async () => {
     setLoading(true);
     try {
       const page = await fetchLiveWorkers({
-        company: company || undefined,
+        companies: companyFilter.length > 0 ? companyFilter : undefined,
         statusEn: status ? VI_STATUS[status] : undefined,
         typeEn: type ? VI_TYPE[type] : undefined,
         q: qDebounced || undefined,
@@ -181,7 +187,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
     } finally {
       setLoading(false);
     }
-  }, [company, status, type, saleId, managerId, qDebounced, offset]);
+  }, [companyFilter, status, type, saleId, managerId, qDebounced, offset]);
 
   useEffect(() => {
     void reload();
@@ -202,7 +208,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
     setError("");
     try {
       const { blob, filename } = await downloadLiveWorkersExcel({
-        company: company || undefined,
+        companies: companyFilter.length > 0 ? companyFilter : undefined,
         statusEn: status ? VI_STATUS[status] : undefined,
         typeEn: type ? VI_TYPE[type] : undefined,
         q: qDebounced || undefined,
@@ -238,10 +244,15 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
       <div className="page-body">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm theo tên, mã, SĐT" className="w-60 rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] outline-none focus:border-[#0052cc]" />
-          <select value={company} onChange={(e) => setCompany(e.target.value)} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[13px]">
-            <option value="">Tất cả công ty</option>
-            {companies.map((c) => (<option key={c.id} value={c.short_name}>{c.short_name}</option>))}
-          </select>
+          <div className="w-56">
+            <SearchableMultiSelect
+              values={companyFilter}
+              onChange={setCompanyFilter}
+              options={companyOptions}
+              placeholder="Tất cả công ty"
+              emptyLabel="Tất cả công ty"
+            />
+          </div>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-[13px]">
             <option value="">Tất cả trạng thái</option>
             {STATUSES.map((s) => (<option key={s} value={s}>{s}</option>))}
@@ -416,7 +427,7 @@ function CreateWorkerModal({
   open, allowCloseDeal = false, onClose, onCreated,
 }: {
   open: boolean;
-  /** GD/PGĐ/KT/HCNS: bước chốt & tái tuyển. Nhân viên/CTV chỉ lưu hồ sơ tư vấn. */
+  /** GD/PGĐ/KT/HCNS/Nhân viên/CTV: bước chốt & tái tuyển khi có quyền ops. */
   allowCloseDeal?: boolean;
   onClose: () => void;
   onCreated: () => void;
@@ -1026,7 +1037,7 @@ function EditWorkerModal({
   const save = async () => {
     if (statusOnly) {
       if (!(HCNS_STATUSES as readonly string[]).includes(form.status)) {
-        setError("HCNS chỉ được chọn Đang làm, Chờ đi làm, Nghỉ việc hoặc Không đi làm.");
+        setError("Chỉ được chọn Đang làm, Chờ đi làm, Nghỉ việc hoặc Không đi làm.");
         return;
       }
       const startWorkDate = isoDate(form.startWorkDate);
@@ -1120,7 +1131,7 @@ function EditWorkerModal({
       {statusOnly ? (
         <div className="grid grid-cols-2 gap-3">
           <p className="col-span-2 text-[12.5px] text-slate-500">
-            HCNS chỉ được sửa trạng thái <strong>Đang làm</strong> / <strong>Chờ đi làm</strong> / <strong>Nghỉ việc</strong> / <strong>Không đi làm</strong> và ngày vào / nghỉ liên quan.
+            Chỉ được sửa trạng thái <strong>Đang làm</strong> / <strong>Chờ đi làm</strong> / <strong>Nghỉ việc</strong> / <strong>Không đi làm</strong> và ngày vào / nghỉ liên quan.
           </p>
           <Field label="Họ và tên"><input className={inputClass} value={worker.name} readOnly /></Field>
           <Field label="Trạng thái">

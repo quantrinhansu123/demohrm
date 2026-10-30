@@ -18,7 +18,7 @@ export interface Access {
   canEditWorker: boolean;
   /** GD / PGĐ / Kỹ thuật / HCNS / Nhân viên / CTV: tạo hồ sơ NLĐ */
   canCreateWorker: boolean;
-  /** HCNS: sửa trạng thái / chốt (Nhân viên·CTV chỉ tạo, không sửa) */
+  /** HCNS / Nhân viên / CTV: sửa trạng thái / chốt / tái tuyển (ops, không full edit) */
   canEditWorkerStatus: boolean;
   /** GD / PGĐ / Kỹ thuật: sửa / tạo đơn hàng (HCNS chỉ xem) */
   canEditOrders: boolean;
@@ -38,8 +38,8 @@ const CCCD: readonly string[] = [...ELEVATED, "admin", "recruiter"];
 const CLOSE: readonly string[] = [...ELEVATED, "accountant"];
 const ACCOUNT_MANAGE: readonly string[] = [...ELEVATED, "admin"];
 const WORKER_PHONE_FULL: readonly string[] = [...ELEVATED, "admin"];
-const WORKER_STATUS_EDIT: readonly string[] = ["admin"];
-const WORKER_CREATE: readonly string[] = [...ELEVATED, "admin", "recruiter"];
+const WORKER_STATUS_EDIT: readonly string[] = ["admin", "recruiter", "coordinator"];
+const WORKER_CREATE: readonly string[] = [...ELEVATED, "admin", "recruiter", "coordinator"];
 
 export function accessFor(role: string): Access {
   return {

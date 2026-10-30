@@ -4,7 +4,9 @@ import { daysBetween, formatMonthLabel } from "@/lib/advance-months";
 import { cashbookGroupDisplay } from "@/lib/cashbook";
 import { getAuth, requireRole } from "@/lib/server/authctx";
 import {
+  applyCashbookCompanyFilter,
   applyCashbookGroupFilter,
+  cashbookCompanyFilters,
   cashbookDate,
   cashbookMonth,
   cashbookSearchTerm,
@@ -94,7 +96,7 @@ export async function GET(req: Request): Promise<Response> {
     }
 
     const search = cashbookSearchTerm(sp.get("q"));
-    const company = cashbookSearchTerm(sp.get("company"));
+    const companies = cashbookCompanyFilters(sp);
     let query = getSupabase()
       .from("cashbook_entries")
       .select(EXPORT_COLUMNS)
@@ -106,7 +108,7 @@ export async function GET(req: Request): Promise<Response> {
     else query = query.gte("entry_date", from!).lte("entry_date", to!);
 
     query = applyCashbookGroupFilter(query, sp.get("group"));
-    if (company) query = query.eq("company_name", company);
+    query = applyCashbookCompanyFilter(query, companies);
     if (search) {
       query = query.or(
         `content.ilike.%${search}%,full_name.ilike.%${search}%,company_name.ilike.%${search}%,note.ilike.%${search}%`,

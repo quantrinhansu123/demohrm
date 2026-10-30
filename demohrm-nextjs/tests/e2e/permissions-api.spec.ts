@@ -61,7 +61,7 @@ test("API chặn recruiter sửa SĐT hồ sơ không thuộc phạm vi", async 
   expect(res.status()).toBe(403);
 });
 
-test("API cho phép Nhân viên/CTV tạo NLĐ nhưng chặn sửa và xóa", async ({ request }, testInfo) => {
+test("API cho phép Nhân viên/CTV tạo NLĐ và sửa trạng thái như HCNS, chặn xóa", async ({ request }, testInfo) => {
   const create = await request.post("/api/v1/workers", {
     headers: headers("recruiter"),
     data: {
@@ -76,12 +76,13 @@ test("API cho phép Nhân viên/CTV tạo NLĐ nhưng chặn sửa và xóa", as
   // Không 403: được tạo (201) hoặc lỗi nghiệp vụ (trùng/thiếu cột), không phải cấm quyền.
   expect(create.status(), "recruiter POST workers").not.toBe(403);
 
+  // Ops patch như HCNS — không còn 403; id giả thường 404.
   const patch = await request.patch("/api/v1/workers/999999", {
     headers: headers("recruiter"),
     data: { status: "working" },
   });
   await evidence(testInfo, "recruiter-patch-worker", patch.status(), await readJson(patch));
-  expect(patch.status()).toBe(403);
+  expect(patch.status(), "recruiter PATCH worker status").not.toBe(403);
 
   const del = await request.delete("/api/v1/workers/999999", { headers: headers("recruiter") });
   await evidence(testInfo, "recruiter-delete-worker", del.status(), await readJson(del));

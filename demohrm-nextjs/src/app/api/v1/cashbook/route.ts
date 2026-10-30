@@ -6,7 +6,9 @@ import { apiError, json, readBody, searchParams } from "@/lib/server/http";
 import { ROLE } from "@/lib/server/roles";
 import {
   CASHBOOK_COLUMNS,
+  applyCashbookCompanyFilter,
   applyCashbookGroupFilter,
+  cashbookCompanyFilters,
   cashbookDate,
   cashbookMonth,
   cashbookPayload,
@@ -47,8 +49,7 @@ export async function GET(req: Request): Promise<Response> {
 
     q = applyCashbookGroupFilter(q, sp.get("group"));
 
-    const company = cashbookSearchTerm(sp.get("company"));
-    if (company) q = q.eq("company_name", company);
+    q = applyCashbookCompanyFilter(q, cashbookCompanyFilters(sp));
 
     const workerId = Number(sp.get("worker_id") ?? "");
     if (Number.isFinite(workerId) && workerId > 0) q = q.eq("worker_id", workerId);

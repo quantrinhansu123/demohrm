@@ -110,6 +110,31 @@ export function cashbookSearchTerm(value: unknown): string {
   return value.replace(/[%*,()]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
 }
 
+/** Nhiều `company=` — sanitize từng giá trị, bỏ trùng. */
+export function cashbookCompanyFilters(sp: URLSearchParams): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of sp.getAll("company")) {
+    const value = cashbookSearchTerm(raw);
+    if (!value) continue;
+    const key = value.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+  }
+  return out;
+}
+
+/** Áp dụng lọc company_name: 1 → eq, nhiều → in. */
+export function applyCashbookCompanyFilter<T extends { eq: (c: string, v: unknown) => T; in: (c: string, v: readonly unknown[]) => T }>(
+  query: T,
+  companies: string[],
+): T {
+  if (companies.length === 1) return query.eq("company_name", companies[0]);
+  if (companies.length > 1) return query.in("company_name", companies);
+  return query;
+}
+
 export function isSystemCashbookEntry(row: { source_type?: string | null }): boolean {
   return row.source_type === "advance";
 }

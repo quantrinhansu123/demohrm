@@ -42,6 +42,7 @@ import type { RowActionItem } from "@/components/ui/row-actions";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
+import { SearchableMultiSelect } from "@/components/ui/searchable-multi-select";
 
 type Tab = "entries" | "summary" | "months";
 type GroupBy = "day" | "month";
@@ -72,7 +73,7 @@ export function FinanceView() {
   const [range, setRange] = useState(monthRangeInput());
   const [monthsFilter, setMonthsFilter] = useState("");
   const [group, setGroup] = useState("");
-  const [company, setCompany] = useState("");
+  const [companyFilter, setCompanyFilter] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [groupBy, setGroupBy] = useState<GroupBy>("day");
@@ -107,7 +108,7 @@ export function FinanceView() {
       from: range.from,
       to: range.to,
       group: group || undefined,
-      company: company || undefined,
+      companies: companyFilter.length > 0 ? companyFilter : undefined,
       q: query || undefined,
       limit: LIMIT,
       offset,
@@ -117,7 +118,7 @@ export function FinanceView() {
       to: range.to,
       groupBy: tab === "summary" ? groupBy : "day",
       group: group || undefined,
-      company: company || undefined,
+      companies: companyFilter.length > 0 ? companyFilter : undefined,
     });
     Promise.all([listPromise, summaryPromise])
       .then(([page, sum]) => {
@@ -137,7 +138,7 @@ export function FinanceView() {
     return () => {
       alive = false;
     };
-  }, [tab, range.from, range.to, group, company, query, groupBy, offset, listReloadKey]);
+  }, [tab, range.from, range.to, group, companyFilter, query, groupBy, offset, listReloadKey]);
 
   // Kết thúc tháng: chỉ fetch khi mở tab (tránh RPC stats mỗi lần đổi filter ngày).
   useEffect(() => {
@@ -182,7 +183,7 @@ export function FinanceView() {
       const { blob, filename } = await downloadLiveCashbookExcel({
         ...filter,
         group: filter.month ? undefined : group || undefined,
-        company: filter.month ? undefined : company || undefined,
+        companies: filter.month ? undefined : companyFilter.length > 0 ? companyFilter : undefined,
         q: filter.month ? undefined : query || undefined,
       });
       downloadBlob(blob, filename || fallbackName);
@@ -564,21 +565,19 @@ export function FinanceView() {
                       ))}
                     </select>
                   </div>
-                  <div>
+                  <div className="min-w-[200px]">
                     <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Công ty</span>
-                    <select
-                      value={company}
-                      onChange={(e) => {
+                    <SearchableMultiSelect
+                      values={companyFilter}
+                      onChange={(next) => {
                         setOffset(0);
-                        setCompany(e.target.value);
+                        setCompanyFilter(next);
                       }}
-                      className="min-w-[160px] rounded-lg border border-slate-200 px-3 py-2 text-[13px] outline-none focus:border-[#0052cc]"
-                    >
-                      <option value="">Tất cả công ty</option>
-                      {companyNames.map((name) => (
-                        <option key={name} value={name}>{name}</option>
-                      ))}
-                    </select>
+                      options={companyNames}
+                      placeholder="Tất cả công ty"
+                      emptyLabel="Tất cả công ty"
+                      className="min-h-[38px] px-3 py-2"
+                    />
                   </div>
                   <div className="min-w-[220px] flex-1">
                     <span className="mb-1 block text-[11.5px] font-medium text-slate-500">Tìm kiếm</span>

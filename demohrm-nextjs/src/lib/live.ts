@@ -214,7 +214,9 @@ export function toWorker(row: LiveWorkerRow): Worker {
 }
 
 export interface WorkerFilter {
+  /** @deprecated dùng companies */
   company?: string;
+  companies?: string[];
   statusEn?: string;
   typeEn?: string;
   q?: string;
@@ -231,9 +233,22 @@ export interface WorkerPage {
   offset: number;
 }
 
+function appendCompanyParams(p: URLSearchParams, companies?: string[], company?: string): void {
+  const list = [...(companies ?? []), ...(company ? [company] : [])]
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const seen = new Set<string>();
+  for (const item of list) {
+    const key = item.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    p.append("company", item);
+  }
+}
+
 export function fetchLiveWorkers(f?: WorkerFilter, opts?: ApiOptions): Promise<WorkerPage> {
   const p = new URLSearchParams();
-  if (f?.company) p.set("company", f.company);
+  appendCompanyParams(p, f?.companies, f?.company);
   if (f?.statusEn) p.set("status", f.statusEn);
   if (f?.typeEn) p.set("type", f.typeEn);
   if (f?.q) p.set("q", f.q);
@@ -251,7 +266,7 @@ export type WorkerExportFilter = Omit<WorkerFilter, "limit" | "offset">;
 export function downloadLiveWorkersExcel(filter?: WorkerExportFilter): Promise<DownloadResult> {
   const p = new URLSearchParams();
   p.set("export", "1");
-  if (filter?.company) p.set("company", filter.company);
+  appendCompanyParams(p, filter?.companies, filter?.company);
   if (filter?.statusEn) p.set("status", filter.statusEn);
   if (filter?.typeEn) p.set("type", filter.typeEn);
   if (filter?.q) p.set("q", filter.q);
@@ -812,7 +827,9 @@ export interface CashbookFilter {
   from?: string;
   to?: string;
   group?: string;
+  /** @deprecated dùng companies */
   company?: string;
+  companies?: string[];
   worker_id?: number;
   staff_id?: number;
   q?: string;
@@ -826,7 +843,7 @@ export function fetchLiveCashbook(filter?: CashbookFilter): Promise<Page<LiveCas
   if (filter?.from) p.set("from", filter.from);
   if (filter?.to) p.set("to", filter.to);
   if (filter?.group) p.set("group", filter.group);
-  if (filter?.company) p.set("company", filter.company);
+  appendCompanyParams(p, filter?.companies, filter?.company);
   if (filter?.worker_id) p.set("worker_id", String(filter.worker_id));
   if (filter?.staff_id) p.set("staff_id", String(filter.staff_id));
   if (filter?.q) p.set("q", filter.q);
@@ -867,6 +884,7 @@ export interface CashbookExportFilter {
   to?: string;
   group?: string;
   company?: string;
+  companies?: string[];
   q?: string;
 }
 
@@ -876,7 +894,7 @@ export function downloadLiveCashbookExcel(filter: CashbookExportFilter): Promise
   if (filter.from) p.set("from", filter.from);
   if (filter.to) p.set("to", filter.to);
   if (filter.group) p.set("group", filter.group);
-  if (filter.company) p.set("company", filter.company);
+  appendCompanyParams(p, filter.companies, filter.company);
   if (filter.q) p.set("q", filter.q);
   return apiDownload(`/cashbook/export?${p.toString()}`);
 }
@@ -904,13 +922,14 @@ export function fetchCashbookSummary(params: {
   groupBy: "day" | "month";
   group?: string;
   company?: string;
+  companies?: string[];
 }): Promise<CashbookSummary> {
   const p = new URLSearchParams({ group_by: params.groupBy });
   if (params.month) p.set("month", params.month);
   if (params.from) p.set("from", params.from);
   if (params.to) p.set("to", params.to);
   if (params.group) p.set("group", params.group);
-  if (params.company) p.set("company", params.company);
+  appendCompanyParams(p, params.companies, params.company);
   return apiGet(`/cashbook/summary?${p.toString()}`);
 }
 

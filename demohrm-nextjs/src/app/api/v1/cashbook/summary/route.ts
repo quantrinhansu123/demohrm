@@ -6,10 +6,11 @@ import { getSupabase } from "@/lib/server/db";
 import { apiError, json, searchParams } from "@/lib/server/http";
 import { ROLE } from "@/lib/server/roles";
 import {
+  applyCashbookCompanyFilter,
   applyCashbookGroupFilter,
+  cashbookCompanyFilters,
   cashbookDate,
   cashbookMonth,
-  cashbookSearchTerm,
   normalizeCashbookGroup,
 } from "@/lib/server/cashbook";
 import { CASHBOOK_MIGRATION_MESSAGE, isCashbookSchemaError } from "@/lib/server/cashbook-errors";
@@ -44,7 +45,7 @@ export async function GET(req: Request): Promise<Response> {
     const to = bounds?.to ?? cashbookDate(sp.get("to")) ?? todayInput();
     const groupBy = sp.get("group_by") === "month" ? "month" : "day";
     const group = sp.get("group");
-    const company = cashbookSearchTerm(sp.get("company"));
+    const companies = cashbookCompanyFilters(sp);
 
     if (from > to) return json({ error: "invalid", message: "Khoảng ngày không hợp lệ." }, 400);
 
@@ -79,7 +80,7 @@ export async function GET(req: Request): Promise<Response> {
       }
 
       q = applyCashbookGroupFilter(q, group);
-      if (company) q = q.eq("company_name", company);
+      q = applyCashbookCompanyFilter(q, companies);
 
       const { data, error } = await q;
       if (error) {

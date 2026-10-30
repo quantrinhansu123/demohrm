@@ -61,7 +61,7 @@ export async function PATCH(
 
     const canFull = hasRole(auth.staffRole, ROLE.workerEdit);
     const canStatus = hasRole(auth.staffRole, ROLE.workerStatusEdit);
-    // workerCreate (Nhân viên/CTV) chỉ được POST tạo mới — không PATCH/sửa/chốt.
+    // Full edit: GD/PGĐ/KT. Ops (trạng thái/chốt): HCNS + Nhân viên/CTV.
     if (!canFull && !canStatus) {
       throw new ForbiddenError("Bạn không có quyền sửa hồ sơ người lao động.");
     }
@@ -71,7 +71,7 @@ export async function PATCH(
     if (canFull) {
       body = pick(raw, WORKER_PATCH);
     } else {
-      // HCNS: chốt/tái tuyển/sửa trạng thái — ops patch, không full edit.
+      // HCNS / Nhân viên / CTV: chốt/tái tuyển/sửa trạng thái — ops patch, không full edit.
       const allowedKeys = WORKER_HCNS_OPS_PATCH;
       body = pick(raw, allowedKeys);
       if (Object.keys(body).length === 0) {
@@ -83,7 +83,7 @@ export async function PATCH(
           return json(
             {
               error: "forbidden",
-              message: "HCNS chỉ được đặt trạng thái Đang làm, Chờ đi làm, Nghỉ việc, Không đi làm hoặc Đang tư vấn.",
+              message: "Chỉ được đặt trạng thái Đang làm, Chờ đi làm, Nghỉ việc, Không đi làm hoặc Đang tư vấn.",
             },
             403,
           );

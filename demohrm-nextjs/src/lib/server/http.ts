@@ -17,7 +17,20 @@ export function apiError(e: unknown): Response {
       { status: 400 },
     );
   }
-  if (err.code === "23514") return Response.json({ error: "check_violation", message: "Dữ liệu không thỏa điều kiện." }, { status: 400 });
+  if (err.code === "23514") {
+    const raw = (err.message ?? "").trim();
+    const constraint = /constraint "([^"]+)"/.exec(raw)?.[1];
+    // Trigger/CHECK tùy biến thường trả câu tiếng Việt — hiện nguyên văn cho người dùng.
+    const human = raw && !/violates check constraint/i.test(raw) ? raw : null;
+    console.error("check_violation", constraint ?? "", raw);
+    return Response.json(
+      {
+        error: "check_violation",
+        message: human ?? (constraint ? `Dữ liệu không thỏa điều kiện (${constraint}).` : "Dữ liệu không thỏa điều kiện."),
+      },
+      { status: 400 },
+    );
+  }
   if (err.code === "22P02") return Response.json({ error: "invalid", message: "Giá trị không nằm trong danh mục cho phép." }, { status: 400 });
   if (err.code === "22003") return Response.json({ error: "numeric_overflow", message: "Dữ liệu số vượt giới hạn (tọa độ địa điểm hoặc khoảng cách chấm công). Kiểm tra tọa độ địa điểm làm việc." }, { status: 400 });
   if (err.code === "23P01") return Response.json({ error: "overlap", message: "Hai đợt làm việc chồng thời gian." }, { status: 409 });

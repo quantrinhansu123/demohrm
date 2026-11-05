@@ -39,6 +39,20 @@ async function nextWorkerCode(): Promise<string> {
   return String(n);
 }
 
+function staffNationalId(staffId: number): string {
+  return `001090${String(staffId).padStart(6, "0")}`;
+}
+
+async function ensureEkycVerified(workerId: number): Promise<void> {
+  const sb = getSupabase();
+  const { error } = await sb
+    .from("workers")
+    .update({ ekyc_status: "verified", status: "working" })
+    .eq("id", workerId)
+    .neq("ekyc_status", "verified");
+  if (error) throw error;
+}
+
 async function ensureWorker(staffId: number): Promise<number | null> {
   const sb = getSupabase();
   const withDate = await sb.from("staff").select("id,full_name,phone,date_of_birth").eq("id", staffId).maybeSingle();
@@ -50,17 +64,40 @@ async function ensureWorker(staffId: number): Promise<number | null> {
     staff = plain.data ? { id: plain.data.id as number, full_name: String(plain.data.full_name), phone: (plain.data.phone as string | null) ?? null, date_of_birth: null } : null;
   }
   if (!staff) return null;
-  const found = await sb.from("workers").select("id").eq("full_name", staff.full_name).limit(1);
+
+  const syntheticId = staffNationalId(staff.id);
+
+  // Ưu tiên hồ sơ NLĐ gắn với nhân sự (CCCD tổng hợp) — tránh trùng tên thật chưa eKYC.
+  const byNid = await sb.from("workers").select("id,ekyc_status").eq("national_id", syntheticId).maybeSingle();
+  if (byNid.error) throw byNid.error;
+  if (byNid.data?.id) {
+    await ensureEkycVerified(byNid.data.id as number);
+    return byNid.data.id as number;
+  }
+
+  const found = await sb
+    .from("workers")
+    .select("id,ekyc_status,national_id")
+    .eq("full_name", staff.full_name)
+    .limit(5);
   if (found.error) throw found.error;
-  const existingId = found.data?.[0]?.id as number | undefined;
-  if (existingId) return existingId;
+  const rows = (found.data ?? []) as Array<{ id: number; ekyc_status: string | null; national_id: string | null }>;
+  // Chỉ tái dùng hồ sơ trùng tên khi đã eKYC (hoặc là hồ sơ tổng hợp của chính staff).
+  const reusable =
+    rows.find((row) => row.national_id === syntheticId) ??
+    rows.find((row) => row.ekyc_status === "verified");
+  if (reusable) {
+    await ensureEkycVerified(reusable.id);
+    return reusable.id;
+  }
+
   const inserted = await sb.from("workers").insert({
     code: await nextWorkerCode(),
     full_name: staff.full_name,
     phone: phoneOf(staff.id, null),
     date_of_birth: staff.date_of_birth?.slice(0, 10) || "1990-01-01",
     hometown: "Việt Nam",
-    national_id: `001090${String(staff.id).padStart(6, "0")}`,
+    national_id: syntheticId,
     employment_type: "seasonal",
     status: "working",
     ekyc_status: "verified",

@@ -3,12 +3,12 @@ export const runtime = "nodejs";
 import { getAuth, requireRole } from "@/lib/server/authctx";
 import { getSupabase } from "@/lib/server/db";
 import { ForbiddenError, apiError, json, readBody } from "@/lib/server/http";
-import { ROLE, WORKER_STATUS_HCNS_ALLOWED, hasRole } from "@/lib/server/roles";
+import { BLACKLIST_STATUS, ROLE, WORKER_STATUS_HCNS_ALLOWED, hasRole } from "@/lib/server/roles";
 import { applyWorkerPhonePrivacy, canViewWorkerPhone } from "@/lib/server/worker-privacy";
 
 const WORKER_PATCH = [
   "full_name", "phone", "date_of_birth", "gender", "hometown", "permanent_address",
-  "employment_type", "status", "current_company_id", "current_position", "recruiter_id", "manager_id", "note",
+  "national_id", "employment_type", "status", "current_company_id", "current_position", "recruiter_id", "manager_id", "note",
   "consult_date", "start_work_date", "resign_date",
 ] as const;
 
@@ -29,6 +29,9 @@ const WORKER_HCNS_OPS_PATCH = [
   "note",
 ] as const;
 
+/** Ban lãnh đạo / HCNS / Quản lý: quản lý blacklist — sửa tên, CCCD, trạng thái. */
+const WORKER_BLACKLIST_PATCH = ["full_name", "national_id", "status"] as const;
+
 const PUBLIC_RETURN =
   "id,code,full_name,phone,hometown,employment_type,status,current_position,current_company_id,recruiter_id,manager_id,created_by";
 
@@ -46,6 +49,10 @@ function positiveInt(value: unknown): number | null {
   return n;
 }
 
+function normalizeCccd(value: unknown): string {
+  return String(value ?? "").replace(/\D/g, "").slice(0, 20);
+}
+
 // PATCH /api/v1/workers/:id — Cap nhat ho so NLD
 export async function PATCH(
   req: Request,
@@ -61,25 +68,76 @@ export async function PATCH(
 
     const canFull = hasRole(auth.staffRole, ROLE.workerEdit);
     const canStatus = hasRole(auth.staffRole, ROLE.workerStatusEdit);
-    // Full edit: GD/PGĐ/KT. Ops (trạng thái/chốt): HCNS + Nhân viên/CTV.
-    if (!canFull && !canStatus) {
+    const canBlacklist = hasRole(auth.staffRole, ROLE.blacklistWrite);
+    if (!canFull && !canStatus && !canBlacklist) {
       throw new ForbiddenError("Bạn không có quyền sửa hồ sơ người lao động.");
     }
 
     const raw = await readBody(req);
     let body: Record<string, unknown>;
+
     if (canFull) {
       body = pick(raw, WORKER_PATCH);
+      if (body["national_id"] !== undefined) {
+        const cccd = normalizeCccd(body["national_id"]);
+        if (!/^\d{9,12}$/.test(cccd)) {
+          return json({ error: "invalid", message: "CCCD phải gồm 9–12 chữ số." }, 400);
+        }
+        body["national_id"] = cccd;
+      }
+    } else if (canBlacklist && !canStatus) {
+      // Quản lý (team_lead): chỉ tên / CCCD / trạng thái (đưa vào·gỡ blacklist).
+      body = pick(raw, WORKER_BLACKLIST_PATCH);
+      if (Object.keys(body).length === 0) {
+        return json({ error: "invalid", message: "Không có dữ liệu được phép cập nhật." }, 400);
+      }
+      if (body["national_id"] !== undefined) {
+        const cccd = normalizeCccd(body["national_id"]);
+        if (!/^\d{9,12}$/.test(cccd)) {
+          return json({ error: "invalid", message: "CCCD phải gồm 9–12 chữ số." }, 400);
+        }
+        body["national_id"] = cccd;
+      }
+      if (body["status"] !== undefined) {
+        const status = String(body["status"]);
+        const allowed = new Set<string>([...WORKER_STATUS_HCNS_ALLOWED, BLACKLIST_STATUS, "on_leave"]);
+        if (!allowed.has(status)) {
+          return json({ error: "forbidden", message: "Trạng thái không hợp lệ." }, 403);
+        }
+      }
+      const extra = Object.keys(raw).filter(
+        (key) => raw[key] !== undefined && !(WORKER_BLACKLIST_PATCH as readonly string[]).includes(key),
+      );
+      if (extra.length > 0) {
+        return json({ error: "forbidden", message: "Bạn chỉ được sửa tên, CCCD và trạng thái." }, 403);
+      }
     } else {
-      // HCNS / Nhân viên / CTV: chốt/tái tuyển/sửa trạng thái — ops patch, không full edit.
-      const allowedKeys = WORKER_HCNS_OPS_PATCH;
+      // HCNS / Nhân viên / CTV (+ HCNS cũng có blacklistWrite): ops patch.
+      const allowedKeys: readonly string[] = canBlacklist
+        ? [...WORKER_HCNS_OPS_PATCH, "national_id"]
+        : WORKER_HCNS_OPS_PATCH;
       body = pick(raw, allowedKeys);
       if (Object.keys(body).length === 0) {
         return json({ error: "invalid", message: "Không có dữ liệu được phép cập nhật." }, 400);
       }
+      if (body["national_id"] !== undefined) {
+        if (!canBlacklist) {
+          return json({ error: "forbidden", message: "Bạn không có quyền sửa CCCD." }, 403);
+        }
+        const cccd = normalizeCccd(body["national_id"]);
+        if (!/^\d{9,12}$/.test(cccd)) {
+          return json({ error: "invalid", message: "CCCD phải gồm 9–12 chữ số." }, 400);
+        }
+        body["national_id"] = cccd;
+      }
       if (body["status"] !== undefined) {
         const status = String(body["status"]);
-        if (!(WORKER_STATUS_HCNS_ALLOWED as readonly string[]).includes(status)) {
+        const opsOk = (WORKER_STATUS_HCNS_ALLOWED as readonly string[]).includes(status);
+        const blacklistOk = status === BLACKLIST_STATUS || status === "on_leave";
+        if (status === BLACKLIST_STATUS && !canBlacklist) {
+          return json({ error: "forbidden", message: "Bạn không có quyền đặt trạng thái Blacklist." }, 403);
+        }
+        if (!opsOk && !(canBlacklist && blacklistOk)) {
           return json(
             {
               error: "forbidden",
@@ -90,7 +148,7 @@ export async function PATCH(
         }
       }
       const extra = Object.keys(raw).filter(
-        (key) => raw[key] !== undefined && !(allowedKeys as readonly string[]).includes(key),
+        (key) => raw[key] !== undefined && !allowedKeys.includes(key),
       );
       if (extra.length > 0) {
         return json(
@@ -98,6 +156,11 @@ export async function PATCH(
           403,
         );
       }
+    }
+
+    // GD/PGĐ/KT đặt Blacklist: phải thuộc blacklistWrite (thực tế ELEVATED luôn có).
+    if (canFull && body["status"] === BLACKLIST_STATUS && !canBlacklist) {
+      return json({ error: "forbidden", message: "Bạn không có quyền đặt trạng thái Blacklist." }, 403);
     }
 
     if (body["phone"] !== undefined) {
@@ -120,7 +183,6 @@ export async function PATCH(
       .select(PUBLIC_RETURN)
       .single();
     if (error) {
-      // created_by có thể chưa có trên DB cũ
       if ((error as { code?: string }).code === "42703" || (error as { code?: string }).code === "PGRST204") {
         const again = await getSupabase()
           .from("workers")

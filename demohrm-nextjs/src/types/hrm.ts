@@ -31,7 +31,8 @@ export type WorkerStatus =
   | "Nghỉ việc"
   | "Không đi làm"
   | "Đang tư vấn"
-  | "Ứng viên";
+  | "Ứng viên"
+  | "Blacklist";
 
 export type WorkerType = "Thời vụ" | "Chính thức";
 

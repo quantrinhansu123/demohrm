@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api";
 import {
   VI_STATUS,
   VI_TYPE,
+  checkLiveBlacklistCccd,
   checkLiveDuplicates,
   createLiveCompany,
   createLivePersonnel,
@@ -36,8 +37,9 @@ import { Field, Modal, inputClass } from "@/components/ui/modal";
 import { QueryState } from "@/components/ui/query-state";
 import { CreateWorkerSchema, formatZodErrors } from "@/lib/validation";
 import type { Worker } from "@/types/hrm";
+import { BlacklistPanel } from "@/components/workers/BlacklistPanel";
 
-const STATUSES = ["Đang làm", "Chờ đi làm", "Tạm nghỉ", "Nghỉ việc", "Không đi làm", "Đang tư vấn"];
+const STATUSES = ["Đang làm", "Chờ đi làm", "Tạm nghỉ", "Nghỉ việc", "Không đi làm", "Đang tư vấn", "Blacklist"];
 const HCNS_STATUSES = ["Đang làm", "Chờ đi làm", "Nghỉ việc", "Không đi làm"] as const;
 const TYPES = ["Thời vụ", "Chính thức"];
 const PAGE = 50;
@@ -130,6 +132,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   const canEditStatus = access.canEditWorkerStatus;
   /** Chốt / tái tuyển / sửa trạng thái: GD/PGĐ/KT (full) hoặc HCNS·Nhân viên·CTV (ops). */
   const canCloseWorker = canEdit || canEditStatus;
+  const [listTab, setListTab] = useState<"workers" | "blacklist">("workers");
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
   const [companyFilter, setCompanyFilter] = useState<string[]>([]);
@@ -227,21 +230,45 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
     <section className="absolute inset-0 flex flex-col">
       <ModuleHeader
         title="Hồ sơ Người lao động"
-        sub="Danh sách phân trang từ máy chủ"
+        sub={listTab === "blacklist" ? "Danh sách blacklist — ai cũng xem" : "Danh sách phân trang từ máy chủ"}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" disabled={exporting} onClick={() => void exportExcel()}>
-              {exporting ? "Đang xuất..." : "Xuất Excel"}
-            </Button>
-            {canCreate ? (
-              <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setOpenCreate(true)}>
-                + Thêm người lao động
-              </Button>
+            {listTab === "workers" ? (
+              <>
+                <Button variant="outline" size="sm" disabled={exporting} onClick={() => void exportExcel()}>
+                  {exporting ? "Đang xuất..." : "Xuất Excel"}
+                </Button>
+                {canCreate ? (
+                  <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setOpenCreate(true)}>
+                    + Thêm người lao động
+                  </Button>
+                ) : null}
+              </>
             ) : null}
           </div>
         }
       />
       <div className="page-body">
+        <div className="mb-3 flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 w-fit">
+          <button
+            type="button"
+            onClick={() => setListTab("workers")}
+            className={`rounded-lg px-3 py-1.5 text-[13px] font-semibold ${listTab === "workers" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+          >
+            Hồ sơ NLĐ
+          </button>
+          <button
+            type="button"
+            onClick={() => setListTab("blacklist")}
+            className={`rounded-lg px-3 py-1.5 text-[13px] font-semibold ${listTab === "blacklist" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+          >
+            Blacklist
+          </button>
+        </div>
+        {listTab === "blacklist" ? (
+          <BlacklistPanel />
+        ) : (
+          <>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm theo tên, mã, SĐT" className="w-60 rounded-lg border border-slate-200 px-3 py-1.5 text-[13px] outline-none focus:border-[#0052cc]" />
           <div className="w-56">
@@ -326,6 +353,8 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
             <Button variant="outline" size="xs" disabled={offset + PAGE >= total} onClick={() => setOffset((n) => n + PAGE)}>Sau</Button>
           </div>
         </QueryState>
+          </>
+        )}
       </div>
       {canCreate ? (
         <CreateWorkerModal
@@ -448,6 +477,7 @@ function CreateWorkerModal({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [dupHits, setDupHits] = useState<DuplicateHit[] | null>(null);
+  const [blacklistHit, setBlacklistHit] = useState<{ id: number; code: string; full_name: string; status: string } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
@@ -459,6 +489,7 @@ function CreateWorkerModal({
       setNotice("");
       setFieldErrors({});
       setDupHits(null);
+      setBlacklistHit(null);
       setConfirmed(false);
       setPortraits([]);
       setPortraitFiles([]);
@@ -500,6 +531,7 @@ function CreateWorkerModal({
     setForm((p) => ({ ...p, [k]: v }));
     setFieldErrors((prev) => ({ ...prev, [k]: "" }));
     setDupHits(null);
+    setBlacklistHit(null);
     setConfirmed(false);
   };
 
@@ -638,6 +670,16 @@ function CreateWorkerModal({
       setChecking(true);
       setError("");
       try {
+        const blocked = await checkLiveBlacklistCccd(form.citizenId.trim());
+        if (blocked) {
+          setBlacklistHit(blocked);
+          setConfirmed(true);
+          setNotice(
+            `Cảnh báo blacklist: CCCD trùng hồ sơ ${blocked.code} (${blocked.full_name}) đang ở trạng thái Blacklist. Bấm “Vẫn lưu” nếu vẫn muốn tạo hồ sơ.`,
+          );
+          return;
+        }
+
         const hits = await checkLiveDuplicates({
           national_id: form.citizenId.trim(),
           phone: form.phone.trim(),
@@ -764,7 +806,15 @@ function CreateWorkerModal({
               </Button>
             )}
             <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" disabled={saving || checking || uploadingPhoto} onClick={() => void save()}>
-              {checking ? "Đang kiểm trùng..." : saving ? "Đang lưu..." : uploadingPhoto ? "Đang tải ảnh..." : dupHits && dupHits.length > 0 ? "Vẫn lưu" : "Lưu hồ sơ"}
+              {checking
+                ? "Đang kiểm trùng..."
+                : saving
+                  ? "Đang lưu..."
+                  : uploadingPhoto
+                    ? "Đang tải ảnh..."
+                    : blacklistHit || (dupHits && dupHits.length > 0)
+                      ? "Vẫn lưu"
+                      : "Lưu hồ sơ"}
             </Button>
           </>
         ) : (
@@ -778,7 +828,16 @@ function CreateWorkerModal({
       }
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
-      {notice && <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{notice}</p>}
+      {blacklistHit && !error && (
+        <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[12.5px] text-rose-800">
+          <strong>Cảnh báo blacklist:</strong> CCCD trùng hồ sơ <strong>{blacklistHit.code}</strong> (
+          {blacklistHit.full_name}) đang Blacklist. Có thể bấm “Vẫn lưu” để tiếp tục.
+        </div>
+      )}
+      {notice && !blacklistHit && <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{notice}</p>}
+      {notice && blacklistHit && !error && (
+        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-900">{notice}</p>
+      )}
       {dupHits && dupHits.length > 0 && !error && (
         <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800">
           Nghi trùng. Bấm “Vẫn lưu” nếu đây là người khác.

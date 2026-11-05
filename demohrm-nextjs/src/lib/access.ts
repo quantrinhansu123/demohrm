@@ -26,6 +26,8 @@ export interface Access {
   canEditCompanies: boolean;
   /** GD / PGĐ / Kỹ thuật: sửa hồ sơ nhân sự (HCNS tạo TK / đặt PIN, không sửa hồ sơ) */
   canEditStaff: boolean;
+  /** Ban lãnh đạo / HCNS / Quản lý: thêm·sửa blacklist (ai cũng xem) */
+  canManageBlacklist: boolean;
 }
 
 const ELEVATED: readonly string[] = ["director", "deputy_director", "tech"];
@@ -34,12 +36,14 @@ const FINANCE: readonly string[] = [...ELEVATED, "accountant"];
 const ADVANCES: readonly string[] = [...ELEVATED, "accountant", "recruiter"];
 const COMMISSION: readonly string[] = [...ELEVATED];
 const AUDIT: readonly string[] = [...ELEVATED, "team_lead"];
-const CCCD: readonly string[] = [...ELEVATED, "admin", "recruiter"];
+/** CCCD: Ban lãnh đạo / HCNS / Nhân viên + Quản lý (cần xem·sửa CCCD khi quản lý Blacklist). */
+const CCCD: readonly string[] = [...ELEVATED, "admin", "recruiter", "team_lead"];
 const CLOSE: readonly string[] = [...ELEVATED, "accountant"];
 const ACCOUNT_MANAGE: readonly string[] = [...ELEVATED, "admin"];
 const WORKER_PHONE_FULL: readonly string[] = [...ELEVATED, "admin"];
 const WORKER_STATUS_EDIT: readonly string[] = ["admin", "recruiter", "coordinator"];
 const WORKER_CREATE: readonly string[] = [...ELEVATED, "admin", "recruiter", "coordinator"];
+const BLACKLIST_WRITE: readonly string[] = [...ELEVATED, "admin", "team_lead"];
 
 export function accessFor(role: string): Access {
   return {
@@ -60,6 +64,7 @@ export function accessFor(role: string): Access {
     canEditOrders: ELEVATED.includes(role),
     canEditCompanies: ELEVATED.includes(role),
     canEditStaff: ELEVATED.includes(role),
+    canManageBlacklist: BLACKLIST_WRITE.includes(role),
   };
 }
 

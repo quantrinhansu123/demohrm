@@ -24,6 +24,8 @@ export type WorkerListFilters = {
   companies: string[];
   type: string | null;
   q: string;
+  /** Lọc CCCD (digits) — resolve id từ bảng workers rồi .in("id", …). */
+  nationalId: string | null;
   recruiterId: number | null;
   managerId: number | null;
 };
@@ -53,7 +55,7 @@ function asFilterable(query: unknown): FilterableQuery {
 
 type ParsedValue = string | number;
 
-type ScalarFilterKey = Exclude<keyof WorkerListFilters, "companies">;
+type ScalarFilterKey = Exclude<keyof WorkerListFilters, "companies" | "nationalId">;
 
 type FilterFieldDef = {
   key: ScalarFilterKey;
@@ -147,6 +149,7 @@ export function isWorkerExportRequest(sp: URLSearchParams): boolean {
 export class WorkerListQueryBuilder {
   readonly filters: WorkerListFilters;
   private managerScopedIds: number[] | null = null;
+  private nationalIdScopedIds: number[] | null = null;
   private emptyResult = false;
   private prepared = false;
 
@@ -155,11 +158,13 @@ export class WorkerListQueryBuilder {
   }
 
   static fromSearchParams(sp: URLSearchParams): WorkerListQueryBuilder {
+    const nationalRaw = (sp.get("national_id") ?? "").replace(/\D/g, "");
     const filters: WorkerListFilters = {
       status: null,
       companies: parseCompanyParams(sp),
       type: null,
       q: "",
+      nationalId: nationalRaw || null,
       recruiterId: null,
       managerId: null,
     };
@@ -172,6 +177,11 @@ export class WorkerListQueryBuilder {
       } else if (field.key === "status" || field.key === "type") {
         filters[field.key] = String(parsed);
       }
+    }
+    // Ô tìm trên blacklist: chuỗi số → coi như lọc CCCD.
+    if (!filters.nationalId && filters.q && /^\d{4,12}$/.test(filters.q)) {
+      filters.nationalId = filters.q;
+      filters.q = "";
     }
     return new WorkerListQueryBuilder(filters);
   }
@@ -190,11 +200,24 @@ export class WorkerListQueryBuilder {
         .filter((id) => Number.isInteger(id) && id > 0);
       if (this.managerScopedIds.length === 0) this.emptyResult = true;
     }
+    if (this.filters.nationalId) {
+      let cccdQuery = getSupabase()
+        .from("workers")
+        .select("id")
+        .ilike("national_id", `%${this.filters.nationalId}%`);
+      if (this.filters.status) cccdQuery = cccdQuery.eq("status", this.filters.status);
+      const matched = await cccdQuery.limit(500);
+      if (matched.error) throw matched.error;
+      this.nationalIdScopedIds = (matched.data ?? [])
+        .map((row) => Number(row.id))
+        .filter((id) => Number.isInteger(id) && id > 0);
+      if (this.nationalIdScopedIds.length === 0) this.emptyResult = true;
+    }
     this.prepared = true;
     return this;
   }
 
-  /** true khi filter manager không khớp ai → trả list/export rỗng. */
+  /** true khi filter manager/CCCD không khớp ai → trả list/export rỗng. */
   get isEmpty(): boolean {
     return this.emptyResult;
   }
@@ -218,6 +241,9 @@ export class WorkerListQueryBuilder {
     if (this.managerScopedIds) {
       q = q.in("id", this.managerScopedIds);
     }
+    if (this.nationalIdScopedIds) {
+      q = q.in("id", this.nationalIdScopedIds);
+    }
     return q as T;
   }
 
@@ -228,6 +254,7 @@ export class WorkerListQueryBuilder {
     } else if (this.filters.companies.length > 1) {
       parts.push(`Công ty: ${this.filters.companies.length} đã chọn`);
     }
+    if (this.filters.nationalId) parts.push(`CCCD: ${this.filters.nationalId}`);
     for (const field of WORKER_FILTER_FIELDS) {
       const value = this.filters[field.key];
       if (!hasFilterValue(value as ParsedValue | null | "") || !field.subtitle) continue;

@@ -176,6 +176,7 @@ export const VI_STATUS: Record<string, string> = {
   "Không đi làm": "no_show",
   "Đang tư vấn": "candidate",
   "Ứng viên": "candidate",
+  Blacklist: "blacklisted",
 };
 
 const EN_TYPE: Record<string, WorkerType> = { seasonal: "Thời vụ", official: "Chính thức" };
@@ -395,6 +396,18 @@ export function checkLiveDuplicates(body: {
   return apiPost<DuplicateHit[]>("/workers/check-duplicates", body);
 }
 
+/** Hồ sơ NLĐ đang ở trạng thái Blacklist trùng CCCD (cảnh báo khi tạo mới). */
+export async function checkLiveBlacklistCccd(
+  nationalId: string,
+): Promise<{ id: number; code: string; full_name: string; status: string } | null> {
+  const digits = nationalId.replace(/\D/g, "");
+  if (!digits) return null;
+  const hit = await apiGet<{ id: number; code: string; full_name: string; status: string } | null>(
+    `/workers/check-blacklist?national_id=${encodeURIComponent(digits)}`,
+  );
+  return hit;
+}
+
 export function dupFieldLabel(field: string): string {
   if (field === "worker_code") return "Mã NLĐ";
   if (field === "national_id") return "CCCD";
@@ -408,6 +421,7 @@ export function updateLiveWorker(id: number, body: {
   full_name?: string;
   phone?: string;
   hometown?: string | null;
+  national_id?: string;
   current_position?: string;
   employment_type?: string;
   status?: string;

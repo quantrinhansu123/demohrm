@@ -13,7 +13,8 @@ export const ROLE = {
   finance: [...ELEVATED, "accountant"],
   commission: [...ELEVATED],
   audit: [...ELEVATED, "team_lead"],
-  cccd: [...ELEVATED, "admin", "recruiter"],
+  /** CCCD: + team_lead vì Quản lý được sửa CCCD trên Blacklist. */
+  cccd: [...ELEVATED, "admin", "recruiter", "team_lead"],
   closePeriod: [...ELEVATED, "accountant"],
   /** Xóa bản ghi: chỉ Ban lãnh đạo + Kỹ thuật */
   deleteRecords: [...ELEVATED],
@@ -36,10 +37,15 @@ export const ROLE = {
   companyWrite: [...ELEVATED],
   /** Sửa hồ sơ nhân sự: chỉ Ban lãnh đạo + Kỹ thuật (HCNS không được; vẫn tạo TK / đặt PIN) */
   staffEdit: [...ELEVATED],
+  /** Blacklist: thêm/sửa — Ban lãnh đạo + Kỹ thuật + HCNS + Quản lý (team_lead). Ai cũng xem. */
+  blacklistWrite: [...ELEVATED, "admin", "team_lead"],
 } as const;
 
-/** Trạng thái HCNS được phép gán (đi làm / chờ / nghỉ / không đi làm / tư vấn khi tái tuyển). */
+/** Trạng thái HCNS được phép gán (đi làm / chờ / nghỉ / không đi làm / tư vấn khi tái tuyển). Không gồm Blacklist. */
 export const WORKER_STATUS_HCNS_ALLOWED = ["working", "waiting_start", "resigned", "no_show", "candidate"] as const;
+
+/** Trạng thái Blacklist — chỉ Ban lãnh đạo / HCNS / Quản lý được gán hoặc gỡ. */
+export const BLACKLIST_STATUS = "blacklisted" as const;
 
 export function hasRole(role: string | undefined, allowed: readonly string[]): boolean {
   return Boolean(role) && allowed.includes(role as string);

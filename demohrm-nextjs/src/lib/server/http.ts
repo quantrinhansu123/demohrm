@@ -31,7 +31,21 @@ export function apiError(e: unknown): Response {
       { status: 400 },
     );
   }
-  if (err.code === "22P02") return Response.json({ error: "invalid", message: "Giá trị không nằm trong danh mục cho phép." }, { status: 400 });
+  if (err.code === "22P02") {
+    const raw = (err.message ?? "").trim();
+    console.error("invalid_enum", raw);
+    const isBlacklist =
+      /blacklisted/i.test(raw) || /invalid input value for enum/i.test(raw);
+    return Response.json(
+      {
+        error: "invalid",
+        message: isBlacklist
+          ? "CSDL chưa nhận trạng thái Blacklist. Chạy supabase/worker_status_blacklisted.sql trong Supabase SQL editor."
+          : "Giá trị không nằm trong danh mục cho phép.",
+      },
+      { status: 400 },
+    );
+  }
   if (err.code === "22003") return Response.json({ error: "numeric_overflow", message: "Dữ liệu số vượt giới hạn (tọa độ địa điểm hoặc khoảng cách chấm công). Kiểm tra tọa độ địa điểm làm việc." }, { status: 400 });
   if (err.code === "23P01") return Response.json({ error: "overlap", message: "Hai đợt làm việc chồng thời gian." }, { status: 409 });
   if (err.code === "23503") return Response.json({ error: "foreign_key", message: "Tham chiếu không tồn tại hoặc hồ sơ đang được dùng." }, { status: 400 });

@@ -173,6 +173,33 @@ test("API chỉ cho Ban lãnh đạo và Kỹ thuật quản lý hoa hồng", as
   }
 });
 
+test("API Blacklist: xem check ai cũng được; chỉ Ban lãnh đạo/HCNS/Quản lý được đặt trạng thái", async ({
+  request,
+}, testInfo) => {
+  const check = await request.get("/api/v1/workers/check-blacklist?national_id=001090000001", {
+    headers: headers("recruiter"),
+  });
+  await evidence(testInfo, "recruiter-check-blacklist", check.status(), await readJson(check));
+  expect(check.status(), "recruiter GET check-blacklist").not.toBe(403);
+
+  const blocked = await request.patch("/api/v1/workers/999999", {
+    headers: headers("recruiter"),
+    data: { status: "blacklisted" },
+  });
+  await evidence(testInfo, "recruiter-set-blacklist", blocked.status(), await readJson(blocked));
+  expect(blocked.status(), "recruiter PATCH blacklisted").toBe(403);
+
+  for (const role of ["director", "admin", "team_lead"] as Role[]) {
+    const ok = await request.patch("/api/v1/workers/999999", {
+      headers: headers(role),
+      data: { status: "blacklisted", full_name: "Kiểm thử blacklist", national_id: "001090000099" },
+    });
+    await evidence(testInfo, `${role}-set-blacklist`, ok.status(), await readJson(ok));
+    // Không 403 quyền — id giả thường 404.
+    expect(ok.status(), `${role} PATCH blacklisted`).not.toBe(403);
+  }
+});
+
 test("API chỉ cho Ban lãnh đạo và Kỹ thuật xóa dữ liệu", async ({ request }, testInfo) => {
   const endpoints = [
     "/api/v1/staff/999999",

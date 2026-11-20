@@ -435,14 +435,14 @@ export function updateLiveWorker(id: number, body: {
   full_name?: string;
   phone?: string;
   hometown?: string | null;
-  national_id?: string;
+  national_id?: string | null;
   current_position?: string;
   employment_type?: string;
   status?: string;
   note?: string | null;
   recruiter_id?: number;
-  manager_id?: number;
-  current_company_id?: number;
+  manager_id?: number | null;
+  current_company_id?: number | null;
   consult_date?: string | null;
   start_work_date?: string | null;
   resign_date?: string | null;

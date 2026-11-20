@@ -41,6 +41,7 @@ type WorkerExtra = {
   id: number;
   manager_id: number | null;
   created_by?: number | null;
+  created_at?: string | null;
   consult_date?: string | null;
   start_work_date?: string | null;
   resign_date?: string | null;
@@ -48,9 +49,11 @@ type WorkerExtra = {
 
 const MISSING_COLUMN = new Set(["PGRST204", "42703"]);
 
-// Mot query lay manager + created_by + 3 ngay; thieu cot (chua chay migration) thi lui ve cot cu.
+// Mot query lay manager + created_by + created_at + 3 ngay; thieu cot (chua chay migration) thi lui ve cot cu.
 async function loadWorkerExtras(ids: number[]): Promise<WorkerExtra[]> {
   for (const columns of [
+    "id,manager_id,created_by,created_at,consult_date,start_work_date,resign_date",
+    "id,manager_id,created_by,created_at",
     "id,manager_id,created_by,consult_date,start_work_date,resign_date",
     "id,manager_id,created_by",
     "id,manager_id,consult_date,start_work_date,resign_date",
@@ -94,7 +97,7 @@ export async function GET(req: Request): Promise<Response> {
     const builder = await WorkerListQueryBuilder.fromSearchParams(sp).prepare();
 
     if (isWorkerExportRequest(sp)) {
-      return await buildWorkersExcelResponse(builder, canViewCccd);
+      return await buildWorkersExcelResponse(builder, canViewCccd, ctx.staffRole, ctx.staffId);
     }
 
     const { limit, offset } = clampPage(sp);
@@ -103,7 +106,7 @@ export async function GET(req: Request): Promise<Response> {
     }
 
     const q = builder.apply(
-      getSupabase().from("v_workers_public").select("*", { count: "exact" }).order("code"),
+      getSupabase().from("v_workers_public").select("*", { count: "exact" }).order("id", { ascending: false }),
     );
 
     const { data, error, count } = await q.range(offset, offset + limit - 1);
@@ -127,6 +130,7 @@ export async function GET(req: Request): Promise<Response> {
           ...row,
           manager_id: rowManagerId,
           created_by: d?.created_by ?? null,
+          created_at: d?.created_at ?? null,
           manager_name: rowManagerId ? names.get(rowManagerId) ?? null : null,
           consult_date: d?.consult_date ?? null,
           start_work_date: d?.start_work_date ?? null,
@@ -155,6 +159,17 @@ export async function POST(req: Request): Promise<Response> {
     const ctx = getAuth(req);
     requireRole(ctx, ...ROLE.workerCreate);
     const body = pick(await readBody(req), WORKER_INSERT);
+    // Cho phép tạo tối thiểu: CCCD / công ty / phụ trách có thể trống lúc tư vấn.
+    for (const key of ["national_id", "old_id_number"] as const) {
+      const value = body[key];
+      if (typeof value === "string" && !value.trim()) body[key] = null;
+    }
+    if (!body["full_name"] || (typeof body["full_name"] === "string" && !String(body["full_name"]).trim())) {
+      body["full_name"] = "Chưa cập nhật";
+    }
+    for (const key of ["current_company_id", "manager_id"] as const) {
+      if (body[key] === "" || body[key] === undefined) body[key] = null;
+    }
     const blocking = await findBlockingDuplicate(body);
     if (blocking) return json({ error: "duplicate", message: blocking.message }, 409);
     if (ctx.staffId) body["created_by"] = Number(ctx.staffId);

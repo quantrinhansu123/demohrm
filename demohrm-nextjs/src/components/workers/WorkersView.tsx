@@ -16,6 +16,7 @@ import {
   dupFieldLabel,
   fetchLiveOrders,
   fetchLiveWorkers,
+  fetchWorkerPortraits,
   isRehirableDuplicate,
   toWorker,
   updateLiveWorker,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/live";
 import type { DuplicateHit, LiveCompany, LiveStaff } from "@/lib/live";
 import { downloadBlob } from "@/lib/download";
+import { buildProfileImagesDocx } from "@/lib/profile-images-docx";
 import { maskCitizenId, workerStatusTone } from "@/lib/format";
 import { workerStatusLabel } from "@/lib/worker-status";
 import { SuggestInput } from "@/components/ui/suggest-input";
@@ -74,10 +76,48 @@ function isoDate(value: string): string | null | "invalid" {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "invalid";
 }
 
+function birthYearToDob(value: string): string | null | "invalid" {
+  const text = value.trim();
+  if (!text) return null;
+  if (!/^\d{4}$/.test(text)) return "invalid";
+  const year = Number(text);
+  const max = new Date().getFullYear();
+  if (year < 1940 || year > max) return "invalid";
+  return `${text}-01-01`;
+}
+
 function showDate(value?: string | null): string {
   if (!value) return "—";
   const [y, m, d] = value.slice(0, 10).split("-");
   return y && m && d ? `${d}/${m}/${y}` : value;
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Không đọc được ảnh hồ sơ."));
+    reader.onerror = () => reject(new Error("Không đọc được ảnh hồ sơ."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function profileImageDataUrl(blob: Blob): Promise<string> {
+  if (blob.type === "image/png" || blob.type === "image/jpeg") return blobToDataUrl(blob);
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Không xử lý được ảnh hồ sơ.");
+    context.drawImage(bitmap, 0, 0);
+    const jpeg = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Không chuyển đổi được ảnh hồ sơ.")), "image/jpeg", 0.92);
+    });
+    return blobToDataUrl(jpeg);
+  } finally {
+    bitmap.close();
+  }
 }
 
 function todayIso(): string {
@@ -138,6 +178,8 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   const [companyFilter, setCompanyFilter] = useState<string[]>([]);
   const [status, setStatus] = useState("");
   const [type, setType] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
   const [saleId, setSaleId] = useState<number | null>(null);
   const [managerId, setManagerId] = useState<number | null>(null);
   const [offset, setOffset] = useState(0);
@@ -145,10 +187,14 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
   const [rows, setRows] = useState<Worker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exportError, setExportError] = useState("");
+  const [workersWithoutPortrait, setWorkersWithoutPortrait] = useState<Array<{ id: number; code: string; name: string }>>([]);
   const [openCreate, setOpenCreate] = useState(false);
   const [editing, setEditing] = useState<Worker | null>(null);
   const [closing, setClosing] = useState<Worker | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportingProfiles, setExportingProfiles] = useState(false);
+  const [selectedWorkerIds, setSelectedWorkerIds] = useState<number[]>([]);
 
   useEffect(() => {
     const t = setTimeout(() => setQDebounced(q), 300);
@@ -157,7 +203,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
 
   useEffect(() => {
     setOffset(0);
-  }, [qDebounced, companyFilter, status, type, saleId, managerId]);
+  }, [qDebounced, companyFilter, status, type, saleId, managerId, createdFrom, createdTo]);
 
   const staffOptions = useMemo(
     () => [...staff].sort((a, b) => a.full_name.localeCompare(b.full_name, "vi")),
@@ -179,6 +225,8 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
         q: qDebounced || undefined,
         recruiterId: saleId ?? undefined,
         managerId: managerId ?? undefined,
+        createdFrom: createdFrom || undefined,
+        createdTo: createdTo || undefined,
         limit: PAGE,
         offset,
       });
@@ -190,7 +238,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
     } finally {
       setLoading(false);
     }
-  }, [companyFilter, status, type, saleId, managerId, qDebounced, offset]);
+  }, [companyFilter, status, type, saleId, managerId, createdFrom, createdTo, qDebounced, offset]);
 
   useEffect(() => {
     void reload();
@@ -208,7 +256,8 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
 
   const exportExcel = async () => {
     setExporting(true);
-    setError("");
+    setExportError("");
+    setWorkersWithoutPortrait([]);
     try {
       const { blob, filename } = await downloadLiveWorkersExcel({
         companies: companyFilter.length > 0 ? companyFilter : undefined,
@@ -217,12 +266,94 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
         q: qDebounced || undefined,
         recruiterId: saleId ?? undefined,
         managerId: managerId ?? undefined,
+        createdFrom: createdFrom || undefined,
+        createdTo: createdTo || undefined,
       });
       downloadBlob(blob, filename || "nguoi-lao-dong.xlsx");
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Xuất Excel thất bại.");
+      setExportError(e instanceof ApiError ? e.message : "Xuất Excel thất bại.");
     } finally {
       setExporting(false);
+    }
+  };
+
+  const exportProfileImages = async (selectedOnly: boolean) => {
+    setExportingProfiles(true);
+    setExportError("");
+    setWorkersWithoutPortrait([]);
+    try {
+      let workers = selectedOnly
+        ? rows.filter((worker) => selectedWorkerIds.includes(worker.id))
+        : [];
+      if (!selectedOnly) {
+        const gathered: typeof rows = [];
+        let pageOffset = 0;
+        let pageTotal = total;
+        do {
+          const page = await fetchLiveWorkers({
+            companies: companyFilter.length ? companyFilter : undefined,
+            statusEn: status ? VI_STATUS[status] : undefined,
+            typeEn: type ? VI_TYPE[type] : undefined,
+            q: qDebounced || undefined,
+            recruiterId: saleId ?? undefined,
+            managerId: managerId ?? undefined,
+            createdFrom: createdFrom || undefined,
+            createdTo: createdTo || undefined,
+            limit: 200,
+            offset: pageOffset,
+          });
+          gathered.push(...page.rows.map(toWorker));
+          pageTotal = page.total;
+          pageOffset += page.limit;
+          if (gathered.length >= 5000) break;
+        } while (pageOffset < pageTotal);
+        workers = gathered;
+      }
+      const images: Array<{ workerCode: string; workerName: string; dataUrl: string }> = [];
+      const missingPortrait: Array<{ id: number; code: string; name: string }> = [];
+      for (const worker of workers) {
+        const imageCountBefore = images.length;
+        const { documents } = await fetchWorkerPortraits(worker.id);
+        for (const document of documents) {
+          const response = await fetch(document.url);
+          if (!response.ok) throw new Error(`Không tải được ảnh hồ sơ của ${worker.code}.`);
+          const dataUrl = await profileImageDataUrl(await response.blob());
+          images.push({ workerCode: worker.code, workerName: worker.name, dataUrl });
+        }
+        if (documents.length === 0) {
+          // Hỗ trợ ảnh cũ được lưu cục bộ trước khi hồ sơ ảnh chuyển sang Supabase.
+          const raw = localStorage.getItem(`tw-worker-profile:${worker.code}`);
+          if (raw) {
+            try {
+              const saved = JSON.parse(raw) as { images?: unknown[] };
+              for (const image of saved.images ?? []) {
+                if (typeof image === "string" && image.startsWith("data:image/")) {
+                  images.push({ workerCode: worker.code, workerName: worker.name, dataUrl: image });
+                }
+              }
+            } catch {
+              // Bỏ qua dữ liệu hồ sơ lưu lỗi; tiếp tục xuất các ảnh đọc được.
+            }
+          }
+        }
+        if (images.length === imageCountBefore) {
+          missingPortrait.push({ id: worker.id, code: worker.code, name: worker.name });
+        }
+      }
+      setWorkersWithoutPortrait(missingPortrait);
+      if (images.length === 0) {
+        setExportError("Không tìm thấy ảnh hồ sơ. Danh sách người lao động chưa có ảnh:");
+        return;
+      }
+      const blob = await buildProfileImagesDocx(images);
+      downloadBlob(blob, `anh-ho-so-nhan-su_${new Date().toISOString().slice(0, 10)}.docx`);
+      if (missingPortrait.length > 0) {
+        setExportError(`Đã xuất ${images.length} ảnh. Có ${missingPortrait.length} người lao động chưa có ảnh hồ sơ:`);
+      }
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : "Xuất ảnh hồ sơ thất bại.");
+    } finally {
+      setExportingProfiles(false);
     }
   };
 
@@ -238,6 +369,16 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                 <Button variant="outline" size="sm" disabled={exporting} onClick={() => void exportExcel()}>
                   {exporting ? "Đang xuất..." : "Xuất Excel"}
                 </Button>
+                {access.canExportWorkerCccd && <>
+                  <Button variant="outline" size="sm" disabled={exportingProfiles || selectedWorkerIds.length === 0}
+                    onClick={() => void exportProfileImages(true)}>
+                    {exportingProfiles ? "Đang tạo DOC..." : `Xuất ảnh đã chọn (${selectedWorkerIds.length})`}
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={exportingProfiles || total === 0}
+                    onClick={() => void exportProfileImages(false)}>
+                    {exportingProfiles ? "Đang tạo DOC..." : "Xuất tất cả ảnh hồ sơ"}
+                  </Button>
+                </>}
                 {canCreate ? (
                   <Button size="sm" className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => setOpenCreate(true)}>
                     + Thêm người lao động
@@ -307,12 +448,53 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
               showAvatar={false}
             />
           </div>
+          <label className="flex items-center gap-2 text-[12px] text-slate-500">
+            <span>Ngày nhập từ</span>
+            <input
+              type="date"
+              value={createdFrom}
+              max={createdTo || undefined}
+              onChange={(event) => setCreatedFrom(event.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-800"
+              aria-label="Ngày nhập từ"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-[12px] text-slate-500">
+            <span>Đến ngày</span>
+            <input
+              type="date"
+              value={createdTo}
+              min={createdFrom || undefined}
+              onChange={(event) => setCreatedTo(event.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[13px] text-slate-800"
+              aria-label="Ngày nhập đến ngày"
+            />
+          </label>
           <span className="ml-auto text-[13px] text-slate-500">Tổng số: <strong className="text-slate-900">{total}</strong></span>
         </div>
+        {exportError && (
+          <section role="alert" className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+            <p className="font-medium">{exportError}</p>
+            {workersWithoutPortrait.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer font-semibold underline">
+                  Xem {workersWithoutPortrait.length} người lao động chưa có ảnh
+                </summary>
+                <ul className="mt-2 max-h-52 list-disc space-y-1 overflow-y-auto pl-5">
+                  {workersWithoutPortrait.map((worker) => (
+                    <li key={worker.id}>{worker.name} ({worker.code})</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </section>
+        )}
         <QueryState loading={loading} error={error}>
-          <DataTable headers={["Ảnh & Họ và tên", "Số ĐT", "Quê quán", "CCCD / Định danh", "Công ty & Vị trí", "Loại hình", "Sale", "Phụ trách", "Ngày tư vấn", "Ngày vào làm", "Ngày nghỉ", "Trạng thái", "Thao tác"]}>
+          <DataTable headers={[...(access.canExportWorkerCccd ? ["Chọn"] : []), "Ảnh & Họ và tên", "Số ĐT", "Nơi ở", "CCCD / Định danh", "Công ty & Vị trí", "Loại hình", "NV tư vấn", "Phụ trách", "Ngày nhập", "Ngày tư vấn", "Ngày vào làm", "Ngày nghỉ", "Trạng thái", "Thao tác"]}>
             {rows.map((w) => (
               <tr key={w.id}>
+                {access.canExportWorkerCccd && <td><input type="checkbox" aria-label={`Chọn hồ sơ ${w.name}`} checked={selectedWorkerIds.includes(w.id)}
+                  onChange={() => setSelectedWorkerIds((selected) => selected.includes(w.id) ? selected.filter((id) => id !== w.id) : [...selected, w.id])} /></td>}
                 <td>
                   <button type="button" onClick={() => onViewDetail(w)} className="flex items-center gap-2">
                     <Avatar tone={w.avatarColor} size="sm">{w.initials}</Avatar>
@@ -320,12 +502,13 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                   </button>
                 </td>
                 <td><code className="text-[13px]">{w.phone}</code></td>
-                <td>{w.hometown}</td>
+                <td>{w.hometown || "—"}</td>
                 <td><code>{maskCitizenId(w.citizenId, access.canViewCccd)}</code></td>
                 <td><strong>{w.company}</strong> <span className="text-[11.5px] text-slate-400">({w.position})</span></td>
                 <td className="w-[1%] whitespace-nowrap"><StatusPill tone={w.type === "Thời vụ" ? "warning" : "info"}>{w.type}</StatusPill></td>
                 <td>{w.recruiter || "—"}</td>
                 <td>{w.manager || "—"}</td>
+                <td className="whitespace-nowrap">{showDate(w.createdAt)}</td>
                 <td className="whitespace-nowrap">{showDate(w.consultDate)}</td>
                 <td className="whitespace-nowrap">{showDate(w.startWorkDate)}</td>
                 <td className="whitespace-nowrap">{showDate(w.resignDate)}</td>
@@ -345,7 +528,7 @@ export function WorkersView({ onViewDetail }: { onViewDetail: (w: Worker) => voi
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && <EmptyRow colSpan={13} text="Không tìm thấy hồ sơ phù hợp" />}
+            {rows.length === 0 && <EmptyRow colSpan={access.canExportWorkerCccd ? 14 : 13} text="Không tìm thấy hồ sơ phù hợp" />}
           </DataTable>
           <div className="mt-3 flex items-center justify-end gap-2 text-[13px]">
             <Button variant="outline" size="xs" disabled={offset === 0} onClick={() => setOffset((n) => Math.max(0, n - PAGE))}>Trước</Button>
@@ -438,9 +621,14 @@ function WorkerMenu({
           {canCloseWorker && worker.status === "Đang tư vấn" && (
             <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onCloseDeal(worker); }}>Chốt</button>
           )}
-          {(canEdit || canEditStatus) && (
+          {canEdit && (
             <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(worker); }}>
-              {canEdit ? "Sửa" : "Sửa trạng thái"}
+              Sửa
+            </button>
+          )}
+          {!canEdit && canEditStatus && worker.status !== "Đang tư vấn" && (
+            <button type="button" className="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-50" onClick={() => { setOpen(false); onEdit(worker); }}>
+              Sửa trạng thái
             </button>
           )}
           {canDelete && (
@@ -463,14 +651,15 @@ function CreateWorkerModal({
 }) {
   const { companies, staff, periodCode, reloadCatalog } = useApp();
   const { access } = useSession();
-  const [form, setForm] = useState({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "", consultDate: todayIso(), startWorkDate: "" });
+  const [form, setForm] = useState({ name: "", phone: "", citizenId: "", birthYear: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "", consultDate: todayIso(), startWorkDate: "" });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [portraits, setPortraits] = useState<string[]>([]);
   const [portraitFiles, setPortraitFiles] = useState<File[]>([]);
+  const [uploadedPortraitCount, setUploadedPortraitCount] = useState(0);
   const [orderCompanies, setOrderCompanies] = useState<string[]>([]);
   const [knownWorkers, setKnownWorkers] = useState<Worker[]>([]);
   const [step, setStep] = useState<"consult" | "close">("consult");
-  const [created, setCreated] = useState<{ id: number; code: string } | null>(null);
+  const [created, setCreated] = useState<{ id: number; code: string; managerId: number | null } | null>(null);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -493,7 +682,8 @@ function CreateWorkerModal({
       setConfirmed(false);
       setPortraits([]);
       setPortraitFiles([]);
-      setForm({ name: "", phone: "", citizenId: "", dob: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "", consultDate: todayIso(), startWorkDate: "" });
+      setUploadedPortraitCount(0);
+      setForm({ name: "", phone: "", citizenId: "", birthYear: "", hometown: "", company: "", type: "Thời vụ", source: "", sale: "", manager: "", consultDate: todayIso(), startWorkDate: "" });
     }
   }
   useEffect(() => {
@@ -585,13 +775,13 @@ function CreateWorkerModal({
 
   const rehirableHits = (dupHits ?? []).filter((h) => h.level === "exact" && isRehirableDuplicate(h));
 
-  // Công ty, sale, phụ trách: tạo mới nếu chưa có (dùng chung cho tạo hồ sơ và tái tuyển).
+  // Sale bắt buộc; công ty / phụ trách chỉ tạo khi đã nhập (dùng chung tạo hồ sơ và tái tuyển).
   const resolveAssignees = async () => {
     const pins: string[] = [];
     const known = new Map<string, number>();
-    const companyId = await ensureCompanyId(companies, form.company);
+    const companyId = form.company.trim() ? await ensureCompanyId(companies, form.company) : null;
     const recruiterId = await ensureStaffId(staff, known, form.sale, "Sale", pins);
-    const managerId = await ensureStaffId(staff, known, form.manager, "Phụ trách", pins);
+    const managerId = form.manager.trim() ? await ensureStaffId(staff, known, form.manager, "Phụ trách", pins) : null;
     return { companyId, recruiterId, managerId, pins };
   };
 
@@ -608,9 +798,9 @@ function CreateWorkerModal({
       const { companyId, recruiterId, managerId, pins } = await resolveAssignees();
       const createdRow = await createLiveWorker({
         note: form.source.trim() ? `Nguồn: ${form.source.trim()}` : null,
-        full_name: form.name.trim(),
+        full_name: form.name.trim() || "Chưa cập nhật",
         phone: form.phone.trim(),
-        national_id: form.citizenId.trim(),
+        national_id: form.citizenId.trim() || null,
         date_of_birth: dob,
         hometown: form.hometown.trim() || null,
         employment_type: VI_TYPE[form.type] ?? form.type.trim(),
@@ -625,8 +815,11 @@ function CreateWorkerModal({
       if (portraitFiles.length > 0) {
         setUploadingPhoto(true);
         try {
-          for (const file of portraitFiles) {
+          for (let index = 0; index < portraitFiles.length; index += 1) {
+            const file = portraitFiles[index];
+            if (!file) continue;
             await uploadWorkerPortrait(createdRow.id, file);
+            setUploadedPortraitCount(index + 1);
           }
           setNotice((prev) => `${prev ? `${prev} ` : ""}Đã tải ${portraitFiles.length} ảnh hồ sơ.`);
         } catch (e) {
@@ -635,7 +828,7 @@ function CreateWorkerModal({
           setUploadingPhoto(false);
         }
       }
-      setCreated({ id: createdRow.id, code: createdRow.code });
+      setCreated({ id: createdRow.id, code: createdRow.code, managerId });
       onCreated();
       if (allowCloseDeal) {
         setStep("close");
@@ -656,9 +849,9 @@ function CreateWorkerModal({
       return;
     }
     setFieldErrors({});
-    const dob = isoDate(form.dob);
-    if (dob === "invalid") {
-      setFieldErrors({ dob: "Ngày sinh theo dạng YYYY-MM-DD." });
+    const dob = birthYearToDob(form.birthYear);
+    if (dob === "invalid" || !dob) {
+      setFieldErrors({ birthYear: "Năm sinh gồm 4 chữ số hợp lệ." });
       return;
     }
     const dates = parseConsultDates(form);
@@ -666,24 +859,31 @@ function CreateWorkerModal({
       setFieldErrors({ [dates.invalidField]: "Ngày theo dạng YYYY-MM-DD." });
       return;
     }
+    if (!dates.consultDate) {
+      setFieldErrors({ consultDate: "Ngày tư vấn không được để trống." });
+      return;
+    }
     if (!confirmed) {
       setChecking(true);
       setError("");
       try {
-        const blocked = await checkLiveBlacklistCccd(form.citizenId.trim());
-        if (blocked) {
-          setBlacklistHit(blocked);
-          setConfirmed(true);
-          setNotice(
-            `Cảnh báo blacklist: CCCD trùng hồ sơ ${blocked.code} (${blocked.full_name}) đang ở trạng thái Blacklist. Bấm “Vẫn lưu” nếu vẫn muốn tạo hồ sơ.`,
-          );
-          return;
+        const cccd = form.citizenId.trim();
+        if (cccd) {
+          const blocked = await checkLiveBlacklistCccd(cccd);
+          if (blocked) {
+            setBlacklistHit(blocked);
+            setConfirmed(true);
+            setNotice(
+              `Cảnh báo blacklist: CCCD trùng hồ sơ ${blocked.code} (${blocked.full_name}) đang ở trạng thái Blacklist. Bấm “Vẫn lưu” nếu vẫn muốn tạo hồ sơ.`,
+            );
+            return;
+          }
         }
 
         const hits = await checkLiveDuplicates({
-          national_id: form.citizenId.trim(),
+          national_id: cccd || undefined,
           phone: form.phone.trim(),
-          full_name: form.name.trim(),
+          full_name: form.name.trim() || undefined,
           date_of_birth: dob,
         });
         const exact = hits.filter((h) => h.level === "exact");
@@ -737,7 +937,7 @@ function CreateWorkerModal({
     try {
       const { companyId, recruiterId, managerId, pins } = await resolveAssignees();
       await updateLiveWorker(target.matched_worker_id, {
-        full_name: form.name.trim(),
+        full_name: form.name.trim() || "Chưa cập nhật",
         phone: form.phone.trim(),
         hometown: form.hometown.trim() || null,
         current_position: "",
@@ -752,7 +952,7 @@ function CreateWorkerModal({
       });
       await announceNewStaff(pins);
       setNotice((prev) => `${prev ? `${prev} ` : ""}Đã mở lại hồ sơ ${target.matched_code} (${target.matched_name}) sang Đang tư vấn.`);
-      setCreated({ id: target.matched_worker_id, code: target.matched_code });
+      setCreated({ id: target.matched_worker_id, code: target.matched_code, managerId });
       setStep("close");
       onCreated();
     } catch (e) {
@@ -764,25 +964,40 @@ function CreateWorkerModal({
 
   const closeDeal = async () => {
     if (!created) return;
+    if (!form.company.trim()) {
+      setError("Chọn công ty trước khi chuyển sang Chờ đi làm.");
+      return;
+    }
     if (!form.manager.trim()) {
       setError("Nhập người phụ trách.");
       return;
     }
     setSaving(true);
+    setUploadingPhoto(true);
     setError("");
     try {
+      for (let index = uploadedPortraitCount; index < portraitFiles.length; index += 1) {
+        const file = portraitFiles[index];
+        if (!file) continue;
+        await uploadWorkerPortrait(created.id, file);
+        setUploadedPortraitCount(index + 1);
+      }
       const pins: string[] = [];
-      const managerId = await ensureStaffId(staff, new Map(), form.manager, "Phụ trách", pins);
+      const known = new Map<string, number>();
+      const companyId = await ensureCompanyId(companies, form.company);
+      const managerId = await ensureStaffId(staff, known, form.manager, "Phụ trách", pins);
       await updateLiveWorker(created.id, {
         status: "waiting_start",
+        current_company_id: companyId,
         manager_id: managerId,
       });
-      if (pins.length > 0) await reloadCatalog();
+      await announceNewStaff(pins);
       onCreated();
       onClose();
     } catch (e) {
       setError(errorText(e, "Chốt thất bại."));
     } finally {
+      setUploadingPhoto(false);
       setSaving(false);
     }
   };
@@ -846,38 +1061,78 @@ function CreateWorkerModal({
       {step === "close" ? (
         <div className="grid gap-3">
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
-            Đã lưu hồ sơ <strong>{form.name}</strong> ở giai đoạn Đang tư vấn. Chọn hoặc gõ người phụ trách để chốt.
+            Đã lưu hồ sơ <strong>{form.name.trim() || "Chưa cập nhật"}</strong> ở giai đoạn Đang tư vấn. Bổ sung công ty và phụ trách để chốt.
           </p>
-          <Field label="Phụ trách *">
-            <SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" />
+          <p className="rounded-lg bg-sky-50 px-3 py-2 text-[13px] text-sky-800">
+            Trước khi chuyển sang <strong>Chờ đi làm</strong>, hồ sơ cần có ảnh chân dung, công ty và người phụ trách.
+          </p>
+          <Field label="Công ty *">
+            <SuggestInput
+              value={form.company}
+              onChange={(company) => set("company", company)}
+              suggestions={companyNames}
+              createLabel="Thêm mới"
+              placeholder="Chọn hoặc gõ tên công ty"
+              emptyLimit={20}
+            />
           </Field>
+          <Field label="Phụ trách *">
+            <SuggestInput
+              value={form.manager}
+              onChange={(manager) => set("manager", manager)}
+              suggestions={staffNames}
+              createLabel="Thêm mới"
+              placeholder="Chọn hoặc gõ tên mới"
+            />
+          </Field>
+          {access.canManageWorkerPortrait && (
+            <div>
+              <label className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ * (cần ít nhất 1 ảnh)</label>
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                event.target.value = "";
+                void addPortraitImages(files);
+              }} />
+              <p className="mt-1 text-[12px] text-slate-500">Đã chọn {portraitFiles.length} ảnh; đã tải lên {uploadedPortraitCount} ảnh.</p>
+            </div>
+          )}
         </div>
       ) : (
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 rounded-lg bg-sky-50 px-3 py-2 text-[13px] text-sky-800">
-          Giai đoạn: <strong>Đang tư vấn</strong>. Công ty, loại hình, nguồn, sale và phụ trách có thể chọn gợi ý hoặc gõ giá trị mới.
+          Giai đoạn: <strong>Đang tư vấn</strong>. Bắt buộc: SĐT, năm sinh, nơi ở, ngày tư vấn, nhân viên tư vấn. Các trường còn lại có thể bổ sung sau.
         </div>
         <Field label="Mã NLĐ"><input className={inputClass} value="Tự động khi lưu" readOnly /></Field>
-        <Field label="Họ và tên *">
-          <input className={`${inputClass} ${fieldErrors.name ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.name} onChange={(e) => set("name", e.target.value)} />
+        <Field label="Họ và tên">
+          <input className={`${inputClass} ${fieldErrors.name ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Có thể để trống" />
           {fieldErrors.name && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.name}</p>}
         </Field>
         <Field label="Số điện thoại *">
           <input className={`${inputClass} ${fieldErrors.phone ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.phone} onChange={(e) => set("phone", e.target.value)} />
           {fieldErrors.phone && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.phone}</p>}
         </Field>
-        <Field label="CCCD *">
-          <input className={`${inputClass} ${fieldErrors.citizenId ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.citizenId} onChange={(e) => set("citizenId", e.target.value)} />
+        <Field label="CCCD">
+          <input className={`${inputClass} ${fieldErrors.citizenId ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.citizenId} onChange={(e) => set("citizenId", e.target.value)} placeholder="Có thể để trống" />
           {fieldErrors.citizenId && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.citizenId}</p>}
         </Field>
-        <Field label="Ngày sinh">
-          <input type="date" className={`${inputClass} ${fieldErrors.dob ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.dob} onChange={(e) => set("dob", e.target.value)} />
-          {fieldErrors.dob && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.dob}</p>}
+        <Field label="Năm sinh *">
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1940}
+            max={new Date().getFullYear()}
+            placeholder="VD: 1995"
+            className={`${inputClass} ${fieldErrors.birthYear ? "border-rose-500 focus:border-rose-500" : ""}`}
+            value={form.birthYear}
+            onChange={(e) => set("birthYear", e.target.value)}
+          />
+          {fieldErrors.birthYear && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.birthYear}</p>}
         </Field>
-        <Field label="Quê quán">
-          <input className={inputClass} value={form.hometown} onChange={(e) => set("hometown", e.target.value)} />
+        <Field label="Nơi ở *">
+          <input className={`${inputClass} ${fieldErrors.hometown ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.hometown} onChange={(e) => set("hometown", e.target.value)} />
+          {fieldErrors.hometown && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.hometown}</p>}
         </Field>
-        <Field label="Ngày tư vấn">
+        <Field label="Ngày tư vấn *">
           <input type="date" className={`${inputClass} ${fieldErrors.consultDate ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.consultDate} onChange={(e) => set("consultDate", e.target.value)} />
           {fieldErrors.consultDate && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.consultDate}</p>}
         </Field>
@@ -885,13 +1140,13 @@ function CreateWorkerModal({
           <input type="date" className={`${inputClass} ${fieldErrors.startWorkDate ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.startWorkDate} onChange={(e) => set("startWorkDate", e.target.value)} />
           {fieldErrors.startWorkDate && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.startWorkDate}</p>}
         </Field>
-        <Field label="Công ty *">
+        <Field label="Công ty">
           <SuggestInput
             value={form.company}
             onChange={(company) => set("company", company)}
             suggestions={companyNames}
             createLabel="Thêm mới"
-            placeholder="Chọn hoặc gõ tên công ty (bắt buộc)"
+            placeholder="Có thể chọn sau khi chốt"
             emptyLimit={20}
           />
           {fieldErrors.company && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.company}</p>}
@@ -902,17 +1157,17 @@ function CreateWorkerModal({
         <Field label="Nguồn">
           <SuggestInput value={form.source} onChange={(source) => set("source", source)} suggestions={sources} createLabel="Thêm mới" placeholder="Chọn hoặc gõ nguồn mới" />
         </Field>
-        <Field label="Sale *">
-          <SuggestInput value={form.sale} onChange={(sale) => set("sale", sale)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ sale mới" />
+        <Field label="Nhân viên tư vấn *">
+          <SuggestInput value={form.sale} onChange={(sale) => set("sale", sale)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên NV tư vấn" />
           {fieldErrors.sale && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.sale}</p>}
         </Field>
-        <Field label="Phụ trách *">
-          <SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" />
+        <Field label="Phụ trách">
+          <SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Có thể chọn sau khi chốt" />
           {fieldErrors.manager && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.manager}</p>}
         </Field>
         <div className="col-span-2">
           <span className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ (chân dung)</span>
-          {access.canViewCccd ? (
+          {access.canManageWorkerPortrait ? (
             <div
               className="flex min-h-[180px] flex-col rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 outline-none focus:border-[#0052cc]"
               tabIndex={0}
@@ -986,8 +1241,11 @@ function CloseWorkerModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { staff, reloadCatalog } = useApp();
+  const { companies, staff, reloadCatalog } = useApp();
   const [manager, setManager] = useState(worker.manager === "—" ? "" : worker.manager);
+  const [company, setCompany] = useState(worker.company === "—" ? "" : worker.company);
+  const [portraitFiles, setPortraitFiles] = useState<File[]>([]);
+  const { access } = useSession();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -1001,13 +1259,27 @@ function CloseWorkerModal({
       setError("Nhập người phụ trách.");
       return;
     }
+    if (!company.trim()) {
+      setError("Chọn công ty trước khi chuyển sang Chờ đi làm.");
+      return;
+    }
+    const companyRecord = companies.find((item) =>
+      item.short_name.trim().toLowerCase() === company.trim().toLowerCase()
+      || item.name.trim().toLowerCase() === company.trim().toLowerCase(),
+    );
+    if (!companyRecord) {
+      setError("Chọn một công ty có trong danh sách.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
+      for (const file of portraitFiles) await uploadWorkerPortrait(worker.id, file);
       const pins: string[] = [];
       const managerId = await ensureStaffId(staff, new Map(), manager, "Phụ trách", pins);
       await updateLiveWorker(worker.id, {
         status: "waiting_start",
+        current_company_id: companyRecord.id,
         manager_id: managerId,
       });
       onSaved();
@@ -1038,10 +1310,23 @@ function CloseWorkerModal({
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
       {notice && <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{notice}</p>}
-      <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> đang tư vấn. Chọn hoặc gõ người phụ trách để chốt.</p>
+      <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> đang tư vấn. Cần có công ty, người phụ trách và ít nhất một ảnh đã lưu trên máy chủ để chuyển sang Chờ đi làm. Nếu ảnh đã có, không cần tải lại.</p>
+      <Field label="Công ty *">
+        <SuggestInput value={company} onChange={setCompany} suggestions={uniq(companies.flatMap((item) => [item.short_name, item.name]))} createLabel="Chọn tên" placeholder="Chọn công ty" />
+      </Field>
       <Field label="Phụ trách *">
         <SuggestInput value={manager} onChange={setManager} suggestions={uniq(staff.map((person) => person.full_name))} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" />
       </Field>
+      {access.canManageWorkerPortrait && (
+        <div className="mt-3">
+          <label className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ * (nếu chưa có)</label>
+          <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => {
+            setPortraitFiles(Array.from(event.target.files ?? []));
+            event.target.value = "";
+          }} />
+          {portraitFiles.length > 0 && <p className="mt-1 text-[12px] text-slate-500">Đã chọn {portraitFiles.length} ảnh mới.</p>}
+        </div>
+      )}
     </Modal>
   );
 }
@@ -1054,8 +1339,10 @@ function EditWorkerModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { staff, reloadCatalog } = useApp();
+  const { companies, staff, reloadCatalog } = useApp();
+  const { access } = useSession();
   const [knownWorkers, setKnownWorkers] = useState<Worker[]>([]);
+  const [portraitFiles, setPortraitFiles] = useState<File[]>([]);
   const canEditPhone = !worker.phoneHidden;
   const initialStatus = HCNS_STATUSES.includes(worker.status as (typeof HCNS_STATUSES)[number])
     ? worker.status
@@ -1063,6 +1350,7 @@ function EditWorkerModal({
   const [form, setForm] = useState({
     name: worker.name,
     phone: worker.phone,
+    company: worker.company === "—" ? "" : worker.company,
     hometown: worker.hometown === "—" ? "" : worker.hometown,
     position: worker.position === "—" ? "" : worker.position,
     type: worker.type,
@@ -1072,11 +1360,13 @@ function EditWorkerModal({
     consultDate: worker.consultDate ?? "",
     startWorkDate: worker.startWorkDate ?? "",
     resignDate: worker.resignDate ?? "",
+    noShowReason: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const set = (k: keyof typeof form, v: string) => setForm((p) => ({ ...p, [k]: v }));
+  const needsNoShowReason = form.status === "Không đi làm";
 
   useEffect(() => {
     if (statusOnly) return;
@@ -1099,6 +1389,10 @@ function EditWorkerModal({
         setError("Chỉ được chọn Đang làm, Chờ đi làm, Nghỉ việc hoặc Không đi làm.");
         return;
       }
+      if (needsNoShowReason && !form.noShowReason.trim()) {
+        setError("Nhập lý do không đi làm.");
+        return;
+      }
       const startWorkDate = isoDate(form.startWorkDate);
       const resignDate = isoDate(form.resignDate);
       if (startWorkDate === "invalid" || resignDate === "invalid") {
@@ -1108,10 +1402,35 @@ function EditWorkerModal({
       setSaving(true);
       setError("");
       try {
+        const pins: string[] = [];
+        const extra: { current_company_id?: number; manager_id?: number; note?: string } = {};
+        if (worker.status === "Chờ đi làm" && form.status === "Đang làm") {
+          const companyRecord = companies.find((item) =>
+            item.short_name.trim().toLowerCase() === form.company.trim().toLowerCase()
+            || item.name.trim().toLowerCase() === form.company.trim().toLowerCase(),
+          );
+          if (!companyRecord) {
+            setError("Chọn một công ty có trong danh sách trước khi chuyển sang Đang làm.");
+            setSaving(false);
+            return;
+          }
+          if (!form.manager.trim()) {
+            setError("Chọn người phụ trách trước khi chuyển sang Đang làm.");
+            setSaving(false);
+            return;
+          }
+          extra.current_company_id = companyRecord.id;
+          extra.manager_id = await ensureStaffId(staff, new Map(), form.manager, "Phụ trách", pins);
+          for (const file of portraitFiles) await uploadWorkerPortrait(worker.id, file);
+        }
+        if (needsNoShowReason) {
+          extra.note = `[Không đi làm] ${form.noShowReason.trim()}`;
+        }
         await updateLiveWorker(worker.id, {
           status: VI_STATUS[form.status] ?? form.status.trim(),
           start_work_date: startWorkDate,
           resign_date: resignDate,
+          ...extra,
         });
         onSaved();
         onClose();
@@ -1127,11 +1446,30 @@ function EditWorkerModal({
       setError("Nhập sale và người phụ trách. Có thể chọn gợi ý hoặc gõ tên mới.");
       return;
     }
+    if (needsNoShowReason && !form.noShowReason.trim()) {
+      setError("Nhập lý do không đi làm.");
+      return;
+    }
     const consultDate = isoDate(form.consultDate);
     const startWorkDate = isoDate(form.startWorkDate);
     const resignDate = isoDate(form.resignDate);
     if (consultDate === "invalid" || startWorkDate === "invalid" || resignDate === "invalid") {
       setError("Ngày theo dạng YYYY-MM-DD.");
+      return;
+    }
+    const companyRecord = companies.find((item) =>
+      item.short_name.trim().toLowerCase() === form.company.trim().toLowerCase()
+      || item.name.trim().toLowerCase() === form.company.trim().toLowerCase(),
+    );
+    const companyChanged = form.company.trim().toLowerCase() !== worker.company.trim().toLowerCase();
+    const enteringWaiting = worker.status === "Đang tư vấn" && form.status === "Chờ đi làm";
+    const enteringWork = worker.status === "Chờ đi làm" && form.status === "Đang làm";
+    if (form.status === "Đang làm" && worker.status === "Đang tư vấn") {
+      setError("Hồ sơ phải qua Chờ đi làm trước. Dùng thao tác Chốt để bổ sung đủ thông tin.");
+      return;
+    }
+    if ((enteringWaiting || enteringWork) && !companyRecord) {
+      setError("Chọn một công ty có trong danh sách trước khi chuyển trạng thái.");
       return;
     }
     setSaving(true);
@@ -1141,6 +1479,9 @@ function EditWorkerModal({
       const known = new Map<string, number>();
       const saleId = await ensureStaffId(staff, known, form.sale, "Sale", pins);
       const managerId = await ensureStaffId(staff, known, form.manager, "Phụ trách", pins);
+      if (enteringWaiting || enteringWork) {
+        for (const file of portraitFiles) await uploadWorkerPortrait(worker.id, file);
+      }
       await updateLiveWorker(worker.id, {
         full_name: form.name.trim(),
         ...(canEditPhone ? { phone: form.phone.trim() } : {}),
@@ -1148,8 +1489,10 @@ function EditWorkerModal({
         current_position: form.position.trim(),
         employment_type: VI_TYPE[form.type] ?? form.type.trim(),
         status: VI_STATUS[form.status] ?? form.status.trim(),
+        ...(needsNoShowReason ? { note: `[Không đi làm] ${form.noShowReason.trim()}` } : {}),
         recruiter_id: saleId,
         manager_id: managerId,
+        ...(companyChanged && companyRecord ? { current_company_id: companyRecord.id } : {}),
         consult_date: consultDate,
         start_work_date: startWorkDate,
         resign_date: resignDate,
@@ -1172,6 +1515,9 @@ function EditWorkerModal({
   const typeNames = uniq([...TYPES, ...knownWorkers.map((person) => person.type)]);
   const statusNames = uniq([...STATUSES, ...knownWorkers.map((person) => person.status)]);
   const staffNames = uniq(staff.map((person) => person.full_name));
+  const transitionNeedsPortrait =
+    (worker.status === "Đang tư vấn" && form.status === "Chờ đi làm")
+    || (worker.status === "Chờ đi làm" && form.status === "Đang làm");
 
   return (
     <Modal
@@ -1200,8 +1546,35 @@ function EditWorkerModal({
               ))}
             </select>
           </Field>
+          {worker.status === "Chờ đi làm" && form.status === "Đang làm" && <>
+            <Field label="Công ty *">
+              <SuggestInput value={form.company} onChange={(company) => set("company", company)} suggestions={uniq(companies.flatMap((item) => [item.short_name, item.name]))} createLabel="Chọn tên" placeholder="Chọn công ty" />
+            </Field>
+            <Field label="Phụ trách *">
+              <SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn người phụ trách" />
+            </Field>
+            <div className="col-span-2">
+              <label className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ * (nếu chưa có)</label>
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => {
+                setPortraitFiles(Array.from(event.target.files ?? []));
+                event.target.value = "";
+              }} />
+            </div>
+          </>}
           <Field label="Ngày vào làm"><input type="date" className={inputClass} value={form.startWorkDate} onChange={(e) => set("startWorkDate", e.target.value)} /></Field>
           <Field label="Ngày nghỉ việc"><input type="date" className={inputClass} value={form.resignDate} onChange={(e) => set("resignDate", e.target.value)} /></Field>
+          {needsNoShowReason && (
+            <div className="col-span-2">
+              <Field label="Lý do không đi làm *">
+                <textarea
+                  className={`${inputClass} min-h-[72px]`}
+                  value={form.noShowReason}
+                  onChange={(e) => set("noShowReason", e.target.value)}
+                  placeholder="Ví dụ: tư vấn xong nhưng không nhận việc / không đến công ty..."
+                />
+              </Field>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
@@ -1226,11 +1599,33 @@ function EditWorkerModal({
           <Field label="Vị trí"><SuggestInput value={form.position} onChange={(position) => set("position", position)} suggestions={positions} createLabel="Thêm mới" placeholder="Chọn hoặc gõ vị trí mới" /></Field>
           <Field label="Loại hình"><SuggestInput value={form.type} onChange={(type) => set("type", type)} suggestions={typeNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ loại hình mới" /></Field>
           <Field label="Trạng thái"><SuggestInput value={form.status} onChange={(status) => set("status", status)} suggestions={statusNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ trạng thái mới" /></Field>
+          <Field label="Công ty hiện tại *"><SuggestInput value={form.company} onChange={(company) => set("company", company)} suggestions={uniq(companies.flatMap((item) => [item.short_name, item.name]))} createLabel="Chọn tên" placeholder="Chọn công ty" /></Field>
           <Field label="Sale"><SuggestInput value={form.sale} onChange={(sale) => set("sale", sale)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ sale mới" /></Field>
           <Field label="Phụ trách *"><SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" /></Field>
           <Field label="Ngày tư vấn"><input type="date" className={inputClass} value={form.consultDate} onChange={(e) => set("consultDate", e.target.value)} /></Field>
           <Field label="Ngày vào làm"><input type="date" className={inputClass} value={form.startWorkDate} onChange={(e) => set("startWorkDate", e.target.value)} /></Field>
           <Field label="Ngày nghỉ việc"><input type="date" className={inputClass} value={form.resignDate} onChange={(e) => set("resignDate", e.target.value)} /></Field>
+          {needsNoShowReason && (
+            <div className="col-span-2">
+              <Field label="Lý do không đi làm *">
+                <textarea
+                  className={`${inputClass} min-h-[72px]`}
+                  value={form.noShowReason}
+                  onChange={(e) => set("noShowReason", e.target.value)}
+                  placeholder="Ví dụ: tư vấn xong nhưng không nhận việc / không đến công ty..."
+                />
+              </Field>
+            </div>
+          )}
+          {transitionNeedsPortrait && access.canManageWorkerPortrait && (
+            <div className="col-span-2">
+              <label className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ * (nếu chưa có)</label>
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => {
+                setPortraitFiles(Array.from(event.target.files ?? []));
+                event.target.value = "";
+              }} />
+            </div>
+          )}
         </div>
       )}
     </Modal>

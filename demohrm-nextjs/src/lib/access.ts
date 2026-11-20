@@ -4,6 +4,7 @@ export interface Access {
   canViewCommission: boolean;
   canViewAudit: boolean;
   canViewCccd: boolean;
+  canExportWorkerCccd: boolean;
   canClosePeriod: boolean;
   /** Xóa bản ghi (nhân sự, công nhân, công ty, đơn hàng, vendor, tài chính, tạm ứng) */
   canDelete: boolean;
@@ -18,6 +19,7 @@ export interface Access {
   canEditWorker: boolean;
   /** GD / PGĐ / Kỹ thuật / HCNS / Nhân viên / CTV: tạo hồ sơ NLĐ */
   canCreateWorker: boolean;
+  canManageWorkerPortrait: boolean;
   /** HCNS / Nhân viên / CTV: sửa trạng thái / chốt / tái tuyển (ops, không full edit) */
   canEditWorkerStatus: boolean;
   /** GD / PGĐ / Kỹ thuật: sửa / tạo đơn hàng (HCNS chỉ xem) */
@@ -38,11 +40,13 @@ const COMMISSION: readonly string[] = [...ELEVATED];
 const AUDIT: readonly string[] = [...ELEVATED, "team_lead"];
 /** CCCD: Ban lãnh đạo / HCNS / Nhân viên + Quản lý (cần xem·sửa CCCD khi quản lý Blacklist). */
 const CCCD: readonly string[] = [...ELEVATED, "admin", "recruiter", "team_lead"];
+const CCCD_EXPORT: readonly string[] = ["director", "deputy_director", "admin"];
 const CLOSE: readonly string[] = [...ELEVATED, "accountant"];
 const ACCOUNT_MANAGE: readonly string[] = [...ELEVATED, "admin"];
 const WORKER_PHONE_FULL: readonly string[] = [...ELEVATED, "admin"];
 const WORKER_STATUS_EDIT: readonly string[] = ["admin", "recruiter", "coordinator"];
 const WORKER_CREATE: readonly string[] = [...ELEVATED, "admin", "recruiter", "coordinator"];
+const WORKER_PORTRAIT: readonly string[] = [...ELEVATED, "admin", "recruiter", "coordinator"];
 const BLACKLIST_WRITE: readonly string[] = [...ELEVATED, "admin", "team_lead"];
 
 export function accessFor(role: string): Access {
@@ -52,6 +56,7 @@ export function accessFor(role: string): Access {
     canViewCommission: COMMISSION.includes(role),
     canViewAudit: AUDIT.includes(role),
     canViewCccd: CCCD.includes(role),
+    canExportWorkerCccd: CCCD_EXPORT.includes(role),
     canClosePeriod: CLOSE.includes(role),
     canDelete: ELEVATED.includes(role),
     canDeletePersonnel: ELEVATED.includes(role),
@@ -60,6 +65,7 @@ export function accessFor(role: string): Access {
     canViewAllWorkerPhones: WORKER_PHONE_FULL.includes(role),
     canEditWorker: ELEVATED.includes(role),
     canCreateWorker: WORKER_CREATE.includes(role),
+    canManageWorkerPortrait: WORKER_PORTRAIT.includes(role),
     canEditWorkerStatus: WORKER_STATUS_EDIT.includes(role),
     canEditOrders: ELEVATED.includes(role),
     canEditCompanies: ELEVATED.includes(role),

@@ -163,6 +163,64 @@ export async function PATCH(
       return json({ error: "forbidden", message: "Bạn không có quyền đặt trạng thái Blacklist." }, 403);
     }
 
+    const nextStatus = typeof body["status"] === "string" ? body["status"] : null;
+    if (nextStatus) {
+      const { data: current, error: currentError } = await getSupabase()
+        .from("workers")
+        .select("status,current_company_id,manager_id")
+        .eq("id", id)
+        .maybeSingle();
+      if (currentError) throw currentError;
+      if (!current) return json({ error: "not_found", message: "Không tìm thấy hồ sơ." }, 404);
+
+      const currentStatus = String(current.status ?? "");
+      if (currentStatus === "candidate" && nextStatus === "working") {
+        return json({
+          error: "invalid_transition",
+          message: "Hãy chuyển hồ sơ sang Chờ đi làm trước. Cần hoàn tất ảnh hồ sơ, công ty và người phụ trách.",
+        }, 400);
+      }
+
+      // Không đi làm (no_show): bắt buộc có lý do (ghi vào note).
+      if (nextStatus === "no_show") {
+        const reason = typeof body["note"] === "string" ? body["note"].trim() : "";
+        if (!reason) {
+          return json({
+            error: "invalid",
+            message: "Nhập lý do không đi làm (bắt buộc).",
+          }, 400);
+        }
+      }
+
+      const leavingConsulting = currentStatus === "candidate" && nextStatus === "waiting_start";
+      const startingWork = currentStatus === "waiting_start" && nextStatus === "working";
+      if (leavingConsulting || startingWork) {
+        const companyId = body["current_company_id"] === undefined
+          ? Number(current.current_company_id ?? 0)
+          : Number(body["current_company_id"] ?? 0);
+        const managerId = body["manager_id"] === undefined
+          ? Number(current.manager_id ?? 0)
+          : Number(body["manager_id"] ?? 0);
+        const { count, error: portraitError } = await getSupabase()
+          .from("worker_documents")
+          .select("id", { count: "exact", head: true })
+          .eq("worker_id", id)
+          .eq("doc_type", "portrait");
+        if (portraitError) throw portraitError;
+
+        const missing: string[] = [];
+        if (!Number.isInteger(companyId) || companyId <= 0) missing.push("công ty");
+        if (!Number.isInteger(managerId) || managerId <= 0) missing.push("người phụ trách");
+        if (!count) missing.push("ảnh hồ sơ");
+        if (missing.length > 0) {
+          return json({
+            error: "incomplete_worker_profile",
+            message: `Cần bổ sung ${missing.join(", ")} trước khi ${leavingConsulting ? "chuyển sang Chờ đi làm" : "chuyển sang Đang làm"}.`,
+          }, 400);
+        }
+      }
+    }
+
     if (body["phone"] !== undefined) {
       const current = await getSupabase()
         .from("workers")

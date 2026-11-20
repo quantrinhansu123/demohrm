@@ -13,17 +13,38 @@ export function formatZodErrors(error: z.ZodError): Record<string, string> {
 
 const PHONE_REGEX = /^(0|\+84)[0-9]{9}$/;
 
+const currentYear = new Date().getFullYear();
+
 export const CreateWorkerSchema = z.object({
-  name: z.string().trim().min(2, "Họ và tên phải từ 2 ký tự").max(100, "Họ và tên quá dài"),
+  name: z.string().trim().max(100, "Họ và tên quá dài").optional().nullable(),
   phone: z.string().trim().min(1, "Số điện thoại không được để trống").regex(PHONE_REGEX, "Số điện thoại phải gồm 10 chữ số hợp lệ (VD: 0901234567)"),
-  citizenId: z.string().trim().min(1, "CCCD không được để trống").regex(/^[0-9]{12}$/, "CCCD phải gồm đúng 12 chữ số"),
-  dob: z.string().optional().nullable(),
-  hometown: z.string().optional().nullable(),
-  company: z.string().trim().min(1, "Bắt buộc chọn công ty trước khi lưu"),
+  citizenId: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .refine((value) => !value || /^[0-9]{12}$/.test(value), "CCCD phải gồm đúng 12 chữ số"),
+  birthYear: z
+    .string()
+    .trim()
+    .min(1, "Năm sinh không được để trống")
+    .regex(/^\d{4}$/, "Năm sinh gồm 4 chữ số")
+    .refine((value) => {
+      const year = Number(value);
+      return year >= 1940 && year <= currentYear;
+    }, `Năm sinh từ 1940 đến ${currentYear}`),
+  hometown: z.string().trim().min(1, "Nơi ở không được để trống").max(200, "Nơi ở quá dài"),
+  company: z.string().optional().nullable(),
   type: z.string().default("Thời vụ"),
   source: z.string().optional(),
-  sale: z.string().trim().min(1, "Vui lòng chọn sale"),
-  manager: z.string().trim().min(1, "Vui lòng chọn phụ trách"),
+  sale: z.string().trim().min(1, "Vui lòng chọn nhân viên tư vấn"),
+  manager: z.string().optional().nullable(),
+  consultDate: z
+    .string()
+    .trim()
+    .min(1, "Ngày tư vấn không được để trống")
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Ngày tư vấn theo dạng YYYY-MM-DD"),
+  startWorkDate: z.string().optional().nullable(),
 });
 
 export const EditWorkerSchema = z.object({

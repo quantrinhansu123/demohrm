@@ -70,6 +70,8 @@ export interface Worker {
   consultDate?: string;
   startWorkDate?: string;
   resignDate?: string;
+  /** Ngày tạo hồ sơ (ngày nhập) YYYY-MM-DD */
+  createdAt?: string;
   assignments?: WorkAssignment[];
   recruiterId?: number | null;
   managerId?: number | null;

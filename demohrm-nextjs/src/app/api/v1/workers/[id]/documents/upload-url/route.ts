@@ -30,13 +30,21 @@ export async function POST(
 ): Promise<Response> {
   try {
     const auth = getAuth(req);
-    requireRole(auth, ...ROLE.cccd);
     const p = await ctx.params;
     const id = positiveInt(p["id"]);
     if (!id) {
       return json({ error: "invalid", message: "Id không hợp lệ." }, 400);
     }
     const body = await readBody(req);
+    const docType = typeof body["doc_type"] === "string" ? body["doc_type"] : "";
+    if (docType !== "national_id" && docType !== "portrait") {
+      return json({ error: "invalid", message: "doc_type không hợp lệ." }, 400);
+    }
+    if (docType !== "portrait") {
+      requireRole(auth, ...ROLE.cccd);
+    } else {
+      requireRole(auth, ...ROLE.workerPortrait);
+    }
     const mime = typeof body["mime"] === "string" ? body["mime"] : "";
     if (!DOC_MIME[mime]) {
       return json({ error: "invalid", message: "Chỉ nhận ảnh JPEG, PNG hoặc WebP." }, 400);

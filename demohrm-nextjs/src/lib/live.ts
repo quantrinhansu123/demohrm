@@ -160,6 +160,7 @@ export interface LiveWorkerRow {
   consult_date?: string | null;
   start_work_date?: string | null;
   resign_date?: string | null;
+  created_at?: string | null;
   supervisor_name: string | null;
   supervisor_phone: string | null;
   assignment_count: number;
@@ -208,6 +209,7 @@ export function toWorker(row: LiveWorkerRow): Worker {
     consultDate: row.consult_date ?? "",
     startWorkDate: row.start_work_date ?? "",
     resignDate: row.resign_date ?? "",
+    createdAt: row.created_at ? String(row.created_at).slice(0, 10) : "",
     recruiterId: row.recruiter_id,
     managerId: row.manager_id ?? null,
     createdBy: row.created_by ?? null,
@@ -223,6 +225,8 @@ export interface WorkerFilter {
   q?: string;
   recruiterId?: number;
   managerId?: number;
+  createdFrom?: string;
+  createdTo?: string;
   limit?: number;
   offset?: number;
 }
@@ -255,6 +259,8 @@ export function fetchLiveWorkers(f?: WorkerFilter, opts?: ApiOptions): Promise<W
   if (f?.q) p.set("q", f.q);
   if (f?.recruiterId) p.set("recruiter_id", String(f.recruiterId));
   if (f?.managerId) p.set("manager_id", String(f.managerId));
+  if (f?.createdFrom) p.set("created_from", f.createdFrom);
+  if (f?.createdTo) p.set("created_to", f.createdTo);
   if (f?.limit) p.set("limit", String(f.limit));
   if (f?.offset) p.set("offset", String(f.offset));
   const qs = p.toString();
@@ -273,6 +279,8 @@ export function downloadLiveWorkersExcel(filter?: WorkerExportFilter): Promise<D
   if (filter?.q) p.set("q", filter.q);
   if (filter?.recruiterId) p.set("recruiter_id", String(filter.recruiterId));
   if (filter?.managerId) p.set("manager_id", String(filter.managerId));
+  if (filter?.createdFrom) p.set("created_from", filter.createdFrom);
+  if (filter?.createdTo) p.set("created_to", filter.createdTo);
   return apiDownload(`/workers?${p.toString()}`);
 }
 
@@ -324,13 +332,13 @@ export interface WorkerCreateBody {
   code?: string;
   full_name: string;
   phone: string;
-  national_id: string;
+  national_id?: string | null;
   date_of_birth: string | null;
   hometown: string | null;
   employment_type: string;
   recruiter_id: number;
-  manager_id: number;
-  current_company_id: number;
+  manager_id?: number | null;
+  current_company_id?: number | null;
   status: string;
   note?: string | null;
   consult_date?: string | null;
@@ -347,7 +355,7 @@ const WORKER_DOC_MIME = ["image/jpeg", "image/png", "image/webp"];
 
 export function requestWorkerDocUploadUrl(
   workerId: number,
-  body: { mime: string; filename: string },
+  body: { doc_type: "portrait"; mime: string; filename: string },
 ): Promise<{ path: string; token: string; signedUrl: string }> {
   return apiPost(`/workers/${workerId}/documents/upload-url`, body);
 }
@@ -359,11 +367,17 @@ export function saveWorkerDocument(
   return apiPost(`/workers/${workerId}/documents`, body);
 }
 
+export function fetchWorkerPortraits(workerId: number): Promise<{
+  documents: Array<{ id: number; mime_type: string; url: string }>;
+}> {
+  return apiGet(`/workers/${workerId}/documents`);
+}
+
 export async function uploadWorkerPortrait(workerId: number, file: File): Promise<void> {
   if (!WORKER_DOC_MIME.includes(file.type)) {
     throw new Error("Chỉ nhận ảnh JPEG, PNG hoặc WebP.");
   }
-  const signed = await requestWorkerDocUploadUrl(workerId, { mime: file.type, filename: file.name || "portrait.jpg" });
+  const signed = await requestWorkerDocUploadUrl(workerId, { doc_type: "portrait", mime: file.type, filename: file.name || "portrait.jpg" });
   const put = await fetch(signed.signedUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
   if (!put.ok) throw new Error("Tải ảnh lên kho lưu trữ thất bại.");
   await saveWorkerDocument(workerId, { doc_type: "portrait", storage_path: signed.path, mime: file.type });
@@ -425,6 +439,7 @@ export function updateLiveWorker(id: number, body: {
   current_position?: string;
   employment_type?: string;
   status?: string;
+  note?: string | null;
   recruiter_id?: number;
   manager_id?: number;
   current_company_id?: number;

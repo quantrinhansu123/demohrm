@@ -9,6 +9,7 @@ import {
   closeLivePlacement,
   fetchLiveAssignments,
   toWorkAssignment,
+  uploadWorkerPortrait,
 } from "@/lib/live";
 import type { LiveAssignmentRow } from "@/lib/live";
 import { maskCitizenId } from "@/lib/format";
@@ -92,7 +93,7 @@ function readImageFile(file: File): Promise<string> {
   });
 }
 
-function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCccd: boolean }) {
+function WorkerProfilePane({ worker, canViewCccd, canManageWorkerPortrait }: { worker: Worker; canViewCccd: boolean; canManageWorkerPortrait: boolean }) {
   const { companies } = useApp();
   const canViewPhone = !worker.phoneHidden;
   const sourceOptions = ["Trangway", ...companies.map((company) => company.short_name).filter((name) => name && name.toLowerCase() !== "trangway")];
@@ -115,7 +116,12 @@ function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCcc
     if (images.length === 0) return;
     const urls = await Promise.all(images.map((file) => readImageFile(file)));
     save({ ...form, images: [...form.images, ...urls] });
-    setHint(`Đã thêm ${urls.length} ảnh.`);
+    try {
+      for (const file of images) await uploadWorkerPortrait(worker.id, file);
+      setHint(`Đã thêm và lưu ${urls.length} ảnh hồ sơ lên máy chủ.`);
+    } catch (error) {
+      setHint(error instanceof ApiError ? error.message : "Không tải được ảnh hồ sơ lên máy chủ.");
+    }
   };
 
   useEffect(() => {
@@ -174,7 +180,7 @@ function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCcc
         )}
       </div>
 
-      <div
+      {canManageWorkerPortrait ? <div
         className="flex min-h-[280px] flex-col rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 outline-none focus:border-[#0052cc]"
         tabIndex={0}
         onPaste={(event) => {
@@ -191,7 +197,7 @@ function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCcc
             Tải ảnh từ máy
             <input
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               multiple
               className="hidden"
               onChange={(event) => {
@@ -226,7 +232,9 @@ function WorkerProfilePane({ worker, canViewCccd }: { worker: Worker; canViewCcc
             ))}
           </div>
         )}
-      </div>
+      </div> : (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-[12px] text-amber-700">Tài khoản không có quyền tải ảnh hồ sơ.</p>
+      )}
     </div>
   );
 }
@@ -321,7 +329,7 @@ export function WorkerDetailModal({
             <StatusPill tone={worker.type === "Thời vụ" ? "warning" : "info"}>{worker.type}</StatusPill>
           </div>
           <div className="mt-0.5 text-[12.5px] text-blue-100">
-            Doanh nghiệp: <strong>{worker.company} Việt Nam</strong> · Vị trí: {worker.position} · Sale: {worker.recruiter || "—"} · Phụ trách: {worker.manager || "—"}
+          Công ty hiện tại: <strong>{worker.company}</strong> · Vị trí: {worker.position} · Sale: {worker.recruiter || "—"} · Phụ trách: {worker.manager || "—"}
           </div>
         </div>
       </div>
@@ -342,7 +350,7 @@ export function WorkerDetailModal({
       {error && <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
 
       {tab === "personal" && (
-        <WorkerProfilePane worker={worker} canViewCccd={access.canViewCccd} />
+        <WorkerProfilePane worker={worker} canViewCccd={access.canViewCccd} canManageWorkerPortrait={access.canManageWorkerPortrait} />
       )}
 
       {tab === "job" && (

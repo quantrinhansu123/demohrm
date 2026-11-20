@@ -29,6 +29,8 @@ export const ROLE = {
   workerEdit: [...ELEVATED],
   /** Tạo hồ sơ NLĐ: GD/PGĐ/Kỹ thuật/HCNS/Nhân viên/CTV (recruiter). */
   workerCreate: [...ELEVATED, "admin", "recruiter", "coordinator"],
+  /** Ảnh chân dung hồ sơ NLĐ: người được tạo hồ sơ hoặc chốt trạng thái vận hành. */
+  workerPortrait: [...ELEVATED, "admin", "recruiter", "coordinator"],
   /** HCNS + Nhân viên/CTV: sửa trạng thái / chốt / tái tuyển (ops patch, không full edit). */
   workerStatusEdit: ["admin", "recruiter", "coordinator"],
   /** Sửa/tạo đơn hàng: chỉ Ban lãnh đạo + Kỹ thuật (HCNS không được) */

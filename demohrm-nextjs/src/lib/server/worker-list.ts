@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getSupabase } from "@/lib/server/db";
+import { canViewWorkerPhone, maskWorkerPhone } from "@/lib/server/worker-privacy";
 import {
   createExcelWorkbook,
   enableExcelAutoFilter,
@@ -14,8 +15,8 @@ import {
 export const WORKER_EXPORT_MAX_ROWS = 20_000;
 export const WORKER_EXPORT_PAGE_SIZE = 500;
 
-const EXPORT_HEADERS = ["STT", "Họ và tên", "CCCD", "Công ty", "Phụ trách"] as const;
-const EXPORT_WIDTHS = [8, 28, 18, 24, 24];
+const EXPORT_HEADERS = ["STT", "Họ và tên", "Số điện thoại", "CCCD", "Công ty", "Phụ trách"] as const;
+const EXPORT_WIDTHS = [8, 28, 18, 18, 24, 24];
 const EXPORT_COLUMNS = "id,full_name,company";
 
 export type WorkerListFilters = {
@@ -28,6 +29,8 @@ export type WorkerListFilters = {
   nationalId: string | null;
   recruiterId: number | null;
   managerId: number | null;
+  createdFrom: string | null;
+  createdTo: string | null;
 };
 
 type PublicRow = {
@@ -39,7 +42,10 @@ type PublicRow = {
 type WorkerLean = {
   id: number;
   national_id: string | null;
+  phone: string | null;
   manager_id: number | null;
+  recruiter_id: number | null;
+  created_by: number | null;
 };
 
 /** Interface lỏng — tránh TS2589 khi chain với PostgREST generics. */
@@ -75,6 +81,18 @@ export function positiveIntParam(raw: string | null): number | null {
   if (!raw) return null;
   const n = Number(raw);
   return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+function validDateParam(raw: string | null): string | null {
+  if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  const date = new Date(`${raw}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw ? null : raw;
+}
+
+function nextDate(raw: string): string {
+  const date = new Date(`${raw}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 /** Đọc nhiều `company=` (và bỏ trống / trùng). */
@@ -150,6 +168,7 @@ export class WorkerListQueryBuilder {
   readonly filters: WorkerListFilters;
   private managerScopedIds: number[] | null = null;
   private nationalIdScopedIds: number[] | null = null;
+  private createdDateScopedIds: number[] | null = null;
   private emptyResult = false;
   private prepared = false;
 
@@ -167,6 +186,8 @@ export class WorkerListQueryBuilder {
       nationalId: nationalRaw || null,
       recruiterId: null,
       managerId: null,
+      createdFrom: validDateParam(sp.get("created_from")),
+      createdTo: validDateParam(sp.get("created_to")),
     };
     for (const field of WORKER_FILTER_FIELDS) {
       const parsed = field.parse(sp);
@@ -213,6 +234,28 @@ export class WorkerListQueryBuilder {
         .filter((id) => Number.isInteger(id) && id > 0);
       if (this.nationalIdScopedIds.length === 0) this.emptyResult = true;
     }
+    if (this.filters.createdFrom || this.filters.createdTo) {
+      const ids: number[] = [];
+      const pageSize = 1000;
+      for (let offset = 0; ; offset += pageSize) {
+        let createdQuery = getSupabase().from("workers").select("id").order("id");
+        if (this.filters.createdFrom) {
+          createdQuery = createdQuery.gte("created_at", `${this.filters.createdFrom}T00:00:00+07:00`);
+        }
+        if (this.filters.createdTo) {
+          createdQuery = createdQuery.lt("created_at", `${nextDate(this.filters.createdTo)}T00:00:00+07:00`);
+        }
+        const matched = await createdQuery.range(offset, offset + pageSize - 1);
+        if (matched.error) throw matched.error;
+        const pageIds = (matched.data ?? [])
+          .map((row) => Number(row.id))
+          .filter((id) => Number.isInteger(id) && id > 0);
+        ids.push(...pageIds);
+        if (pageIds.length < pageSize) break;
+      }
+      this.createdDateScopedIds = ids;
+      if (ids.length === 0) this.emptyResult = true;
+    }
     this.prepared = true;
     return this;
   }
@@ -244,6 +287,9 @@ export class WorkerListQueryBuilder {
     if (this.nationalIdScopedIds) {
       q = q.in("id", this.nationalIdScopedIds);
     }
+    if (this.createdDateScopedIds) {
+      q = q.in("id", this.createdDateScopedIds);
+    }
     return q as T;
   }
 
@@ -255,6 +301,9 @@ export class WorkerListQueryBuilder {
       parts.push(`Công ty: ${this.filters.companies.length} đã chọn`);
     }
     if (this.filters.nationalId) parts.push(`CCCD: ${this.filters.nationalId}`);
+    if (this.filters.createdFrom || this.filters.createdTo) {
+      parts.push(`Ngày nhập: ${this.filters.createdFrom ?? "đầu"} – ${this.filters.createdTo ?? "nay"}`);
+    }
     for (const field of WORKER_FILTER_FIELDS) {
       const value = this.filters[field.key];
       if (!hasFilterValue(value as ParsedValue | null | "") || !field.subtitle) continue;
@@ -286,6 +335,8 @@ function todayStamp(): string {
 export async function buildWorkersExcelResponse(
   builder: WorkerListQueryBuilder,
   canViewCccd: boolean,
+  staffRole: string,
+  staffId: string,
 ): Promise<Response> {
   await builder.prepare();
   if (builder.isEmpty) {
@@ -311,7 +362,7 @@ export async function buildWorkersExcelResponse(
       getSupabase()
         .from("v_workers_public")
         .select(EXPORT_COLUMNS)
-        .order("code")
+        .order("id", { ascending: false })
         .range(offset, offset + WORKER_EXPORT_PAGE_SIZE - 1),
     );
 
@@ -323,7 +374,7 @@ export async function buildWorkersExcelResponse(
 
     const ids = page.map((row) => Number(row.id)).filter((id) => Number.isInteger(id) && id > 0);
 
-    const leanRes = await getSupabase().from("workers").select("id,national_id,manager_id").in("id", ids);
+    const leanRes = await getSupabase().from("workers").select("id,national_id,phone,manager_id,recruiter_id,created_by").in("id", ids);
     if (leanRes.error) throw leanRes.error;
 
     const leanById = new Map<number, WorkerLean>();
@@ -355,6 +406,9 @@ export async function buildWorkersExcelResponse(
       const excelRow = sheet.addRow([
         stt,
         String(row.full_name ?? ""),
+        canViewWorkerPhone(staffRole, staffId, lean ?? {})
+          ? String(lean?.phone ?? "")
+          : maskWorkerPhone(lean?.phone),
         maskCccd(lean?.national_id, canViewCccd),
         String(row.company ?? ""),
         mid > 0 ? managerNames.get(mid) ?? "" : "",

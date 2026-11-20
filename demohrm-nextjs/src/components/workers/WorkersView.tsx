@@ -850,7 +850,7 @@ function CreateWorkerModal({
     }
     setFieldErrors({});
     const dob = birthYearToDob(form.birthYear);
-    if (dob === "invalid" || !dob) {
+    if (dob === "invalid") {
       setFieldErrors({ birthYear: "Năm sinh gồm 4 chữ số hợp lệ." });
       return;
     }
@@ -964,40 +964,15 @@ function CreateWorkerModal({
 
   const closeDeal = async () => {
     if (!created) return;
-    if (!form.company.trim()) {
-      setError("Chọn công ty trước khi chuyển sang Chờ đi làm.");
-      return;
-    }
-    if (!form.manager.trim()) {
-      setError("Nhập người phụ trách.");
-      return;
-    }
     setSaving(true);
-    setUploadingPhoto(true);
     setError("");
     try {
-      for (let index = uploadedPortraitCount; index < portraitFiles.length; index += 1) {
-        const file = portraitFiles[index];
-        if (!file) continue;
-        await uploadWorkerPortrait(created.id, file);
-        setUploadedPortraitCount(index + 1);
-      }
-      const pins: string[] = [];
-      const known = new Map<string, number>();
-      const companyId = await ensureCompanyId(companies, form.company);
-      const managerId = await ensureStaffId(staff, known, form.manager, "Phụ trách", pins);
-      await updateLiveWorker(created.id, {
-        status: "waiting_start",
-        current_company_id: companyId,
-        manager_id: managerId,
-      });
-      await announceNewStaff(pins);
+      await updateLiveWorker(created.id, { status: "waiting_start" });
       onCreated();
       onClose();
     } catch (e) {
-      setError(errorText(e, "Chốt thất bại."));
+      setError(errorText(e, "Chuyển sang Chờ đi làm thất bại."));
     } finally {
-      setUploadingPhoto(false);
       setSaving(false);
     }
   };
@@ -1010,7 +985,7 @@ function CreateWorkerModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={step === "consult" ? "Tạo hồ sơ người lao động" : "Chốt hồ sơ"}
+      title={step === "consult" ? "Tạo hồ sơ người lao động" : "Chờ đi làm"}
       footer={
         step === "consult" ? (
           <>
@@ -1036,7 +1011,7 @@ function CreateWorkerModal({
           <>
             <Button variant="outline" onClick={onClose}>Để sau</Button>
             <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void closeDeal()}>
-              {saving ? "Đang chốt..." : "Chốt"}
+              {saving ? "Đang chuyển..." : "Chuyển sang Chờ đi làm"}
             </Button>
           </>
         )
@@ -1061,46 +1036,16 @@ function CreateWorkerModal({
       {step === "close" ? (
         <div className="grid gap-3">
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
-            Đã lưu hồ sơ <strong>{form.name.trim() || "Chưa cập nhật"}</strong> ở giai đoạn Đang tư vấn. Bổ sung công ty và phụ trách để chốt.
+            Đã lưu hồ sơ <strong>{form.name.trim() || "Chưa cập nhật"}</strong> ở giai đoạn Đang tư vấn.
           </p>
           <p className="rounded-lg bg-sky-50 px-3 py-2 text-[13px] text-sky-800">
-            Trước khi chuyển sang <strong>Chờ đi làm</strong>, hồ sơ cần có ảnh chân dung, công ty và người phụ trách.
+            Có thể chuyển sang <strong>Chờ đi làm</strong> ngay. Bổ sung ảnh hồ sơ, công ty và người phụ trách trước khi chuyển sang <strong>Đang làm</strong>.
           </p>
-          <Field label="Công ty *">
-            <SuggestInput
-              value={form.company}
-              onChange={(company) => set("company", company)}
-              suggestions={companyNames}
-              createLabel="Thêm mới"
-              placeholder="Chọn hoặc gõ tên công ty"
-              emptyLimit={20}
-            />
-          </Field>
-          <Field label="Phụ trách *">
-            <SuggestInput
-              value={form.manager}
-              onChange={(manager) => set("manager", manager)}
-              suggestions={staffNames}
-              createLabel="Thêm mới"
-              placeholder="Chọn hoặc gõ tên mới"
-            />
-          </Field>
-          {access.canManageWorkerPortrait && (
-            <div>
-              <label className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ * (cần ít nhất 1 ảnh)</label>
-              <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => {
-                const files = Array.from(event.target.files ?? []);
-                event.target.value = "";
-                void addPortraitImages(files);
-              }} />
-              <p className="mt-1 text-[12px] text-slate-500">Đã chọn {portraitFiles.length} ảnh; đã tải lên {uploadedPortraitCount} ảnh.</p>
-            </div>
-          )}
         </div>
       ) : (
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 rounded-lg bg-sky-50 px-3 py-2 text-[13px] text-sky-800">
-          Giai đoạn: <strong>Đang tư vấn</strong>. Bắt buộc: SĐT, năm sinh, nơi ở, ngày tư vấn, nhân viên tư vấn. Các trường còn lại có thể bổ sung sau.
+          Giai đoạn: <strong>Đang tư vấn</strong>. Bắt buộc: SĐT, ngày tư vấn và nhân viên tư vấn. Năm sinh, nơi ở, ảnh, công ty và người phụ trách có thể bổ sung sau.
         </div>
         <Field label="Mã NLĐ"><input className={inputClass} value="Tự động khi lưu" readOnly /></Field>
         <Field label="Họ và tên">
@@ -1115,7 +1060,7 @@ function CreateWorkerModal({
           <input className={`${inputClass} ${fieldErrors.citizenId ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.citizenId} onChange={(e) => set("citizenId", e.target.value)} placeholder="Có thể để trống" />
           {fieldErrors.citizenId && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.citizenId}</p>}
         </Field>
-        <Field label="Năm sinh *">
+        <Field label="Năm sinh">
           <input
             type="number"
             inputMode="numeric"
@@ -1128,7 +1073,7 @@ function CreateWorkerModal({
           />
           {fieldErrors.birthYear && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.birthYear}</p>}
         </Field>
-        <Field label="Nơi ở *">
+        <Field label="Nơi ở">
           <input className={`${inputClass} ${fieldErrors.hometown ? "border-rose-500 focus:border-rose-500" : ""}`} value={form.hometown} onChange={(e) => set("hometown", e.target.value)} />
           {fieldErrors.hometown && <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.hometown}</p>}
         </Field>
@@ -1241,56 +1186,18 @@ function CloseWorkerModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { companies, staff, reloadCatalog } = useApp();
-  const [manager, setManager] = useState(worker.manager === "—" ? "" : worker.manager);
-  const [company, setCompany] = useState(worker.company === "—" ? "" : worker.company);
-  const [portraitFiles, setPortraitFiles] = useState<File[]>([]);
-  const { access } = useSession();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
 
   const save = async () => {
-    if (notice) {
-      onClose();
-      return;
-    }
-    if (!manager.trim()) {
-      setError("Nhập người phụ trách.");
-      return;
-    }
-    if (!company.trim()) {
-      setError("Chọn công ty trước khi chuyển sang Chờ đi làm.");
-      return;
-    }
-    const companyRecord = companies.find((item) =>
-      item.short_name.trim().toLowerCase() === company.trim().toLowerCase()
-      || item.name.trim().toLowerCase() === company.trim().toLowerCase(),
-    );
-    if (!companyRecord) {
-      setError("Chọn một công ty có trong danh sách.");
-      return;
-    }
     setSaving(true);
     setError("");
     try {
-      for (const file of portraitFiles) await uploadWorkerPortrait(worker.id, file);
-      const pins: string[] = [];
-      const managerId = await ensureStaffId(staff, new Map(), manager, "Phụ trách", pins);
-      await updateLiveWorker(worker.id, {
-        status: "waiting_start",
-        current_company_id: companyRecord.id,
-        manager_id: managerId,
-      });
+      await updateLiveWorker(worker.id, { status: "waiting_start" });
       onSaved();
-      if (pins.length > 0) {
-        setNotice(`Đã chốt. Đã thêm nhân sự mới. ${pins.join(". ")}`);
-        await reloadCatalog();
-        return;
-      }
       onClose();
     } catch (e) {
-      setError(errorText(e, "Chốt thất bại."));
+      setError(errorText(e, "Chuyển sang Chờ đi làm thất bại."));
     } finally {
       setSaving(false);
     }
@@ -1300,33 +1207,16 @@ function CloseWorkerModal({
     <Modal
       open
       onClose={onClose}
-      title={`Chốt hồ sơ ${worker.code}`}
+      title={`Chuyển ${worker.code} sang Chờ đi làm`}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>{notice ? "Đóng" : saving ? "Đang chốt..." : "Chốt"}</Button>
+          <Button className="bg-[#0052cc] text-white hover:bg-[#0747a6]" onClick={() => void save()}>{saving ? "Đang chuyển..." : "Chờ đi làm"}</Button>
         </>
       }
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
-      {notice && <p className="mb-3 rounded-lg bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{notice}</p>}
-      <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> đang tư vấn. Cần có công ty, người phụ trách và ít nhất một ảnh đã lưu trên máy chủ để chuyển sang Chờ đi làm. Nếu ảnh đã có, không cần tải lại.</p>
-      <Field label="Công ty *">
-        <SuggestInput value={company} onChange={setCompany} suggestions={uniq(companies.flatMap((item) => [item.short_name, item.name]))} createLabel="Chọn tên" placeholder="Chọn công ty" />
-      </Field>
-      <Field label="Phụ trách *">
-        <SuggestInput value={manager} onChange={setManager} suggestions={uniq(staff.map((person) => person.full_name))} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" />
-      </Field>
-      {access.canManageWorkerPortrait && (
-        <div className="mt-3">
-          <label className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ * (nếu chưa có)</label>
-          <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => {
-            setPortraitFiles(Array.from(event.target.files ?? []));
-            event.target.value = "";
-          }} />
-          {portraitFiles.length > 0 && <p className="mt-1 text-[12px] text-slate-500">Đã chọn {portraitFiles.length} ảnh mới.</p>}
-        </div>
-      )}
+      <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> có thể chuyển sang Chờ đi làm ngay. Ảnh hồ sơ, công ty và người phụ trách bắt buộc trước khi chuyển sang Đang làm.</p>
     </Modal>
   );
 }
@@ -1442,8 +1332,8 @@ function EditWorkerModal({
       return;
     }
 
-    if (!form.sale.trim() || !form.manager.trim()) {
-      setError("Nhập sale và người phụ trách. Có thể chọn gợi ý hoặc gõ tên mới.");
+    if (!form.sale.trim()) {
+      setError("Nhập sale. Có thể chọn gợi ý hoặc gõ tên mới.");
       return;
     }
     if (needsNoShowReason && !form.noShowReason.trim()) {
@@ -1462,14 +1352,17 @@ function EditWorkerModal({
       || item.name.trim().toLowerCase() === form.company.trim().toLowerCase(),
     );
     const companyChanged = form.company.trim().toLowerCase() !== worker.company.trim().toLowerCase();
-    const enteringWaiting = worker.status === "Đang tư vấn" && form.status === "Chờ đi làm";
     const enteringWork = worker.status === "Chờ đi làm" && form.status === "Đang làm";
     if (form.status === "Đang làm" && worker.status === "Đang tư vấn") {
-      setError("Hồ sơ phải qua Chờ đi làm trước. Dùng thao tác Chốt để bổ sung đủ thông tin.");
+      setError("Hồ sơ phải qua Chờ đi làm trước khi chuyển sang Đang làm.");
       return;
     }
-    if ((enteringWaiting || enteringWork) && !companyRecord) {
-      setError("Chọn một công ty có trong danh sách trước khi chuyển trạng thái.");
+    if (enteringWork && !companyRecord) {
+      setError("Chọn một công ty có trong danh sách trước khi chuyển sang Đang làm.");
+      return;
+    }
+    if (enteringWork && !form.manager.trim()) {
+      setError("Chọn người phụ trách trước khi chuyển sang Đang làm.");
       return;
     }
     setSaving(true);
@@ -1478,8 +1371,10 @@ function EditWorkerModal({
       const pins: string[] = [];
       const known = new Map<string, number>();
       const saleId = await ensureStaffId(staff, known, form.sale, "Sale", pins);
-      const managerId = await ensureStaffId(staff, known, form.manager, "Phụ trách", pins);
-      if (enteringWaiting || enteringWork) {
+      const managerId = form.manager.trim()
+        ? await ensureStaffId(staff, known, form.manager, "Phụ trách", pins)
+        : undefined;
+      if (enteringWork) {
         for (const file of portraitFiles) await uploadWorkerPortrait(worker.id, file);
       }
       await updateLiveWorker(worker.id, {
@@ -1491,7 +1386,7 @@ function EditWorkerModal({
         status: VI_STATUS[form.status] ?? form.status.trim(),
         ...(needsNoShowReason ? { note: `[Không đi làm] ${form.noShowReason.trim()}` } : {}),
         recruiter_id: saleId,
-        manager_id: managerId,
+        ...(managerId ? { manager_id: managerId } : {}),
         ...(companyChanged && companyRecord ? { current_company_id: companyRecord.id } : {}),
         consult_date: consultDate,
         start_work_date: startWorkDate,
@@ -1515,9 +1410,7 @@ function EditWorkerModal({
   const typeNames = uniq([...TYPES, ...knownWorkers.map((person) => person.type)]);
   const statusNames = uniq([...STATUSES, ...knownWorkers.map((person) => person.status)]);
   const staffNames = uniq(staff.map((person) => person.full_name));
-  const transitionNeedsPortrait =
-    (worker.status === "Đang tư vấn" && form.status === "Chờ đi làm")
-    || (worker.status === "Chờ đi làm" && form.status === "Đang làm");
+  const transitionNeedsPortrait = worker.status === "Chờ đi làm" && form.status === "Đang làm";
 
   return (
     <Modal
@@ -1599,9 +1492,9 @@ function EditWorkerModal({
           <Field label="Vị trí"><SuggestInput value={form.position} onChange={(position) => set("position", position)} suggestions={positions} createLabel="Thêm mới" placeholder="Chọn hoặc gõ vị trí mới" /></Field>
           <Field label="Loại hình"><SuggestInput value={form.type} onChange={(type) => set("type", type)} suggestions={typeNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ loại hình mới" /></Field>
           <Field label="Trạng thái"><SuggestInput value={form.status} onChange={(status) => set("status", status)} suggestions={statusNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ trạng thái mới" /></Field>
-          <Field label="Công ty hiện tại *"><SuggestInput value={form.company} onChange={(company) => set("company", company)} suggestions={uniq(companies.flatMap((item) => [item.short_name, item.name]))} createLabel="Chọn tên" placeholder="Chọn công ty" /></Field>
+          <Field label={transitionNeedsPortrait ? "Công ty hiện tại *" : "Công ty hiện tại"}><SuggestInput value={form.company} onChange={(company) => set("company", company)} suggestions={uniq(companies.flatMap((item) => [item.short_name, item.name]))} createLabel="Chọn tên" placeholder="Chọn công ty" /></Field>
           <Field label="Sale"><SuggestInput value={form.sale} onChange={(sale) => set("sale", sale)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ sale mới" /></Field>
-          <Field label="Phụ trách *"><SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" /></Field>
+          <Field label={transitionNeedsPortrait ? "Phụ trách *" : "Phụ trách"}><SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" /></Field>
           <Field label="Ngày tư vấn"><input type="date" className={inputClass} value={form.consultDate} onChange={(e) => set("consultDate", e.target.value)} /></Field>
           <Field label="Ngày vào làm"><input type="date" className={inputClass} value={form.startWorkDate} onChange={(e) => set("startWorkDate", e.target.value)} /></Field>
           <Field label="Ngày nghỉ việc"><input type="date" className={inputClass} value={form.resignDate} onChange={(e) => set("resignDate", e.target.value)} /></Field>

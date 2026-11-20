@@ -192,9 +192,8 @@ export async function PATCH(
         }
       }
 
-      const leavingConsulting = currentStatus === "candidate" && nextStatus === "waiting_start";
       const startingWork = currentStatus === "waiting_start" && nextStatus === "working";
-      if (leavingConsulting || startingWork) {
+      if (startingWork) {
         const companyId = body["current_company_id"] === undefined
           ? Number(current.current_company_id ?? 0)
           : Number(body["current_company_id"] ?? 0);
@@ -215,7 +214,7 @@ export async function PATCH(
         if (missing.length > 0) {
           return json({
             error: "incomplete_worker_profile",
-            message: `Cần bổ sung ${missing.join(", ")} trước khi ${leavingConsulting ? "chuyển sang Chờ đi làm" : "chuyển sang Đang làm"}.`,
+            message: `Cần bổ sung ${missing.join(", ")} trước khi chuyển sang Đang làm.`,
           }, 400);
         }
       }

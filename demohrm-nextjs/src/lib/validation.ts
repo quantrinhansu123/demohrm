@@ -27,13 +27,15 @@ export const CreateWorkerSchema = z.object({
   birthYear: z
     .string()
     .trim()
-    .min(1, "Năm sinh không được để trống")
-    .regex(/^\d{4}$/, "Năm sinh gồm 4 chữ số")
+    .optional()
+    .nullable()
+    .refine((value) => !value || /^\d{4}$/.test(value), "Năm sinh gồm 4 chữ số")
     .refine((value) => {
+      if (!value) return true;
       const year = Number(value);
       return year >= 1940 && year <= currentYear;
     }, `Năm sinh từ 1940 đến ${currentYear}`),
-  hometown: z.string().trim().min(1, "Nơi ở không được để trống").max(200, "Nơi ở quá dài"),
+  hometown: z.string().trim().max(200, "Nơi ở quá dài").optional().nullable(),
   company: z.string().optional().nullable(),
   type: z.string().default("Thời vụ"),
   source: z.string().optional(),

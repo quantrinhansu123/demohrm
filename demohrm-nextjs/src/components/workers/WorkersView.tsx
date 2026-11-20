@@ -1039,7 +1039,7 @@ function CreateWorkerModal({
             Đã lưu hồ sơ <strong>{form.name.trim() || "Chưa cập nhật"}</strong> ở giai đoạn Đang tư vấn.
           </p>
           <p className="rounded-lg bg-sky-50 px-3 py-2 text-[13px] text-sky-800">
-            Có thể chuyển sang <strong>Chờ đi làm</strong> ngay. Bổ sung ảnh hồ sơ, công ty và người phụ trách trước khi chuyển sang <strong>Đang làm</strong>.
+            Có thể chuyển sang <strong>Chờ đi làm</strong> ngay. Cần có công ty và người phụ trách trước khi chuyển sang <strong>Đang làm</strong>; ảnh hồ sơ không bắt buộc.
           </p>
         </div>
       ) : (
@@ -1216,7 +1216,7 @@ function CloseWorkerModal({
       }
     >
       {error && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-[12.5px] text-rose-700">{error}</p>}
-      <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> có thể chuyển sang Chờ đi làm ngay. Ảnh hồ sơ, công ty và người phụ trách bắt buộc trước khi chuyển sang Đang làm.</p>
+      <p className="mb-3 text-[13px] text-slate-600">Hồ sơ <strong>{worker.name}</strong> có thể chuyển sang Chờ đi làm ngay. Trước khi chuyển sang Đang làm cần có công ty và người phụ trách; ảnh hồ sơ không bắt buộc.</p>
     </Modal>
   );
 }
@@ -1410,7 +1410,7 @@ function EditWorkerModal({
   const typeNames = uniq([...TYPES, ...knownWorkers.map((person) => person.type)]);
   const statusNames = uniq([...STATUSES, ...knownWorkers.map((person) => person.status)]);
   const staffNames = uniq(staff.map((person) => person.full_name));
-  const transitionNeedsPortrait = worker.status === "Chờ đi làm" && form.status === "Đang làm";
+  const enteringWork = worker.status === "Chờ đi làm" && form.status === "Đang làm";
 
   return (
     <Modal
@@ -1447,7 +1447,7 @@ function EditWorkerModal({
               <SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn người phụ trách" />
             </Field>
             <div className="col-span-2">
-              <label className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ * (nếu chưa có)</label>
+              <label className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ (không bắt buộc)</label>
               <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => {
                 setPortraitFiles(Array.from(event.target.files ?? []));
                 event.target.value = "";
@@ -1492,9 +1492,9 @@ function EditWorkerModal({
           <Field label="Vị trí"><SuggestInput value={form.position} onChange={(position) => set("position", position)} suggestions={positions} createLabel="Thêm mới" placeholder="Chọn hoặc gõ vị trí mới" /></Field>
           <Field label="Loại hình"><SuggestInput value={form.type} onChange={(type) => set("type", type)} suggestions={typeNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ loại hình mới" /></Field>
           <Field label="Trạng thái"><SuggestInput value={form.status} onChange={(status) => set("status", status)} suggestions={statusNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ trạng thái mới" /></Field>
-          <Field label={transitionNeedsPortrait ? "Công ty hiện tại *" : "Công ty hiện tại"}><SuggestInput value={form.company} onChange={(company) => set("company", company)} suggestions={uniq(companies.flatMap((item) => [item.short_name, item.name]))} createLabel="Chọn tên" placeholder="Chọn công ty" /></Field>
+          <Field label={enteringWork ? "Công ty hiện tại *" : "Công ty hiện tại"}><SuggestInput value={form.company} onChange={(company) => set("company", company)} suggestions={uniq(companies.flatMap((item) => [item.short_name, item.name]))} createLabel="Chọn tên" placeholder="Chọn công ty" /></Field>
           <Field label="Sale"><SuggestInput value={form.sale} onChange={(sale) => set("sale", sale)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ sale mới" /></Field>
-          <Field label={transitionNeedsPortrait ? "Phụ trách *" : "Phụ trách"}><SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" /></Field>
+          <Field label={enteringWork ? "Phụ trách *" : "Phụ trách"}><SuggestInput value={form.manager} onChange={(manager) => set("manager", manager)} suggestions={staffNames} createLabel="Thêm mới" placeholder="Chọn hoặc gõ tên mới" /></Field>
           <Field label="Ngày tư vấn"><input type="date" className={inputClass} value={form.consultDate} onChange={(e) => set("consultDate", e.target.value)} /></Field>
           <Field label="Ngày vào làm"><input type="date" className={inputClass} value={form.startWorkDate} onChange={(e) => set("startWorkDate", e.target.value)} /></Field>
           <Field label="Ngày nghỉ việc"><input type="date" className={inputClass} value={form.resignDate} onChange={(e) => set("resignDate", e.target.value)} /></Field>
@@ -1510,9 +1510,9 @@ function EditWorkerModal({
               </Field>
             </div>
           )}
-          {transitionNeedsPortrait && access.canManageWorkerPortrait && (
+          {enteringWork && access.canManageWorkerPortrait && (
             <div className="col-span-2">
-              <label className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ * (nếu chưa có)</label>
+              <label className="mb-1 block text-[12.5px] font-medium text-slate-600">Ảnh hồ sơ (không bắt buộc)</label>
               <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => {
                 setPortraitFiles(Array.from(event.target.files ?? []));
                 event.target.value = "";

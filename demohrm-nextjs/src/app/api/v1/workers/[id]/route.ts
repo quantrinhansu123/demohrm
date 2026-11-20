@@ -177,7 +177,7 @@ export async function PATCH(
       if (currentStatus === "candidate" && nextStatus === "working") {
         return json({
           error: "invalid_transition",
-          message: "Hãy chuyển hồ sơ sang Chờ đi làm trước. Cần hoàn tất ảnh hồ sơ, công ty và người phụ trách.",
+          message: "Hãy chuyển hồ sơ sang Chờ đi làm trước. Cần có công ty và người phụ trách trước khi chuyển sang Đang làm.",
         }, 400);
       }
 
@@ -200,17 +200,9 @@ export async function PATCH(
         const managerId = body["manager_id"] === undefined
           ? Number(current.manager_id ?? 0)
           : Number(body["manager_id"] ?? 0);
-        const { count, error: portraitError } = await getSupabase()
-          .from("worker_documents")
-          .select("id", { count: "exact", head: true })
-          .eq("worker_id", id)
-          .eq("doc_type", "portrait");
-        if (portraitError) throw portraitError;
-
         const missing: string[] = [];
         if (!Number.isInteger(companyId) || companyId <= 0) missing.push("công ty");
         if (!Number.isInteger(managerId) || managerId <= 0) missing.push("người phụ trách");
-        if (!count) missing.push("ảnh hồ sơ");
         if (missing.length > 0) {
           return json({
             error: "incomplete_worker_profile",
